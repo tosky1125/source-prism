@@ -1875,7 +1875,13 @@ dependencies = [
 name = "ri-indexer"
 version = "0.1.0"
 dependencies = [
+ "hex",
  "ri-core",
+ "sha2",
+ "sqlx",
+ "thiserror",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

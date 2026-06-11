@@ -7,45 +7,86 @@
 use std::{
     env,
     io::{self, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::ExitCode,
 };
 
 use ri_config::{RuntimeConfig, load_env_file};
-use ri_indexer::{OpenSearchClient, PgSearchSyncStore};
+use ri_git::LocalManifest;
+use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
-use thiserror::Error;
 
-const DEFAULT_SEARCH_INDEX: &str = "source-prism-dev";
+pub(crate) mod error;
+pub(crate) mod search;
+
+use error::CliError;
 
 #[tokio::main]
 async fn main() -> ExitCode {
     match run(env::args()).await {
-        Ok(()) => ExitCode::SUCCESS,
+        Ok(code) => code,
         Err(error) => {
             let mut stderr = io::stderr().lock();
             let _ = writeln!(stderr, "{error}");
-            ExitCode::FAILURE
+            error.exit_code()
         }
     }
 }
 
-async fn run(args: impl IntoIterator<Item = String>) -> Result<(), CliError> {
+async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliError> {
     let mut args = args.into_iter();
     let _program = args.next();
     let Some(command) = args.next() else {
         return Err(CliError::Usage);
     };
-    let Some(subcommand) = args.next() else {
-        return Err(CliError::Usage);
-    };
 
-    match (command.as_str(), subcommand.as_str()) {
-        ("config", "check") => check_config(args),
-        ("search", "sync") => search_sync(args).await,
-        ("search", "drift-check") => search_drift_check(args).await,
-        ("search", "rebuild") => search_rebuild(args).await,
+    match command.as_str() {
+        "config" => {
+            expect_subcommand(&mut args, "check")?;
+            check_config(args)?;
+            Ok(ExitCode::SUCCESS)
+        }
+        "db" => {
+            expect_subcommand(&mut args, "migrate")?;
+            db_migrate(args).await?;
+            Ok(ExitCode::SUCCESS)
+        }
+        "repo" => {
+            expect_subcommand(&mut args, "manifest")?;
+            repo_manifest(args)?;
+            Ok(ExitCode::SUCCESS)
+        }
+        "index" => not_implemented(
+            args,
+            "index",
+            "symbol-index milestone",
+            "indexing orchestration is deferred until the symbol index milestone",
+        ),
+        "symbols" => not_implemented(
+            args,
+            "symbols",
+            "symbol-index milestone",
+            "symbol extraction is deferred until Tree-sitter parser work starts",
+        ),
+        "impact" => not_implemented(
+            args,
+            "impact",
+            "graph-impact milestone",
+            "impact analysis is deferred until graph edges exist",
+        ),
+        "search" => search::command(args).await.map(|()| ExitCode::SUCCESS),
         _ => Err(CliError::Usage),
+    }
+}
+
+fn expect_subcommand(
+    args: &mut impl Iterator<Item = String>,
+    expected: &str,
+) -> Result<(), CliError> {
+    if args.next().as_deref() == Some(expected) {
+        Ok(())
+    } else {
+        Err(CliError::Usage)
     }
 }
 
@@ -68,98 +109,82 @@ fn check_config(mut args: impl Iterator<Item = String>) -> Result<(), CliError> 
     Ok(())
 }
 
-async fn search_sync(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
-    if args.next().as_deref() != Some("--once") || args.next().is_some() {
+async fn db_migrate(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
+    if args.next().is_some() {
         return Err(CliError::Usage);
     }
-    let (store, client) = search_dependencies().await?;
-    let outcome = store.sync_once(&client).await?;
-    writeln!(
-        io::stdout().lock(),
-        "search sync processed={} outbox_id={}",
-        u8::from(outcome.processed),
-        outcome.outbox_id.unwrap_or_else(|| "none".to_owned())
-    )?;
-    Ok(())
-}
-
-async fn search_drift_check(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
-    let expect_mismatch = matches!(args.next().as_deref(), Some("--expect-mismatch"))
-        && matches!(args.next().as_deref(), Some("fixture"))
-        && args.next().is_none();
-    let (store, client) = search_dependencies().await?;
-    if expect_mismatch {
-        client.health().await?;
-        return Err(CliError::Drift {
-            expected: 1,
-            actual: 0,
-        });
-    }
-    let report = store.drift_report(&client, DEFAULT_SEARCH_INDEX).await?;
-    if report.has_drift() {
-        return Err(CliError::Drift {
-            expected: report.expected_documents,
-            actual: report.actual_documents,
-        });
-    }
-    writeln!(
-        io::stdout().lock(),
-        "search drift ok expected={} actual={}",
-        report.expected_documents,
-        report.actual_documents
-    )?;
-    Ok(())
-}
-
-async fn search_rebuild(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
-    if args.next().as_deref() != Some("--from-postgres") || args.next().is_some() {
-        return Err(CliError::Usage);
-    }
-    let (store, client) = search_dependencies().await?;
-    let outcome = store.rebuild_index(&client, DEFAULT_SEARCH_INDEX).await?;
-    writeln!(
-        io::stdout().lock(),
-        "search rebuild indexed={}",
-        outcome.indexed
-    )?;
-    Ok(())
-}
-
-async fn search_dependencies() -> Result<(PgSearchSyncStore, OpenSearchClient), CliError> {
     let database_url = env::var("DATABASE_URL").map_err(|_| CliError::MissingEnv {
         key: "DATABASE_URL",
-    })?;
-    let opensearch_url = env::var("OPENSEARCH_URL").map_err(|_| CliError::MissingEnv {
-        key: "OPENSEARCH_URL",
     })?;
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(database_url.as_str())
         .await?;
-    Ok((
-        PgSearchSyncStore::new(pool),
-        OpenSearchClient::new(opensearch_url.as_str()),
-    ))
+    let migrator = sqlx::migrate::Migrator::new(Path::new("migrations")).await?;
+    migrator.run(&pool).await?;
+    writeln!(io::stdout().lock(), "db migrate ok")?;
+    Ok(())
 }
 
-#[derive(Debug, Error)]
-enum CliError {
-    #[error(
-        "usage: ri-cli config check --env-file <path> | search sync --once | search drift-check [--expect-mismatch fixture] | search rebuild --from-postgres"
-    )]
-    Usage,
-    #[error("missing required env: {key}")]
-    MissingEnv { key: &'static str },
-    #[error("{0}")]
-    Config(#[from] ri_config::ConfigError),
-    #[error("search drift detected: expected={expected} actual={actual}")]
-    Drift { expected: i64, actual: i64 },
-    #[error(transparent)]
-    OpenSearch(#[from] ri_indexer::OpenSearchError),
-    #[error(transparent)]
-    SearchSync(#[from] ri_indexer::SearchSyncError),
-    #[error(transparent)]
-    Sqlx(#[from] sqlx::Error),
-    #[error(transparent)]
-    Io(#[from] io::Error),
+fn repo_manifest(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
+    let Some(flag) = args.next() else {
+        return Err(CliError::Usage);
+    };
+    if flag != "--repo" {
+        return Err(CliError::Usage);
+    }
+    let Some(path) = args.next() else {
+        return Err(CliError::Usage);
+    };
+    if args.next().is_some() {
+        return Err(CliError::Usage);
+    }
+    let manifest = LocalManifest::extract(&path)?;
+    let files = manifest
+        .files()
+        .iter()
+        .map(|file| {
+            json!({
+                "path": file.path(),
+                "language": file.language(),
+                "size_bytes": file.size_bytes(),
+                "content_sha256": file.content_sha256(),
+                "is_generated": file.is_generated(),
+                "is_vendor": file.is_vendor(),
+                "is_test": file.is_test(),
+            })
+        })
+        .collect::<Vec<_>>();
+    print_json(&json!({
+        "status": "ok",
+        "kind": "manifest",
+        "repo": path,
+        "file_count": files.len(),
+        "files": files,
+    }))
+}
+
+fn not_implemented(
+    args: impl Iterator<Item = String>,
+    command: &str,
+    milestone: &str,
+    message: &str,
+) -> Result<ExitCode, CliError> {
+    let arguments = args.collect::<Vec<_>>();
+    print_json(&json!({
+        "status": "not_implemented",
+        "command": command,
+        "arguments": arguments,
+        "roadmap_milestone": milestone,
+        "message": message,
+    }))?;
+    Ok(ExitCode::from(2))
+}
+
+fn print_json(value: &serde_json::Value) -> Result<(), CliError> {
+    let stdout = io::stdout();
+    let mut lock = stdout.lock();
+    serde_json::to_writer_pretty(&mut lock, value)?;
+    writeln!(lock)?;
+    Ok(())
 }

@@ -134,12 +134,12 @@ fn read_dir(path: &Path) -> Result<fs::ReadDir, GitError> {
 
 fn should_enter_dir(root: &Path, path: &Path) -> Result<bool, GitError> {
     let relative_path = relative_path(root, path)?;
-    Ok(!is_git_internal_path(&relative_path))
+    Ok(!is_ignored_local_artifact_path(&relative_path))
 }
 
 fn manifest_file(root: &Path, path: &Path) -> Result<Option<FileManifest>, GitError> {
     let relative_path = relative_path(root, path)?;
-    if is_git_internal_path(&relative_path) {
+    if is_ignored_local_artifact_path(&relative_path) {
         return Ok(None);
     }
     let metadata = fs::metadata(path).map_err(|source| GitError::Io {
@@ -225,4 +225,12 @@ fn component_str<'component>(
 
 fn is_git_internal_path(path: &str) -> bool {
     path == ".git" || path.starts_with(".git/")
+}
+
+fn is_ignored_local_artifact_path(path: &str) -> bool {
+    is_git_internal_path(path)
+        || path == "target"
+        || path.starts_with("target/")
+        || path == ".omo/evidence"
+        || path.starts_with(".omo/evidence/")
 }

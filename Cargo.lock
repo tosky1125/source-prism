@@ -2206,7 +2206,9 @@ version = "0.1.0"
 dependencies = [
  "ri-config",
  "ri-core",
+ "ri-git",
  "ri-indexer",
+ "serde_json",
  "sqlx",
  "thiserror",
  "tokio",

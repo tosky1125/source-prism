@@ -5,6 +5,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use ri_behavior::BehaviorError;
 use ri_impact::ImpactError;
 use ri_indexer::{GenerationError, GraphStoreError, SearchSyncError, SymbolStoreError};
 use serde::Serialize;
@@ -34,6 +35,8 @@ pub enum AppError {
     FileTooLarge { path: String, size_bytes: u64 },
     #[error("run not found: {run_id}")]
     RunNotFound { run_id: String },
+    #[error(transparent)]
+    Behavior(#[from] BehaviorError),
     #[error(transparent)]
     Context(#[from] ri_context::ContextError),
     #[error(transparent)]
@@ -70,6 +73,16 @@ impl IntoResponse for AppError {
                 StatusCode::NOT_FOUND,
                 "run_not_found",
                 format!("run not found: {run_id}"),
+            ),
+            Self::Behavior(BehaviorError::SymbolNotFound { symbol }) => (
+                StatusCode::NOT_FOUND,
+                "symbol_not_found",
+                format!("symbol not found: {symbol}"),
+            ),
+            Self::Behavior(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "behavior",
+                "behavior context failed".to_owned(),
             ),
             Self::Context(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,

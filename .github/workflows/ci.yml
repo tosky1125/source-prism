@@ -135,6 +135,13 @@ jobs:
               curl -fsS http://127.0.0.1:4096/v1/repos/local/symbols > /tmp/source-prism-api-symbols.json
               grep '"kind":"symbols"' /tmp/source-prism-api-symbols.json
               grep '"symbol_count":' /tmp/source-prism-api-symbols.json
+              api_test_symbol=$(python3 -c 'import json; data=json.load(open("/tmp/source-prism-api-symbols.json")); print(next(symbol["fqn"] for symbol in data["symbols"] if symbol["kind"] == "test_case"))')
+              curl -fsS -X POST http://127.0.0.1:4096/v1/test-context \
+                -H 'content-type: application/json' \
+                --data "{\"repo_id\":\"source-prism-ci\",\"symbol\":\"${api_test_symbol}\"}" \
+                > /tmp/source-prism-api-test-context.json
+              grep '"kind":"test_context"' /tmp/source-prism-api-test-context.json
+              grep '"code_execution_allowed":false' /tmp/source-prism-api-test-context.json
               curl -fsS http://127.0.0.1:4096/v1/repos/source-prism-ci/graph > /tmp/source-prism-api-graph.json
               grep -q '"kind":"graph"' /tmp/source-prism-api-graph.json
               grep -q '"edge_count":' /tmp/source-prism-api-graph.json

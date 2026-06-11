@@ -22,6 +22,7 @@ pub(crate) mod repo_symbols;
 pub(crate) mod repos;
 pub(crate) mod runs;
 pub(crate) mod state;
+pub(crate) mod test_context;
 
 use axum::{
     Router,
@@ -40,6 +41,7 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/health", get(health::health))
         .route("/v1/context/search", post(context_search::search))
         .route("/v1/impact", post(impact::analyze))
+        .route("/v1/test-context", post(test_context::get))
         .route("/v1/repos", post(repos::create))
         .route("/v1/repos/{repo_id}/files", get(repo_files::list))
         .route("/v1/repos/{repo_id}/graph", get(repo_graph::get))

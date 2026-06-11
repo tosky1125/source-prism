@@ -44,6 +44,9 @@ cargo run -p ri-cli -- impact --symbol search
 cargo run -p ri-cli -- search-context search
 cargo run -p ri-cli -- test-context --symbol extracts_rust_functions_methods_and_tests
 cargo run -p ri-api
+curl -fsS -X POST http://127.0.0.1:3000/v1/test-context \
+  -H 'content-type: application/json' \
+  --data '{"symbol":"extracts_rust_functions_methods_and_tests"}'
 cargo run -p ri-worker -- --once
 ```
 

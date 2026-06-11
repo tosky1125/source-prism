@@ -19,6 +19,7 @@ use sqlx::postgres::PgPoolOptions;
 pub(crate) mod error;
 pub(crate) mod index;
 pub(crate) mod search;
+pub(crate) mod symbols;
 
 use error::CliError;
 
@@ -58,12 +59,8 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
             Ok(ExitCode::SUCCESS)
         }
         "index" => index::command(args).await.map(|()| ExitCode::SUCCESS),
-        "symbols" => not_implemented(
-            args,
-            "symbols",
-            "symbol-index milestone",
-            "symbol extraction is deferred until Tree-sitter parser work starts",
-        ),
+        "symbols" => symbols::symbols_command(args).map(|()| ExitCode::SUCCESS),
+        "changed-symbols" => symbols::changed_symbols_command(args).map(|()| ExitCode::SUCCESS),
         "impact" => not_implemented(
             args,
             "impact",

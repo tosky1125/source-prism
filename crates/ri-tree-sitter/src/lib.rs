@@ -1,0 +1,64 @@
+#![allow(
+    missing_docs,
+    reason = "Tree-sitter adapter API is internal milestone surface."
+)]
+#![allow(
+    clippy::multiple_crate_versions,
+    reason = "Tree-sitter grammar crates currently depend on adjacent tree-sitter versions."
+)]
+
+mod names;
+mod traversal;
+
+use ri_core::Language;
+use ri_parser::{ParserError, SourceFile, SymbolExtractor};
+use ri_symbols::SymbolRecord;
+use tree_sitter::Parser;
+
+#[derive(Debug, Default)]
+#[non_exhaustive]
+pub struct TreeSitterExtractor;
+
+impl TreeSitterExtractor {
+    pub const fn new() -> Self {
+        Self
+    }
+}
+
+impl SymbolExtractor for TreeSitterExtractor {
+    fn extract_symbols(&self, file: &SourceFile<'_>) -> Result<Vec<SymbolRecord>, ParserError> {
+        let mut parser = Parser::new();
+        set_language(&mut parser, file.language)?;
+        let tree = parser
+            .parse(file.source, None)
+            .ok_or_else(|| ParserError::ParseFailed {
+                path: file.path.to_string(),
+                message: "tree-sitter returned no tree".to_owned(),
+            })?;
+        if tree.root_node().has_error() {
+            return Err(ParserError::ParseFailed {
+                path: file.path.to_string(),
+                message: "syntax tree contains errors".to_owned(),
+            });
+        }
+        Ok(traversal::extract_tree_symbols(file, tree.root_node()))
+    }
+}
+
+fn set_language(parser: &mut Parser, language: Language) -> Result<(), ParserError> {
+    match language {
+        Language::Rust => parser.set_language(&tree_sitter_rust::LANGUAGE.into()),
+        Language::TypeScript | Language::JavaScript => {
+            parser.set_language(&tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into())
+        }
+        Language::Python => parser.set_language(&tree_sitter_python::LANGUAGE.into()),
+        Language::Go => parser.set_language(&tree_sitter_go::LANGUAGE.into()),
+        other => {
+            return Err(ParserError::UnsupportedLanguage { language: other });
+        }
+    }
+    .map_err(|error| ParserError::ParseFailed {
+        path: "<language>".to_owned(),
+        message: error.to_string(),
+    })
+}

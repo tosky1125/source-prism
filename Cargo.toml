@@ -6,6 +6,9 @@ members = [
     "crates/ri-core",
     "crates/ri-git",
     "crates/ri-indexer",
+    "crates/ri-parser",
+    "crates/ri-symbols",
+    "crates/ri-tree-sitter",
     "crates/ri-worker",
 ]
 resolver = "3"

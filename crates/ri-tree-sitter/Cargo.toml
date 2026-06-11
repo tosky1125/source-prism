@@ -1,0 +1,27 @@
+[package]
+name = "ri-tree-sitter"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Tree-sitter symbol extraction adapters for Source Prism."
+
+[dependencies]
+ri-core = { path = "../ri-core" }
+ri-parser = { path = "../ri-parser" }
+ri-symbols = { path = "../ri-symbols" }
+tree-sitter = "0.25"
+tree-sitter-go = "0.25"
+tree-sitter-python = "0.25"
+tree-sitter-rust = "0.24"
+tree-sitter-typescript = "0.23"
+
+[dev-dependencies]
+sha2 = "0.10"
+
+[lints]
+workspace = true

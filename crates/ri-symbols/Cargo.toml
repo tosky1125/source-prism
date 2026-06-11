@@ -1,0 +1,18 @@
+[package]
+name = "ri-symbols"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Symbol records and changed-line mapping for Source Prism."
+
+[dependencies]
+ri-core = { path = "../ri-core" }
+serde = { version = "1", features = ["derive"] }
+
+[lints]
+workspace = true

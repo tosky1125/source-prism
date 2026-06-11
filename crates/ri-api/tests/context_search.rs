@@ -52,6 +52,27 @@ async fn context_search_returns_context_pack_for_matching_symbol()
     Ok(())
 }
 
+#[tokio::test]
+async fn context_search_with_repo_id_requires_database() -> Result<(), Box<dyn std::error::Error>> {
+    let app = app(AppState::for_test_symbols(Vec::new())?);
+    let request = Request::builder()
+        .method(Method::POST)
+        .uri("/v1/context/search")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(r#"{"repo_id":"repo","query":"apply_tax"}"#))?;
+
+    let response = app.oneshot(request).await?;
+
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let bytes = to_bytes(response.into_body(), 1_000_000).await?;
+    let body = serde_json::from_slice::<Value>(&bytes)?;
+    assert_eq!(
+        body.pointer("/error/code").and_then(Value::as_str),
+        Some("database_not_configured")
+    );
+    Ok(())
+}
+
 fn symbol(path: &str, fqn: &str) -> Result<SymbolRecord, ri_core::CoreError> {
     let repo = RepoId::new("repo")?;
     let commit = CommitSha::new("commit")?;

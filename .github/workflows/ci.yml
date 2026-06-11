@@ -115,7 +115,7 @@ jobs:
               grep '"status":"succeeded"' /tmp/source-prism-api-run.json
               curl -fsS -X POST http://127.0.0.1:4096/v1/context/search \
                 -H 'content-type: application/json' \
-                --data '{"query":"search_context"}' \
+                --data '{"repo_id":"source-prism-ci","query":"search_context"}' \
                 > /tmp/source-prism-api-context.json
               grep '"kind":"context_search"' /tmp/source-prism-api-context.json
               grep '"vector_only":false' /tmp/source-prism-api-context.json

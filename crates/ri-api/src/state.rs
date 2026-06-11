@@ -1,10 +1,11 @@
 use ri_context::extract_repo_symbols;
 use ri_git::LocalManifest;
+use ri_indexer::PgSymbolStore;
 use ri_symbols::SymbolRecord;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use std::{borrow::Cow, env, path::PathBuf, sync::Arc, time::Duration};
 
-use crate::{ApiError, RepoFile};
+use crate::{ApiError, AppError, RepoFile};
 
 #[derive(Debug, Clone)]
 pub struct AppState {
@@ -81,6 +82,26 @@ impl AppState {
             return Ok(Cow::Borrowed(symbols.as_ref()));
         }
         extract_repo_symbols(&self.context_repo_path).map(Cow::Owned)
+    }
+
+    pub(crate) async fn symbols_for_optional_repo(
+        &self,
+        repo_id: Option<&str>,
+    ) -> Result<Vec<SymbolRecord>, AppError> {
+        let Some(repo_id) = repo_id else {
+            return Ok(self.context_symbols()?.into_owned());
+        };
+        let repo_id = repo_id.trim();
+        if repo_id.is_empty() {
+            return Err(AppError::Validation("repo_id must not be empty".to_owned()));
+        }
+        let Some(pool) = self.database.pool.as_ref() else {
+            return Err(AppError::DatabaseNotConfigured);
+        };
+        PgSymbolStore::new(pool.clone())
+            .active_symbols_for_repo(repo_id)
+            .await
+            .map_err(AppError::from)
     }
 }
 

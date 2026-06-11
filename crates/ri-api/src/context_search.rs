@@ -9,6 +9,7 @@ const MAX_LIMIT: usize = 50;
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct ContextSearchRequest {
+    repo_id: Option<String>,
     query: String,
     limit: Option<usize>,
 }
@@ -29,10 +30,12 @@ pub(crate) async fn search(
         return Err(AppError::Validation("query must not be empty".to_owned()));
     }
     let limit = request.limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT);
-    let symbols = state.context_symbols()?;
+    let symbols = state
+        .symbols_for_optional_repo(request.repo_id.as_deref())
+        .await?;
     Ok(Json(ContextSearchResponse {
         status: "ok",
         kind: "context_search",
-        context_pack: build_context_pack(&symbols, query, limit),
+        context_pack: build_context_pack(symbols.as_slice(), query, limit),
     }))
 }

@@ -2333,6 +2333,7 @@ dependencies = [
  "reqwest",
  "ri-core",
  "ri-symbols",
+ "serde",
  "serde_json",
  "sha2",
  "sqlx",

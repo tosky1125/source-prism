@@ -7,6 +7,7 @@
 mod generation;
 mod graph;
 pub mod graph_ids;
+mod graph_query;
 mod overlay;
 mod search_chunks;
 mod search_http;
@@ -20,6 +21,7 @@ pub use generation::{
     FileManifestInput, GenerationError, GenerationRecord, GenerationStatus, PgGenerationStore,
 };
 pub use graph::{GraphIndexOutcome, GraphStoreError, PgGraphStore};
+pub use graph_query::{GraphEdgeRecord, GraphNodeRecord, GraphProjection};
 pub use overlay::{
     BaseFileRecord, OverlayEntry, OverlayFileStatus, OverlayMergedFile, merge_overlay,
 };

@@ -16,6 +16,7 @@ pub(crate) mod error;
 pub(crate) mod health;
 pub(crate) mod impact;
 pub(crate) mod repo_files;
+pub(crate) mod repo_graph;
 pub(crate) mod repo_index;
 pub(crate) mod repo_symbols;
 pub(crate) mod repos;
@@ -41,6 +42,7 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/impact", post(impact::analyze))
         .route("/v1/repos", post(repos::create))
         .route("/v1/repos/{repo_id}/files", get(repo_files::list))
+        .route("/v1/repos/{repo_id}/graph", get(repo_graph::get))
         .route("/v1/repos/{repo_id}/index", post(repo_index::index))
         .route("/v1/repos/{repo_id}/symbols", get(repo_symbols::list))
         .route("/v1/runs/{run_id}", get(runs::get))

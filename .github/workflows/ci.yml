@@ -69,7 +69,9 @@ jobs:
           cargo run -p ri-cli -- config check --env-file .env.example
           cargo run -p ri-cli -- db migrate
           cargo run -p ri-cli -- repo manifest --repo . | grep '"kind": "manifest"'
-          cargo run -p ri-cli -- impact --symbol run > /tmp/source-prism-impact.json
+          cargo run -p ri-cli -- symbols --repo . > /tmp/source-prism-symbols.json
+          impact_symbol=$(python3 -c 'import json; data=json.load(open("/tmp/source-prism-symbols.json")); print(next(symbol["fqn"] for symbol in data["symbols"] if symbol["kind"] == "function"))')
+          cargo run -p ri-cli -- impact --symbol "$impact_symbol" > /tmp/source-prism-impact.json
           grep '"kind": "impact"' /tmp/source-prism-impact.json
           grep '"status": "ok"' /tmp/source-prism-impact.json
           grep '"impact_score"' /tmp/source-prism-impact.json
@@ -129,6 +131,9 @@ jobs:
               curl -fsS http://127.0.0.1:4096/v1/repos/local/symbols > /tmp/source-prism-api-symbols.json
               grep '"kind":"symbols"' /tmp/source-prism-api-symbols.json
               grep '"symbol_count":' /tmp/source-prism-api-symbols.json
+              curl -fsS http://127.0.0.1:4096/v1/repos/source-prism-ci/graph > /tmp/source-prism-api-graph.json
+              grep -q '"kind":"graph"' /tmp/source-prism-api-graph.json
+              grep -q '"edge_count":' /tmp/source-prism-api-graph.json
               curl -fsS http://127.0.0.1:4096/v1/repos/local/files > /tmp/source-prism-api-files.json
               grep '"kind":"files"' /tmp/source-prism-api-files.json
               grep '"file_count":' /tmp/source-prism-api-files.json

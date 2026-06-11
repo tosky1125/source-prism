@@ -32,7 +32,7 @@ pub struct GraphIndexOutcome {
 
 #[derive(Debug, Clone)]
 pub struct PgGraphStore {
-    pool: PgPool,
+    pub(crate) pool: PgPool,
 }
 
 impl PgGraphStore {

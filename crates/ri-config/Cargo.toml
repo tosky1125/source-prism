@@ -12,6 +12,11 @@ description = "Runtime configuration boundary for Source Prism."
 
 [dependencies]
 ri-core = { path = "../ri-core" }
+thiserror = "2"
+url = "2"
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+tempfile = "3"

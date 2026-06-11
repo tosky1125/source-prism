@@ -11,7 +11,9 @@ categories.workspace = true
 description = "Local command-line interface for Source Prism."
 
 [dependencies]
+ri-config = { path = "../ri-config" }
 ri-core = { path = "../ri-core" }
+thiserror = "2"
 
 [lints]
 workspace = true

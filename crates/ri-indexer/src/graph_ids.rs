@@ -9,15 +9,30 @@ pub fn file_node_id(repo_id: &str, commit_sha: &str, file_path: &str) -> String 
 }
 
 pub fn symbol_node_id(symbol: &SymbolRecord) -> String {
-    node_id(
-        "symbol",
-        "versioned",
-        NODE_TYPE_SYMBOL,
-        symbol.versioned_symbol_id.as_str(),
-    )
+    symbol_node_id_from_versioned_id(symbol.versioned_symbol_id.as_str())
+}
+
+pub fn symbol_node_id_from_versioned_id(versioned_symbol_id: &str) -> String {
+    node_id("symbol", "versioned", NODE_TYPE_SYMBOL, versioned_symbol_id)
 }
 
 pub fn contains_edge_id(
+    repo_id: &str,
+    commit_sha: &str,
+    source_node_id: &str,
+    target_node_id: &str,
+    edge_type: &str,
+) -> String {
+    graph_edge_id(
+        repo_id,
+        commit_sha,
+        source_node_id,
+        target_node_id,
+        edge_type,
+    )
+}
+
+pub fn graph_edge_id(
     repo_id: &str,
     commit_sha: &str,
     source_node_id: &str,

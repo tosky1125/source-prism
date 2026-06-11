@@ -8,6 +8,7 @@ mod generation;
 mod graph;
 pub mod graph_ids;
 mod graph_query;
+mod graph_test_covers;
 mod overlay;
 mod search_chunks;
 mod search_http;

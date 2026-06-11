@@ -35,6 +35,7 @@ pub(crate) struct IndexRepoResponse {
     indexed_symbols: u64,
     indexed_graph_nodes: u64,
     indexed_graph_edges: u64,
+    indexed_test_cover_edges: u64,
     indexed_search_chunks: u64,
     indexed_test_cases: u64,
 }
@@ -76,8 +77,12 @@ pub(crate) async fn index(
     let indexed_test_cases = PgTestCaseStore::new(pool.clone())
         .replace_test_cases_for_generation(&generation.generation_id, &symbols)
         .await?;
-    let graph = PgGraphStore::new(pool.clone())
+    let graph_store = PgGraphStore::new(pool.clone());
+    let graph = graph_store
         .replace_contains_graph(&generation.generation_id, &symbols)
+        .await?;
+    let indexed_test_cover_edges = graph_store
+        .replace_test_covers_graph(&generation.generation_id)
         .await?;
     let indexed_search_chunks = PgSearchSyncStore::new(pool.clone())
         .enqueue_symbol_chunks(
@@ -98,7 +103,8 @@ pub(crate) async fn index(
         inserted_file_manifests: inserted,
         indexed_symbols,
         indexed_graph_nodes: graph.nodes,
-        indexed_graph_edges: graph.edges,
+        indexed_graph_edges: graph.edges.saturating_add(indexed_test_cover_edges),
+        indexed_test_cover_edges,
         indexed_search_chunks,
         indexed_test_cases,
     }))

@@ -8,7 +8,7 @@
 )]
 
 use ri_core::{CommitSha, FilePath, Language, RepoId, SymbolKind};
-use ri_indexer::{PgGenerationStore, PgGraphStore};
+use ri_indexer::{PgGenerationStore, PgGraphStore, PgSymbolStore};
 use ri_symbols::{SymbolRange, SymbolRecord, SymbolSpec};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -52,6 +52,55 @@ async fn active_graph_returns_latest_contains_edges() -> Result<(), Box<dyn std:
     Ok(())
 }
 
+#[tokio::test]
+async fn active_graph_includes_static_test_covers_edges() -> Result<(), Box<dyn std::error::Error>>
+{
+    let Some(pool) = test_pool().await? else {
+        return Ok(());
+    };
+    let fixture = Fixture::create(&pool).await?;
+    let generation = PgGenerationStore::new(pool.clone())
+        .begin_generation(&fixture.repo_id, &fixture.commit_sha, "graph", Some("test"))
+        .await?;
+    let target = symbol_with_kind(
+        &fixture,
+        SymbolKind::Function,
+        "src/invoice.rs",
+        "apply_tax",
+    )?;
+    let test = symbol_with_kind(
+        &fixture,
+        SymbolKind::TestCase,
+        "tests/invoice.rs",
+        "apply_tax_adds_rate",
+    )?;
+    let symbols = vec![target, test];
+    PgSymbolStore::new(pool.clone())
+        .replace_symbol_generation(&generation.generation_id, &symbols)
+        .await?;
+    let store = PgGraphStore::new(pool.clone());
+    store
+        .replace_contains_graph(&generation.generation_id, &symbols)
+        .await?;
+    let test_covers = store
+        .replace_test_covers_graph(&generation.generation_id)
+        .await?;
+    PgGenerationStore::new(pool.clone())
+        .finish_generation(&generation.generation_id)
+        .await?;
+
+    let graph = store.active_graph_for_repo(&fixture.repo_id).await?;
+
+    assert_eq!(test_covers, 1);
+    assert!(graph.edges.iter().any(|edge| {
+        edge.edge_type == "test_covers"
+            && edge.resolution_method == "static_test_name_match"
+            && edge.evidence_file_path.as_deref() == Some("tests/invoice.rs")
+    }));
+    fixture.cleanup(&pool).await?;
+    Ok(())
+}
+
 #[derive(Debug)]
 struct Fixture {
     repo_id: String,
@@ -86,6 +135,10 @@ impl Fixture {
             .bind(&self.repo_id)
             .execute(pool)
             .await?;
+        sqlx::query("DELETE FROM symbols WHERE repo_id = $1")
+            .bind(&self.repo_id)
+            .execute(pool)
+            .await?;
         sqlx::query("DELETE FROM index_generations WHERE repo_id = $1")
             .bind(&self.repo_id)
             .execute(pool)
@@ -110,17 +163,20 @@ async fn test_pool() -> Result<Option<PgPool>, sqlx::Error> {
 }
 
 fn symbol(fixture: &Fixture, path: &str, fqn: &str) -> Result<SymbolRecord, ri_core::CoreError> {
+    symbol_with_kind(fixture, SymbolKind::Function, path, fqn)
+}
+
+fn symbol_with_kind(
+    fixture: &Fixture,
+    kind: SymbolKind,
+    path: &str,
+    fqn: &str,
+) -> Result<SymbolRecord, ri_core::CoreError> {
     Ok(SymbolRecord::new(
         &RepoId::new(&fixture.repo_id)?,
         &CommitSha::new(&fixture.commit_sha)?,
         FilePath::new(path)?,
         "hash",
-        SymbolSpec::new(
-            Language::Rust,
-            SymbolKind::Function,
-            fqn,
-            fqn,
-            SymbolRange::new(1, 0, 3, 1),
-        ),
+        SymbolSpec::new(Language::Rust, kind, fqn, fqn, SymbolRange::new(1, 0, 3, 1)),
     ))
 }

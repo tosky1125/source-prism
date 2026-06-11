@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  foundation:
+    name: foundation
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: source_prism
+          POSTGRES_USER: source_prism
+          POSTGRES_PASSWORD: source_prism
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U source_prism -d source_prism"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      opensearch:
+        image: opensearchproject/opensearch:2.19.3
+        env:
+          discovery.type: single-node
+          DISABLE_SECURITY_PLUGIN: "true"
+          OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+        ports:
+          - 9200:9200
+          - 9600:9600
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9200/_cluster/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+
+    env:
+      DATABASE_URL: postgres://source_prism:source_prism@localhost:5432/source_prism
+      OPENSEARCH_URL: http://localhost:9200
+      API_BIND_ADDR: 127.0.0.1:4096
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install SQLx CLI
+        run: cargo install sqlx-cli --no-default-features --features postgres,rustls --locked
+
+      - name: Run migrations
+        run: cargo sqlx migrate run
+
+      - name: Check SQLx offline metadata
+        run: cargo sqlx prepare --workspace --check
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test --workspace
+
+      - name: Smoke OpenSearch
+        run: curl -fsS http://localhost:9200/_cluster/health

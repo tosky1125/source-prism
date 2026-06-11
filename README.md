@@ -53,6 +53,27 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
+## SQLx Offline Metadata
+
+SQLx migrations are part of the foundation gate. After changing SQL
+queries or migrations, update offline metadata against a migrated local
+Postgres database:
+
+```bash
+docker compose up -d postgres
+DATABASE_URL=postgres://source_prism:source_prism@localhost:5432/source_prism cargo sqlx migrate run
+DATABASE_URL=postgres://source_prism:source_prism@localhost:5432/source_prism cargo sqlx prepare --workspace
+```
+
+CI checks the committed metadata with:
+
+```bash
+DATABASE_URL=postgres://source_prism:source_prism@localhost:5432/source_prism cargo sqlx prepare --workspace --check
+```
+
+The current `.sqlx/.gitkeep` keeps the policy directory tracked until
+the first compile-time checked SQLx query generates metadata files.
+
 ## Evidence And QA
 
 Agent-run verification evidence is written under `.omo/evidence/` using this naming pattern:

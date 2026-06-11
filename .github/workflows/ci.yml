@@ -100,6 +100,12 @@ jobs:
                 > /tmp/source-prism-api-context.json
               grep '"kind":"context_search"' /tmp/source-prism-api-context.json
               grep '"vector_only":false' /tmp/source-prism-api-context.json
+              curl -fsS -X POST http://127.0.0.1:4096/v1/impact \
+                -H 'content-type: application/json' \
+                --data '{"symbol":"run"}' \
+                > /tmp/source-prism-api-impact.json
+              grep '"kind":"impact"' /tmp/source-prism-api-impact.json
+              grep '"impact_score":' /tmp/source-prism-api-impact.json
               curl -fsS http://127.0.0.1:4096/v1/repos/local/symbols > /tmp/source-prism-api-symbols.json
               grep '"kind":"symbols"' /tmp/source-prism-api-symbols.json
               grep '"symbol_count":' /tmp/source-prism-api-symbols.json

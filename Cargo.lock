@@ -2228,6 +2228,7 @@ dependencies = [
  "ri-context",
  "ri-core",
  "ri-git",
+ "ri-impact",
  "ri-symbols",
  "serde",
  "serde_json",

@@ -5,6 +5,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use ri_impact::ImpactError;
 use serde::Serialize;
 
 #[derive(Debug, thiserror::Error)]
@@ -30,6 +31,8 @@ pub enum AppError {
     Context(#[from] ri_context::ContextError),
     #[error(transparent)]
     Git(#[from] ri_git::GitError),
+    #[error(transparent)]
+    Impact(#[from] ImpactError),
 }
 
 impl IntoResponse for AppError {
@@ -45,6 +48,16 @@ impl IntoResponse for AppError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "manifest",
                 "file manifest failed".to_owned(),
+            ),
+            Self::Impact(ImpactError::SymbolNotFound { query }) => (
+                StatusCode::NOT_FOUND,
+                "symbol_not_found",
+                format!("symbol not found: {query}"),
+            ),
+            Self::Impact(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "impact",
+                "impact analysis failed".to_owned(),
             ),
         };
         (status, Json(ErrorResponse::new(code, message))).into_response()

@@ -89,7 +89,7 @@ fn parse_repo_args(args: &mut impl Iterator<Item = String>) -> Result<PathBuf, C
     Ok(PathBuf::from(path))
 }
 
-fn extract_repo_symbols(repo_path: &Path) -> Result<Vec<SymbolRecord>, CliError> {
+pub(crate) fn extract_repo_symbols(repo_path: &Path) -> Result<Vec<SymbolRecord>, CliError> {
     let worktree = discover_worktree(repo_path)?;
     let repo = RepoId::new(format!("local:{}", worktree.canonicalize()?.display()))?;
     let commit = CommitSha::new(resolve_commit_sha(repo_path, "HEAD")?)?;

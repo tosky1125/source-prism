@@ -2239,6 +2239,7 @@ dependencies = [
  "ri-config",
  "ri-core",
  "ri-git",
+ "ri-impact",
  "ri-indexer",
  "ri-parser",
  "ri-symbols",
@@ -2278,6 +2279,26 @@ dependencies = [
  "ri-core",
  "sha2",
  "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "ri-graph"
+version = "0.1.0"
+dependencies = [
+ "ri-core",
+ "ri-symbols",
+ "serde",
+]
+
+[[package]]
+name = "ri-impact"
+version = "0.1.0"
+dependencies = [
+ "ri-core",
+ "ri-graph",
+ "ri-symbols",
+ "serde",
  "thiserror",
 ]
 

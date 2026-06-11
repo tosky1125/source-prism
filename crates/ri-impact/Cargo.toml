@@ -1,0 +1,23 @@
+[package]
+name = "ri-impact"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Impact analysis scoring for Source Prism."
+
+[dependencies]
+ri-graph = { path = "../ri-graph" }
+ri-symbols = { path = "../ri-symbols" }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+
+[dev-dependencies]
+ri-core = { path = "../ri-core" }
+
+[lints]
+workspace = true

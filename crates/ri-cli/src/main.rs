@@ -17,6 +17,7 @@ use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
 
 pub(crate) mod error;
+pub(crate) mod impact;
 pub(crate) mod index;
 pub(crate) mod search;
 pub(crate) mod symbols;
@@ -61,12 +62,7 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
         "index" => index::command(args).await.map(|()| ExitCode::SUCCESS),
         "symbols" => symbols::symbols_command(args).map(|()| ExitCode::SUCCESS),
         "changed-symbols" => symbols::changed_symbols_command(args).map(|()| ExitCode::SUCCESS),
-        "impact" => not_implemented(
-            args,
-            "impact",
-            "graph-impact milestone",
-            "impact analysis is deferred until graph edges exist",
-        ),
+        "impact" => impact::impact_command(args).map(|()| ExitCode::SUCCESS),
         "search" => search::command(args).await.map(|()| ExitCode::SUCCESS),
         _ => Err(CliError::Usage),
     }
@@ -155,23 +151,6 @@ fn repo_manifest(mut args: impl Iterator<Item = String>) -> Result<(), CliError>
         "file_count": files.len(),
         "files": files,
     }))
-}
-
-fn not_implemented(
-    args: impl Iterator<Item = String>,
-    command: &str,
-    milestone: &str,
-    message: &str,
-) -> Result<ExitCode, CliError> {
-    let arguments = args.collect::<Vec<_>>();
-    print_json(&json!({
-        "status": "not_implemented",
-        "command": command,
-        "arguments": arguments,
-        "roadmap_milestone": milestone,
-        "message": message,
-    }))?;
-    Ok(ExitCode::from(2))
 }
 
 fn print_json(value: &serde_json::Value) -> Result<(), CliError> {

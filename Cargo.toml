@@ -5,6 +5,8 @@ members = [
     "crates/ri-config",
     "crates/ri-core",
     "crates/ri-git",
+    "crates/ri-graph",
+    "crates/ri-impact",
     "crates/ri-indexer",
     "crates/ri-parser",
     "crates/ri-symbols",

@@ -2206,7 +2206,10 @@ version = "0.1.0"
 dependencies = [
  "ri-config",
  "ri-core",
+ "ri-indexer",
+ "sqlx",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -2246,7 +2249,9 @@ name = "ri-indexer"
 version = "0.1.0"
 dependencies = [
  "hex",
+ "reqwest",
  "ri-core",
+ "serde_json",
  "sha2",
  "sqlx",
  "thiserror",

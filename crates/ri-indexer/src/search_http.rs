@@ -1,0 +1,136 @@
+use serde_json::{Value, json};
+
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum OpenSearchError {
+    #[error("OpenSearch request failed: {status} {body}")]
+    HttpStatus {
+        status: reqwest::StatusCode,
+        body: String,
+    },
+    #[error(transparent)]
+    Reqwest(#[from] reqwest::Error),
+}
+
+#[derive(Debug, Clone)]
+pub struct OpenSearchClient {
+    base_url: String,
+    http: reqwest::Client,
+}
+
+impl OpenSearchClient {
+    pub fn new(base_url: &str) -> Self {
+        Self {
+            base_url: base_url.trim_end_matches('/').to_owned(),
+            http: reqwest::Client::new(),
+        }
+    }
+
+    pub async fn health(&self) -> Result<(), OpenSearchError> {
+        let response = self
+            .http
+            .get(format!("{}/_cluster/health", self.base_url))
+            .send()
+            .await?;
+        ok_or_status(response).await
+    }
+
+    pub async fn delete_index_if_exists(&self, index: &str) -> Result<(), OpenSearchError> {
+        let response = self
+            .http
+            .delete(format!("{}/{}", self.base_url, index))
+            .send()
+            .await?;
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(());
+        }
+        ok_or_status(response).await
+    }
+
+    pub async fn create_index(&self, index: &str) -> Result<(), OpenSearchError> {
+        let response = self
+            .http
+            .put(format!("{}/{}", self.base_url, index))
+            .json(&json!({ "settings": { "index": { "number_of_shards": 1 } } }))
+            .send()
+            .await?;
+        if response.status() == reqwest::StatusCode::BAD_REQUEST {
+            let body = response.text().await?;
+            if body.contains("resource_already_exists_exception") {
+                return Ok(());
+            }
+            return Err(OpenSearchError::HttpStatus {
+                status: reqwest::StatusCode::BAD_REQUEST,
+                body,
+            });
+        }
+        ok_or_status(response).await
+    }
+
+    pub async fn upsert_document(
+        &self,
+        index: &str,
+        document_id: &str,
+        payload: &Value,
+    ) -> Result<(), OpenSearchError> {
+        let response = self
+            .http
+            .put(format!(
+                "{}/{}/_doc/{}?refresh=true",
+                self.base_url, index, document_id
+            ))
+            .json(payload)
+            .send()
+            .await?;
+        ok_or_status(response).await
+    }
+
+    pub async fn delete_document(
+        &self,
+        index: &str,
+        document_id: &str,
+    ) -> Result<(), OpenSearchError> {
+        let response = self
+            .http
+            .delete(format!(
+                "{}/{}/_doc/{}?refresh=true",
+                self.base_url, index, document_id
+            ))
+            .send()
+            .await?;
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(());
+        }
+        ok_or_status(response).await
+    }
+
+    pub async fn count_documents(&self, index: &str) -> Result<i64, OpenSearchError> {
+        let response = self
+            .http
+            .get(format!("{}/{}/_count", self.base_url, index))
+            .send()
+            .await?;
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(0);
+        }
+        if !response.status().is_success() {
+            return Err(status_error(response).await);
+        }
+        let body = response.json::<Value>().await?;
+        Ok(body.get("count").and_then(Value::as_i64).unwrap_or(0))
+    }
+}
+
+async fn ok_or_status(response: reqwest::Response) -> Result<(), OpenSearchError> {
+    if response.status().is_success() {
+        Ok(())
+    } else {
+        Err(status_error(response).await)
+    }
+}
+
+async fn status_error(response: reqwest::Response) -> OpenSearchError {
+    let status = response.status();
+    let body = response.text().await.unwrap_or_else(|_| String::new());
+    OpenSearchError::HttpStatus { status, body }
+}

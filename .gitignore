@@ -1,0 +1,21 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Logs and runtime artifacts
+*.log
+*.pid
+
+# Local evidence output
+.omo/evidence/

@@ -5,6 +5,8 @@
 )]
 
 mod generation;
+mod graph;
+pub mod graph_ids;
 mod overlay;
 mod search_http;
 mod search_sync;
@@ -14,6 +16,7 @@ mod symbols;
 pub use generation::{
     FileManifestInput, GenerationError, GenerationRecord, GenerationStatus, PgGenerationStore,
 };
+pub use graph::{GraphIndexOutcome, GraphStoreError, PgGraphStore};
 pub use overlay::{
     BaseFileRecord, OverlayEntry, OverlayFileStatus, OverlayMergedFile, merge_overlay,
 };

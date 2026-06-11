@@ -108,6 +108,7 @@ jobs:
               grep '"status":"succeeded"' /tmp/source-prism-api-index.json
               grep '"inserted_file_manifests":' /tmp/source-prism-api-index.json
               grep '"indexed_symbols":' /tmp/source-prism-api-index.json
+              grep '"indexed_graph_edges":' /tmp/source-prism-api-index.json
               run_id=$(python3 -c 'import json; print(json.load(open("/tmp/source-prism-api-index.json"))["run_id"])')
               curl -fsS "http://127.0.0.1:4096/v1/runs/${run_id}" > /tmp/source-prism-api-run.json
               grep '"kind":"run"' /tmp/source-prism-api-run.json

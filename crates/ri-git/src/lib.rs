@@ -26,10 +26,9 @@ pub struct LocalManifest {
 
 impl LocalManifest {
     pub fn extract(path: impl AsRef<Path>) -> Result<Self, GitError> {
-        let repo = gix::discover(path).map_err(Box::new)?;
-        let worktree = repo.workdir().ok_or(GitError::BareRepository)?;
+        let worktree = discover_worktree(path)?;
         let mut files = Vec::new();
-        collect_files(worktree, worktree, &mut files)?;
+        collect_files(&worktree, &worktree, &mut files)?;
         files.sort_by(|left, right| left.path.cmp(&right.path));
         Ok(Self { files })
     }
@@ -87,6 +86,8 @@ pub enum GitError {
     Discover(#[from] Box<gix::discover::Error>),
     #[error("repository has no worktree")]
     BareRepository,
+    #[error("could not resolve repository HEAD")]
+    HeadId(#[from] gix::reference::head_id::Error),
     #[error("repository path is not valid UTF-8: {path}")]
     PathEncoding { path: PathBuf },
     #[error(transparent)]
@@ -95,6 +96,20 @@ pub enum GitError {
     Io { path: PathBuf, source: io::Error },
     #[error("read length exceeded buffer size for {path}")]
     InvalidReadLength { path: PathBuf },
+}
+
+pub fn discover_worktree(path: impl AsRef<Path>) -> Result<PathBuf, GitError> {
+    let repo = gix::discover(path).map_err(Box::new)?;
+    let worktree = repo.workdir().ok_or(GitError::BareRepository)?;
+    Ok(worktree.to_path_buf())
+}
+
+pub fn resolve_commit_sha(path: impl AsRef<Path>, revision: &str) -> Result<String, GitError> {
+    if revision == "HEAD" {
+        let repo = gix::discover(path).map_err(Box::new)?;
+        return Ok(repo.head_id()?.to_string());
+    }
+    Ok(revision.to_owned())
 }
 
 fn collect_files(root: &Path, dir: &Path, files: &mut Vec<FileManifest>) -> Result<(), GitError> {

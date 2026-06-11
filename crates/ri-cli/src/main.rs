@@ -17,6 +17,7 @@ use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
 
 pub(crate) mod error;
+pub(crate) mod index;
 pub(crate) mod search;
 
 use error::CliError;
@@ -56,12 +57,7 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
             repo_manifest(args)?;
             Ok(ExitCode::SUCCESS)
         }
-        "index" => not_implemented(
-            args,
-            "index",
-            "symbol-index milestone",
-            "indexing orchestration is deferred until the symbol index milestone",
-        ),
+        "index" => index::command(args).await.map(|()| ExitCode::SUCCESS),
         "symbols" => not_implemented(
             args,
             "symbols",

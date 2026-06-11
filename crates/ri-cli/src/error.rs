@@ -21,6 +21,10 @@ pub(crate) enum CliError {
     Git(#[from] ri_git::GitError),
     #[error("search drift detected: expected={expected} actual={actual}")]
     Drift { expected: i64, actual: i64 },
+    #[error("file is too large to index: {path} size_bytes={size_bytes}")]
+    FileTooLarge { path: String, size_bytes: u64 },
+    #[error(transparent)]
+    Generation(#[from] ri_indexer::GenerationError),
     #[error(transparent)]
     Json(#[from] serde_json::Error),
     #[error(transparent)]
@@ -43,6 +47,8 @@ impl CliError {
             | Self::Config(_)
             | Self::Git(_)
             | Self::Drift { .. }
+            | Self::FileTooLarge { .. }
+            | Self::Generation(_)
             | Self::Json(_)
             | Self::Migrate(_)
             | Self::OpenSearch(_)

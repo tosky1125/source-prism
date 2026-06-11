@@ -116,6 +116,7 @@ jobs:
               grep '"indexed_symbols":' /tmp/source-prism-api-index.json
               grep '"indexed_graph_edges":' /tmp/source-prism-api-index.json
               grep '"indexed_search_chunks":' /tmp/source-prism-api-index.json
+              grep '"indexed_test_cases":' /tmp/source-prism-api-index.json
               run_id=$(python3 -c 'import json; print(json.load(open("/tmp/source-prism-api-index.json"))["run_id"])')
               curl -fsS "http://127.0.0.1:4096/v1/runs/${run_id}" > /tmp/source-prism-api-run.json
               grep '"kind":"run"' /tmp/source-prism-api-run.json
@@ -135,6 +136,9 @@ jobs:
               curl -fsS http://127.0.0.1:4096/v1/repos/local/symbols > /tmp/source-prism-api-symbols.json
               grep '"kind":"symbols"' /tmp/source-prism-api-symbols.json
               grep '"symbol_count":' /tmp/source-prism-api-symbols.json
+              curl -fsS http://127.0.0.1:4096/v1/repos/source-prism-ci/tests > /tmp/source-prism-api-tests.json
+              grep '"kind":"tests"' /tmp/source-prism-api-tests.json
+              grep '"test_count":' /tmp/source-prism-api-tests.json
               api_test_symbol=$(python3 -c 'import json; data=json.load(open("/tmp/source-prism-api-symbols.json")); print(next(symbol["fqn"] for symbol in data["symbols"] if symbol["kind"] == "test_case"))')
               curl -fsS -X POST http://127.0.0.1:4096/v1/test-context \
                 -H 'content-type: application/json' \

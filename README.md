@@ -40,6 +40,7 @@ cargo run -p ri-cli -- db migrate
 cargo run -p ri-cli -- repo manifest --repo .
 cargo run -p ri-cli -- index --repo . --sha HEAD
 cargo run -p ri-cli -- symbols --repo .
+curl -fsS http://127.0.0.1:3000/v1/repos/source-prism-ci/tests
 cargo run -p ri-cli -- impact --symbol search
 cargo run -p ri-cli -- search-context search
 cargo run -p ri-cli -- test-context --symbol extracts_rust_functions_methods_and_tests

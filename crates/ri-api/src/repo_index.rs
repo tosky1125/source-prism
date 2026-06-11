@@ -7,7 +7,7 @@ use ri_core::{CommitSha, Language, RepoId};
 use ri_git::{LocalManifest, resolve_commit_sha};
 use ri_indexer::{
     DEFAULT_SEARCH_INDEX, FileManifestInput, PgGenerationStore, PgGraphStore, PgSearchSyncStore,
-    PgSymbolStore,
+    PgSymbolStore, PgTestCaseStore,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -36,6 +36,7 @@ pub(crate) struct IndexRepoResponse {
     indexed_graph_nodes: u64,
     indexed_graph_edges: u64,
     indexed_search_chunks: u64,
+    indexed_test_cases: u64,
 }
 
 pub(crate) async fn index(
@@ -72,6 +73,9 @@ pub(crate) async fn index(
     let indexed_symbols = PgSymbolStore::new(pool.clone())
         .replace_symbol_generation(&generation.generation_id, &symbols)
         .await?;
+    let indexed_test_cases = PgTestCaseStore::new(pool.clone())
+        .replace_test_cases_for_generation(&generation.generation_id, &symbols)
+        .await?;
     let graph = PgGraphStore::new(pool.clone())
         .replace_contains_graph(&generation.generation_id, &symbols)
         .await?;
@@ -96,6 +100,7 @@ pub(crate) async fn index(
         indexed_graph_nodes: graph.nodes,
         indexed_graph_edges: graph.edges,
         indexed_search_chunks,
+        indexed_test_cases,
     }))
 }
 

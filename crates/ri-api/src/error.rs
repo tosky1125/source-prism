@@ -7,7 +7,9 @@ use axum::{
 };
 use ri_behavior::BehaviorError;
 use ri_impact::ImpactError;
-use ri_indexer::{GenerationError, GraphStoreError, SearchSyncError, SymbolStoreError};
+use ri_indexer::{
+    GenerationError, GraphStoreError, SearchSyncError, SymbolStoreError, TestCaseStoreError,
+};
 use serde::Serialize;
 
 #[derive(Debug, thiserror::Error)]
@@ -51,6 +53,8 @@ pub enum AppError {
     SearchSync(#[from] SearchSyncError),
     #[error(transparent)]
     SymbolStore(#[from] SymbolStoreError),
+    #[error(transparent)]
+    TestCaseStore(#[from] TestCaseStoreError),
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
 }
@@ -123,6 +127,11 @@ impl IntoResponse for AppError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "symbol_store",
                 "symbol store failed".to_owned(),
+            ),
+            Self::TestCaseStore(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "test_case_store",
+                "test case store failed".to_owned(),
             ),
             Self::Sqlx(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,

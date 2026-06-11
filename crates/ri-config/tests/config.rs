@@ -11,7 +11,7 @@ use ri_config::{ConfigError, RuntimeConfig, load_env_file, redact_value};
 fn local_only_api_bind_is_default() {
     let config = RuntimeConfig::from_env_map(&required_env()).expect("config");
 
-    assert_eq!(config.api.bind_addr.to_string(), "127.0.0.1:4096");
+    assert_eq!(config.api.bind_addr.to_string(), "127.0.0.1:3000");
 }
 
 #[test]

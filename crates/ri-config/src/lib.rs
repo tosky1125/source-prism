@@ -16,7 +16,7 @@ use url::Url;
 const DATABASE_URL: &str = "DATABASE_URL";
 const OPENSEARCH_URL: &str = "OPENSEARCH_URL";
 const API_BIND_ADDR: &str = "API_BIND_ADDR";
-const DEFAULT_API_BIND_ADDR: &str = "127.0.0.1:4096";
+const DEFAULT_API_BIND_ADDR: &str = "127.0.0.1:3000";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]

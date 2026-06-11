@@ -1,0 +1,46 @@
+#![allow(
+    missing_docs,
+    reason = "Milestone HTTP API surface is self-describing."
+)]
+#![allow(
+    clippy::redundant_pub_crate,
+    reason = "Axum route handlers expose crate-visible DTOs from internal route modules."
+)]
+#![allow(
+    clippy::multiple_crate_versions,
+    reason = "SQLx and Reqwest TLS dependencies pull duplicate platform crates outside this crate's control."
+)]
+
+pub(crate) mod context_search;
+pub(crate) mod error;
+pub(crate) mod health;
+pub(crate) mod state;
+
+use axum::{
+    Router,
+    routing::{get, post},
+};
+use std::{env, net::SocketAddr};
+
+pub use error::{ApiError, AppError};
+pub use state::AppState;
+
+const DEFAULT_BIND_ADDR: &str = "127.0.0.1:3000";
+
+pub fn app(state: AppState) -> Router {
+    Router::new()
+        .route("/v1/health", get(health::health))
+        .route("/v1/context/search", post(context_search::search))
+        .with_state(state)
+}
+
+pub fn state_from_env() -> Result<AppState, ApiError> {
+    AppState::from_env()
+}
+
+pub fn bind_addr() -> Result<SocketAddr, ApiError> {
+    let value = env::var("API_BIND_ADDR").unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_owned());
+    value
+        .parse()
+        .map_err(|source| ApiError::InvalidBindAddress { value, source })
+}

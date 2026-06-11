@@ -2,11 +2,34 @@
     missing_docs,
     reason = "Context pack contracts are self-describing at this milestone."
 )]
+#![allow(
+    clippy::multiple_crate_versions,
+    reason = "Tree-sitter and SQLx-adjacent workspace dependencies pull duplicate transitive crates outside this crate's control."
+)]
 
+use ri_core::{CommitSha, FilePath, Language, RepoId};
+use ri_git::{LocalManifest, discover_worktree, resolve_commit_sha};
 use ri_impact::{ImpactReport, analyze_symbol_impact};
+use ri_parser::{SourceFile, SymbolExtractor};
 use ri_search::{SearchHit, search_symbols};
 use ri_symbols::SymbolRecord;
+use ri_tree_sitter::TreeSitterExtractor;
 use serde::{Deserialize, Serialize};
+use std::{fs, path::Path};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum ContextError {
+    #[error(transparent)]
+    Core(#[from] ri_core::CoreError),
+    #[error(transparent)]
+    Git(#[from] ri_git::GitError),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
+    Parser(#[from] ri_parser::ParserError),
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -47,4 +70,47 @@ pub fn build_context_pack(symbols: &[SymbolRecord], query: &str, limit: usize) -
         hits: search.hits,
         impacts,
     }
+}
+
+pub fn extract_repo_symbols(repo_path: &Path) -> Result<Vec<SymbolRecord>, ContextError> {
+    let worktree = discover_worktree(repo_path)?;
+    let repo = RepoId::new(format!("local:{}", worktree.canonicalize()?.display()))?;
+    let commit = CommitSha::new(resolve_commit_sha(repo_path, "HEAD")?)?;
+    let manifest = LocalManifest::extract(repo_path)?;
+    let extractor = TreeSitterExtractor::new();
+    let mut symbols = Vec::new();
+
+    for file in manifest.files() {
+        if file.is_vendor() || file.is_generated() || !is_supported_language(file.language()) {
+            continue;
+        }
+        let path = worktree.join(file.path());
+        let source = fs::read_to_string(path)?;
+        let source_file = SourceFile::new(
+            repo.clone(),
+            commit.clone(),
+            FilePath::new(file.path())?,
+            file.language(),
+            file.content_sha256(),
+            source.as_str(),
+        );
+        symbols.extend(extractor.extract_symbols(&source_file)?);
+    }
+    symbols.sort_by(|left, right| {
+        left.file_path
+            .cmp(&right.file_path)
+            .then(left.fqn.cmp(&right.fqn))
+    });
+    Ok(symbols)
+}
+
+const fn is_supported_language(language: Language) -> bool {
+    matches!(
+        language,
+        Language::Rust
+            | Language::TypeScript
+            | Language::JavaScript
+            | Language::Python
+            | Language::Go
+    )
 }

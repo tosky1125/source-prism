@@ -11,10 +11,15 @@ categories.workspace = true
 description = "Evidence-bound context packs for Source Prism."
 
 [dependencies]
+ri-core = { path = "../ri-core" }
+ri-git = { path = "../ri-git" }
 ri-impact = { path = "../ri-impact" }
+ri-parser = { path = "../ri-parser" }
 ri-search = { path = "../ri-search" }
 ri-symbols = { path = "../ri-symbols" }
+ri-tree-sitter = { path = "../ri-tree-sitter" }
 serde = { version = "1", features = ["derive"] }
+thiserror = "2"
 
 [dev-dependencies]
 ri-core = { path = "../ri-core" }

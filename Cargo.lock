@@ -2225,11 +2225,15 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "reqwest",
+ "ri-context",
  "ri-core",
+ "ri-symbols",
  "serde",
+ "serde_json",
  "sqlx",
  "thiserror",
  "tokio",
+ "tower",
 ]
 
 [[package]]
@@ -2266,10 +2270,14 @@ name = "ri-context"
 version = "0.1.0"
 dependencies = [
  "ri-core",
+ "ri-git",
  "ri-impact",
+ "ri-parser",
  "ri-search",
  "ri-symbols",
+ "ri-tree-sitter",
  "serde",
+ "thiserror",
 ]
 
 [[package]]

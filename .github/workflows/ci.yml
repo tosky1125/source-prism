@@ -94,6 +94,12 @@ jobs:
           for attempt in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:4096/v1/health > /tmp/source-prism-api-health.json; then
               grep '"status":"ok"' /tmp/source-prism-api-health.json
+              curl -fsS -X POST http://127.0.0.1:4096/v1/context/search \
+                -H 'content-type: application/json' \
+                --data '{"query":"search_context"}' \
+                > /tmp/source-prism-api-context.json
+              grep '"kind":"context_search"' /tmp/source-prism-api-context.json
+              grep '"vector_only":false' /tmp/source-prism-api-context.json
               exit 0
             fi
             sleep 1

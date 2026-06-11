@@ -5,7 +5,10 @@ use axum::{
 use ri_context::extract_repo_symbols_for;
 use ri_core::{CommitSha, Language, RepoId};
 use ri_git::{LocalManifest, resolve_commit_sha};
-use ri_indexer::{FileManifestInput, PgGenerationStore, PgGraphStore, PgSymbolStore};
+use ri_indexer::{
+    DEFAULT_SEARCH_INDEX, FileManifestInput, PgGenerationStore, PgGraphStore, PgSearchSyncStore,
+    PgSymbolStore,
+};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
@@ -32,6 +35,7 @@ pub(crate) struct IndexRepoResponse {
     indexed_symbols: u64,
     indexed_graph_nodes: u64,
     indexed_graph_edges: u64,
+    indexed_search_chunks: u64,
 }
 
 pub(crate) async fn index(
@@ -71,6 +75,14 @@ pub(crate) async fn index(
     let graph = PgGraphStore::new(pool.clone())
         .replace_contains_graph(&generation.generation_id, &symbols)
         .await?;
+    let indexed_search_chunks = PgSearchSyncStore::new(pool.clone())
+        .enqueue_symbol_chunks(
+            &repo_id,
+            &generation.generation_id,
+            &symbols,
+            DEFAULT_SEARCH_INDEX,
+        )
+        .await?;
     let generation_id = generation.generation_id.to_string();
     Ok(Json(IndexRepoResponse {
         status: "succeeded",
@@ -83,6 +95,7 @@ pub(crate) async fn index(
         indexed_symbols,
         indexed_graph_nodes: graph.nodes,
         indexed_graph_edges: graph.edges,
+        indexed_search_chunks,
     }))
 }
 

@@ -72,6 +72,25 @@ impl SearchSyncInput {
             payload,
         }
     }
+
+    pub fn upsert_for_generation(
+        repo_id: &str,
+        generation_id: &str,
+        entity_type: &str,
+        entity_id: &str,
+        target_index: &str,
+        payload: Value,
+    ) -> Self {
+        Self {
+            repo_id: repo_id.to_owned(),
+            generation_id: Some(generation_id.to_owned()),
+            entity_type: entity_type.to_owned(),
+            entity_id: entity_id.to_owned(),
+            operation: SearchSyncOperation::Upsert,
+            target_index: target_index.to_owned(),
+            payload,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

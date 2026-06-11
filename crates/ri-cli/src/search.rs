@@ -5,12 +5,10 @@
 
 use std::{env, io, io::Write};
 
-use ri_indexer::{OpenSearchClient, PgSearchSyncStore};
+use ri_indexer::{DEFAULT_SEARCH_INDEX, OpenSearchClient, PgSearchSyncStore};
 use sqlx::postgres::PgPoolOptions;
 
 use crate::CliError;
-
-const DEFAULT_SEARCH_INDEX: &str = "source-prism-dev";
 
 pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
     let Some(subcommand) = args.next() else {

@@ -8,10 +8,13 @@ mod generation;
 mod graph;
 pub mod graph_ids;
 mod overlay;
+mod search_chunks;
 mod search_http;
 mod search_sync;
 mod search_sync_types;
 mod symbols;
+
+pub const DEFAULT_SEARCH_INDEX: &str = "source-prism-dev";
 
 pub use generation::{
     FileManifestInput, GenerationError, GenerationRecord, GenerationStatus, PgGenerationStore,

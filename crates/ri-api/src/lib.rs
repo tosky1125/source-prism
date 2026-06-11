@@ -14,6 +14,7 @@
 pub(crate) mod context_search;
 pub(crate) mod error;
 pub(crate) mod health;
+pub(crate) mod repo_files;
 pub(crate) mod repo_symbols;
 pub(crate) mod state;
 
@@ -24,6 +25,7 @@ use axum::{
 use std::{env, net::SocketAddr};
 
 pub use error::{ApiError, AppError};
+pub use repo_files::{RepoFile, RepoFileFlags};
 pub use state::AppState;
 
 const DEFAULT_BIND_ADDR: &str = "127.0.0.1:3000";
@@ -32,6 +34,7 @@ pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/v1/health", get(health::health))
         .route("/v1/context/search", post(context_search::search))
+        .route("/v1/repos/{repo_id}/files", get(repo_files::list))
         .route("/v1/repos/{repo_id}/symbols", get(repo_symbols::list))
         .with_state(state)
 }

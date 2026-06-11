@@ -103,6 +103,9 @@ jobs:
               curl -fsS http://127.0.0.1:4096/v1/repos/local/symbols > /tmp/source-prism-api-symbols.json
               grep '"kind":"symbols"' /tmp/source-prism-api-symbols.json
               grep '"symbol_count":' /tmp/source-prism-api-symbols.json
+              curl -fsS http://127.0.0.1:4096/v1/repos/local/files > /tmp/source-prism-api-files.json
+              grep '"kind":"files"' /tmp/source-prism-api-files.json
+              grep '"file_count":' /tmp/source-prism-api-files.json
               exit 0
             fi
             sleep 1

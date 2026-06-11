@@ -43,6 +43,24 @@ fn local_manifest_skips_binary_files() -> Result<(), Box<dyn std::error::Error>>
 }
 
 #[test]
+fn local_manifest_skips_local_omo_runtime_artifacts() -> Result<(), Box<dyn std::error::Error>> {
+    let repo = fixture_repo()?;
+    write_file(
+        repo.path(),
+        ".omo/ulw-loop/session/ledger.jsonl",
+        b"{\"event\":\"x\"}\n",
+    )?;
+    write_file(repo.path(), "src/lib.rs", b"pub fn real() {}\n")?;
+
+    let manifest = LocalManifest::extract(repo.path())?;
+
+    assert_eq!(manifest.files().len(), 1);
+    assert!(find_manifest_file(manifest.files(), "src/lib.rs").is_some());
+    assert!(find_manifest_file(manifest.files(), ".omo/ulw-loop/session/ledger.jsonl").is_none());
+    Ok(())
+}
+
+#[test]
 fn local_manifest_detects_generated_vendor_and_test_files() -> Result<(), Box<dyn std::error::Error>>
 {
     let repo = fixture_repo()?;

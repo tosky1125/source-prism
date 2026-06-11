@@ -248,4 +248,6 @@ fn is_ignored_local_artifact_path(path: &str) -> bool {
         || path.starts_with("target/")
         || path == ".omo/evidence"
         || path.starts_with(".omo/evidence/")
+        || path == ".omo/ulw-loop"
+        || path.starts_with(".omo/ulw-loop/")
 }

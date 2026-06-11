@@ -2227,6 +2227,7 @@ dependencies = [
  "reqwest",
  "ri-context",
  "ri-core",
+ "ri-git",
  "ri-symbols",
  "serde",
  "serde_json",

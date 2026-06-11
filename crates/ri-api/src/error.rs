@@ -28,6 +28,8 @@ pub enum AppError {
     Validation(String),
     #[error(transparent)]
     Context(#[from] ri_context::ContextError),
+    #[error(transparent)]
+    Git(#[from] ri_git::GitError),
 }
 
 impl IntoResponse for AppError {
@@ -38,6 +40,11 @@ impl IntoResponse for AppError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "context",
                 "context search failed".to_owned(),
+            ),
+            Self::Git(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "manifest",
+                "file manifest failed".to_owned(),
             ),
         };
         (status, Json(ErrorResponse::new(code, message))).into_response()

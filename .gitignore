@@ -18,5 +18,6 @@ Thumbs.db
 *.pid
 
 # Local evidence output
-.omo/evidence/
+.omo/evidence/*
+!.omo/evidence/.gitkeep
 .omo/ulw-loop/

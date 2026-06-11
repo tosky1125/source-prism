@@ -53,3 +53,20 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
+## Evidence And QA
+
+Agent-run verification evidence is written under `.omo/evidence/` using this naming pattern:
+
+```text
+.omo/evidence/task-<N>-<slug>.<ext>
+```
+
+Evidence files are local run artifacts and are ignored by git, except for `.omo/evidence/.gitkeep`.
+
+Work should keep RED/GREEN proof when practical:
+
+- RED evidence captures the failing or missing behavior before implementation.
+- GREEN evidence captures the exact command, API call, or real-surface workflow after implementation.
+- Real-surface evidence is preferred over mocked success output for CLI, API, worker, database, and search paths.
+
+Do not hide verification behind opaque scripts. Wrappers may exist, but task acceptance should still cite the exact command or endpoint that was exercised.

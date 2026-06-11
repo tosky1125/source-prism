@@ -33,6 +33,8 @@ pub enum AppError {
     Git(#[from] ri_git::GitError),
     #[error(transparent)]
     Impact(#[from] ImpactError),
+    #[error(transparent)]
+    Sqlx(#[from] sqlx::Error),
 }
 
 impl IntoResponse for AppError {
@@ -58,6 +60,11 @@ impl IntoResponse for AppError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "impact",
                 "impact analysis failed".to_owned(),
+            ),
+            Self::Sqlx(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "database",
+                "database query failed".to_owned(),
             ),
         };
         (status, Json(ErrorResponse::new(code, message))).into_response()

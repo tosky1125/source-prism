@@ -70,6 +70,10 @@ impl AppState {
         Ok(Cow::Owned(files))
     }
 
+    pub(crate) fn context_repo_path(&self) -> &std::path::Path {
+        self.context_repo_path.as_path()
+    }
+
     pub(crate) fn context_symbols(
         &self,
     ) -> Result<Cow<'_, [SymbolRecord]>, ri_context::ContextError> {

@@ -100,6 +100,13 @@ jobs:
                 > /tmp/source-prism-api-repo.json
               grep '"kind":"repo"' /tmp/source-prism-api-repo.json
               grep '"persisted":true' /tmp/source-prism-api-repo.json
+              curl -fsS -X POST http://127.0.0.1:4096/v1/repos/source-prism-ci/index \
+                -H 'content-type: application/json' \
+                --data '{"sha":"HEAD"}' \
+                > /tmp/source-prism-api-index.json
+              grep '"kind":"index"' /tmp/source-prism-api-index.json
+              grep '"status":"succeeded"' /tmp/source-prism-api-index.json
+              grep '"inserted_file_manifests":' /tmp/source-prism-api-index.json
               curl -fsS -X POST http://127.0.0.1:4096/v1/context/search \
                 -H 'content-type: application/json' \
                 --data '{"query":"search_context"}' \

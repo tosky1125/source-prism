@@ -6,6 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use ri_impact::ImpactError;
+use ri_indexer::GenerationError;
 use serde::Serialize;
 
 #[derive(Debug, thiserror::Error)]
@@ -27,12 +28,18 @@ pub enum ApiError {
 pub enum AppError {
     #[error("validation: {0}")]
     Validation(String),
+    #[error("database is not configured")]
+    DatabaseNotConfigured,
+    #[error("file is too large to index: {path} size_bytes={size_bytes}")]
+    FileTooLarge { path: String, size_bytes: u64 },
     #[error(transparent)]
     Context(#[from] ri_context::ContextError),
     #[error(transparent)]
     Git(#[from] ri_git::GitError),
     #[error(transparent)]
     Impact(#[from] ImpactError),
+    #[error(transparent)]
+    Generation(#[from] GenerationError),
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
 }
@@ -41,6 +48,16 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, code, message) = match self {
             Self::Validation(message) => (StatusCode::UNPROCESSABLE_ENTITY, "validation", message),
+            Self::DatabaseNotConfigured => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "database_not_configured",
+                "database is not configured".to_owned(),
+            ),
+            Self::FileTooLarge { path, size_bytes } => (
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "file_too_large",
+                format!("file is too large to index: {path} size_bytes={size_bytes}"),
+            ),
             Self::Context(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "context",
@@ -60,6 +77,11 @@ impl IntoResponse for AppError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "impact",
                 "impact analysis failed".to_owned(),
+            ),
+            Self::Generation(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "index_generation",
+                "index generation failed".to_owned(),
             ),
             Self::Sqlx(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,

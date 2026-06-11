@@ -64,6 +64,18 @@ jobs:
       - name: Check SQLx offline metadata
         run: cargo sqlx prepare --workspace --check
 
+      - name: Smoke CLI
+        run: |
+          cargo run -p ri-cli -- config check --env-file .env.example
+          cargo run -p ri-cli -- db migrate
+          cargo run -p ri-cli -- repo manifest --repo . | grep '"kind": "manifest"'
+          set +e
+          cargo run -p ri-cli -- impact --symbol 'InvoiceService::applyTax' > /tmp/source-prism-impact.json
+          code=$?
+          set -e
+          test "$code" -eq 2
+          grep '"status": "not_implemented"' /tmp/source-prism-impact.json
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 
@@ -75,3 +87,21 @@ jobs:
 
       - name: Smoke OpenSearch
         run: curl -fsS http://localhost:9200/_cluster/health
+
+      - name: Smoke API
+        run: |
+          cargo run -p ri-api > /tmp/source-prism-api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4096/v1/health > /tmp/source-prism-api-health.json; then
+              grep '"status":"ok"' /tmp/source-prism-api-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/source-prism-api.log
+          exit 1
+
+      - name: Smoke worker
+        run: cargo run -p ri-worker -- --once | grep 'ri-worker once processed='

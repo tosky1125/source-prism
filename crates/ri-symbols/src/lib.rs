@@ -69,6 +69,24 @@ impl SymbolRecord {
             range: spec.range,
         }
     }
+
+    pub fn from_ids(
+        stable_symbol_id: SymbolId,
+        versioned_symbol_id: SymbolId,
+        file_path: FilePath,
+        spec: SymbolSpec,
+    ) -> Self {
+        Self {
+            stable_symbol_id,
+            versioned_symbol_id,
+            file_path,
+            language: spec.language,
+            kind: spec.kind,
+            name: spec.name,
+            fqn: spec.fqn,
+            range: spec.range,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

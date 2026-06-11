@@ -2,6 +2,7 @@ use axum::{
     Json,
     extract::{Path, State},
 };
+use ri_indexer::PgSymbolStore;
 use ri_symbols::SymbolRecord;
 use serde::Serialize;
 
@@ -20,7 +21,13 @@ pub(crate) async fn list(
     State(state): State<AppState>,
     Path(repo_id): Path<String>,
 ) -> Result<Json<RepoSymbolsResponse>, AppError> {
-    let symbols = state.context_symbols()?.into_owned();
+    let symbols = if let Some(pool) = state.database.pool.as_ref() {
+        PgSymbolStore::new(pool.clone())
+            .active_symbols_for_repo(&repo_id)
+            .await?
+    } else {
+        state.context_symbols()?.into_owned()
+    };
     Ok(Json(RepoSymbolsResponse {
         status: "ok",
         kind: "symbols",

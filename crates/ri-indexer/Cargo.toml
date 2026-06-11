@@ -12,6 +12,7 @@ description = "Incremental indexing boundary for Source Prism."
 
 [dependencies]
 ri-core = { path = "../ri-core" }
+ri-symbols = { path = "../ri-symbols" }
 hex = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["http2", "json", "rustls-tls"] }
 serde_json = "1"

@@ -2332,6 +2332,7 @@ dependencies = [
  "hex",
  "reqwest",
  "ri-core",
+ "ri-symbols",
  "serde_json",
  "sha2",
  "sqlx",

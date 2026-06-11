@@ -2,9 +2,10 @@ use axum::{
     Json,
     extract::{Path, State},
 };
-use ri_core::Language;
+use ri_context::extract_repo_symbols_for;
+use ri_core::{CommitSha, Language, RepoId};
 use ri_git::{LocalManifest, resolve_commit_sha};
-use ri_indexer::{FileManifestInput, PgGenerationStore};
+use ri_indexer::{FileManifestInput, PgGenerationStore, PgSymbolStore};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
@@ -28,6 +29,7 @@ pub(crate) struct IndexRepoResponse {
     run_id: String,
     generation_id: String,
     inserted_file_manifests: u64,
+    indexed_symbols: u64,
 }
 
 pub(crate) async fn index(
@@ -46,6 +48,9 @@ pub(crate) async fn index(
         return Err(AppError::Validation("sha must not be empty".to_owned()));
     }
     let commit_sha = resolve_commit_sha(repo_path, sha)?;
+    let repo = RepoId::new(&repo_id).map_err(|error| AppError::Validation(error.to_string()))?;
+    let commit =
+        CommitSha::new(&commit_sha).map_err(|error| AppError::Validation(error.to_string()))?;
     upsert_repo_commit(pool, &repo_id, &commit_sha).await?;
 
     let manifest = LocalManifest::extract(repo_path)?;
@@ -57,6 +62,10 @@ pub(crate) async fn index(
     let inserted = store
         .replace_file_manifest_generation(&generation.generation_id, &inputs)
         .await?;
+    let symbols = extract_repo_symbols_for(repo_path, &repo, &commit)?;
+    let indexed_symbols = PgSymbolStore::new(pool.clone())
+        .replace_symbol_generation(&generation.generation_id, &symbols)
+        .await?;
     let generation_id = generation.generation_id.to_string();
     Ok(Json(IndexRepoResponse {
         status: "succeeded",
@@ -66,6 +75,7 @@ pub(crate) async fn index(
         run_id: generation_id.clone(),
         generation_id,
         inserted_file_manifests: inserted,
+        indexed_symbols,
     }))
 }
 

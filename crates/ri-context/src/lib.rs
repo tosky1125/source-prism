@@ -76,6 +76,15 @@ pub fn extract_repo_symbols(repo_path: &Path) -> Result<Vec<SymbolRecord>, Conte
     let worktree = discover_worktree(repo_path)?;
     let repo = RepoId::new(format!("local:{}", worktree.canonicalize()?.display()))?;
     let commit = CommitSha::new(resolve_commit_sha(repo_path, "HEAD")?)?;
+    extract_repo_symbols_for(repo_path, &repo, &commit)
+}
+
+pub fn extract_repo_symbols_for(
+    repo_path: &Path,
+    repo: &RepoId,
+    commit: &CommitSha,
+) -> Result<Vec<SymbolRecord>, ContextError> {
+    let worktree = discover_worktree(repo_path)?;
     let manifest = LocalManifest::extract(repo_path)?;
     let extractor = TreeSitterExtractor::new();
     let mut symbols = Vec::new();

@@ -9,6 +9,7 @@ mod overlay;
 mod search_http;
 mod search_sync;
 mod search_sync_types;
+mod symbols;
 
 pub use generation::{
     FileManifestInput, GenerationError, GenerationRecord, GenerationStatus, PgGenerationStore,
@@ -22,3 +23,4 @@ pub use search_sync_types::{
     DriftReport, RebuildOutcome, SearchSyncError, SearchSyncInput, SearchSyncOperation,
     SearchSyncRecord, SyncOnceOutcome,
 };
+pub use symbols::{PgSymbolStore, SymbolStoreError};

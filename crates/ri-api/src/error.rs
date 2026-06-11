@@ -6,7 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use ri_impact::ImpactError;
-use ri_indexer::GenerationError;
+use ri_indexer::{GenerationError, SymbolStoreError};
 use serde::Serialize;
 
 #[derive(Debug, thiserror::Error)]
@@ -42,6 +42,8 @@ pub enum AppError {
     Impact(#[from] ImpactError),
     #[error(transparent)]
     Generation(#[from] GenerationError),
+    #[error(transparent)]
+    SymbolStore(#[from] SymbolStoreError),
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
 }
@@ -89,6 +91,11 @@ impl IntoResponse for AppError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "index_generation",
                 "index generation failed".to_owned(),
+            ),
+            Self::SymbolStore(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "symbol_store",
+                "symbol store failed".to_owned(),
             ),
             Self::Sqlx(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,

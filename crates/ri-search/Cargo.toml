@@ -1,0 +1,21 @@
+[package]
+name = "ri-search"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Deterministic search ranking for Source Prism."
+
+[dependencies]
+ri-symbols = { path = "../ri-symbols" }
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+ri-core = { path = "../ri-core" }
+
+[lints]
+workspace = true

@@ -2237,6 +2237,7 @@ name = "ri-cli"
 version = "0.1.0"
 dependencies = [
  "ri-config",
+ "ri-context",
  "ri-core",
  "ri-git",
  "ri-impact",
@@ -2258,6 +2259,17 @@ dependencies = [
  "tempfile",
  "thiserror",
  "url",
+]
+
+[[package]]
+name = "ri-context"
+version = "0.1.0"
+dependencies = [
+ "ri-core",
+ "ri-impact",
+ "ri-search",
+ "ri-symbols",
+ "serde",
 ]
 
 [[package]]
@@ -2324,6 +2336,15 @@ dependencies = [
  "ri-core",
  "ri-symbols",
  "thiserror",
+]
+
+[[package]]
+name = "ri-search"
+version = "0.1.0"
+dependencies = [
+ "ri-core",
+ "ri-symbols",
+ "serde",
 ]
 
 [[package]]

@@ -69,12 +69,10 @@ jobs:
           cargo run -p ri-cli -- config check --env-file .env.example
           cargo run -p ri-cli -- db migrate
           cargo run -p ri-cli -- repo manifest --repo . | grep '"kind": "manifest"'
-          set +e
-          cargo run -p ri-cli -- impact --symbol 'InvoiceService::applyTax' > /tmp/source-prism-impact.json
-          code=$?
-          set -e
-          test "$code" -eq 2
-          grep '"status": "not_implemented"' /tmp/source-prism-impact.json
+          cargo run -p ri-cli -- impact --symbol run > /tmp/source-prism-impact.json
+          grep '"kind": "impact"' /tmp/source-prism-impact.json
+          grep '"status": "ok"' /tmp/source-prism-impact.json
+          grep '"impact_score"' /tmp/source-prism-impact.json
 
       - name: Check formatting
         run: cargo fmt --all -- --check

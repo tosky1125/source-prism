@@ -12,6 +12,7 @@ description = "Local command-line interface for Source Prism."
 
 [dependencies]
 ri-config = { path = "../ri-config" }
+ri-context = { path = "../ri-context" }
 ri-core = { path = "../ri-core" }
 ri-git = { path = "../ri-git" }
 ri-impact = { path = "../ri-impact" }

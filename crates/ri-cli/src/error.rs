@@ -10,7 +10,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub(crate) enum CliError {
     #[error(
-        "usage: ri-cli config check --env-file <path> | db migrate | repo manifest --repo <path> | index --repo <path> --sha <sha> | symbols --repo <path> | changed-symbols --diff <diff> | impact --symbol <symbol> | search sync --once | search drift-check [--expect-mismatch fixture] | search rebuild --from-postgres"
+        "usage: ri-cli config check --env-file <path> | db migrate | repo manifest --repo <path> | index --repo <path> --sha <sha> | symbols --repo <path> | changed-symbols --diff <diff> | impact --symbol <symbol> | search-context <query> | search sync --once | search drift-check [--expect-mismatch fixture] | search rebuild --from-postgres"
     )]
     Usage,
     #[error("missing required env: {key}")]

@@ -32,6 +32,8 @@ pub enum AppError {
     DatabaseNotConfigured,
     #[error("file is too large to index: {path} size_bytes={size_bytes}")]
     FileTooLarge { path: String, size_bytes: u64 },
+    #[error("run not found: {run_id}")]
+    RunNotFound { run_id: String },
     #[error(transparent)]
     Context(#[from] ri_context::ContextError),
     #[error(transparent)]
@@ -57,6 +59,11 @@ impl IntoResponse for AppError {
                 StatusCode::PAYLOAD_TOO_LARGE,
                 "file_too_large",
                 format!("file is too large to index: {path} size_bytes={size_bytes}"),
+            ),
+            Self::RunNotFound { run_id } => (
+                StatusCode::NOT_FOUND,
+                "run_not_found",
+                format!("run not found: {run_id}"),
             ),
             Self::Context(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,

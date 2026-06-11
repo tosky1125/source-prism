@@ -100,6 +100,9 @@ jobs:
                 > /tmp/source-prism-api-context.json
               grep '"kind":"context_search"' /tmp/source-prism-api-context.json
               grep '"vector_only":false' /tmp/source-prism-api-context.json
+              curl -fsS http://127.0.0.1:4096/v1/repos/local/symbols > /tmp/source-prism-api-symbols.json
+              grep '"kind":"symbols"' /tmp/source-prism-api-symbols.json
+              grep '"symbol_count":' /tmp/source-prism-api-symbols.json
               exit 0
             fi
             sleep 1

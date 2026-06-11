@@ -129,3 +129,29 @@ async fn enqueue_is_idempotent_for_same_key() -> Result<(), Box<dyn std::error::
     assert_eq!(store.len(), 1);
     Ok(())
 }
+
+#[tokio::test]
+async fn no_op_job_succeeds_when_run_once_processes_one_job()
+-> Result<(), Box<dyn std::error::Error>> {
+    // Given: one queued no-op job.
+    let store = MemoryJobStore::default();
+    let runtime = JobRuntime::new(
+        store.clone(),
+        WorkerId::parse("worker-a")?,
+        LeaseConfig::for_tests(Duration::from_secs(30)),
+    );
+    let request = EnqueueJob::new(JobQueue::default(), JobKind::parse("noop")?, json!({}))
+        .with_idempotency_key("run-once-noop");
+    let job = runtime.enqueue(request).await?;
+
+    // When: the once-mode runtime processes a single job.
+    let outcome = runtime.run_once().await?;
+
+    // Then: exactly that job is completed successfully.
+    assert!(outcome.processed);
+    assert_eq!(outcome.job_id, Some(job.job_id));
+    let stored = store.get(job.job_id)?;
+    assert_eq!(stored.state, JobState::Succeeded);
+    assert_eq!(stored.attempt_count, 1);
+    Ok(())
+}

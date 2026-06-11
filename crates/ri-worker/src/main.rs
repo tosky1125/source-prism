@@ -26,12 +26,16 @@ struct Cli {
     queue: String,
     #[arg(long, default_value_t = 300)]
     lease_seconds: u64,
+    #[arg(long, default_value_t = 1_000)]
+    poll_interval_ms: u64,
 }
 
 #[derive(Debug, thiserror::Error)]
 enum CliError {
-    #[error("only --once mode is implemented for the T9 worker runtime")]
-    RunModeRequired,
+    #[error(
+        "daemon mode is not implemented yet; requested poll interval was {poll_interval_ms} ms"
+    )]
+    RunModeRequired { poll_interval_ms: u64 },
     #[error(transparent)]
     Job(#[from] ri_worker::JobError),
     #[error(transparent)]
@@ -55,7 +59,9 @@ async fn main() -> Result<(), CliError> {
     );
 
     if !cli.once {
-        return Err(CliError::RunModeRequired);
+        return Err(CliError::RunModeRequired {
+            poll_interval_ms: cli.poll_interval_ms,
+        });
     }
     let outcome = runtime.run_once().await?;
     writeln!(

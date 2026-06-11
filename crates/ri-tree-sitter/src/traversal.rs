@@ -65,8 +65,11 @@ fn symbol_for_node(
     node: Node<'_>,
     parents: &[Container],
 ) -> Option<SymbolRecord> {
-    let kind = symbol_kind(file.language, node.kind(), parents)?;
     let name = symbol_name(file, node)?;
+    let mut kind = symbol_kind(file.language, node.kind(), parents)?;
+    if is_test_symbol(file, node, &name, kind) {
+        kind = SymbolKind::TestCase;
+    }
     let fqn = qualified_name(parents, &name);
     Some(SymbolRecord::new(
         &file.repo,
@@ -75,6 +78,31 @@ fn symbol_for_node(
         file.content_hash,
         SymbolSpec::new(file.language, kind, name, fqn, range_for(node)),
     ))
+}
+
+fn is_test_symbol(file: &SourceFile<'_>, node: Node<'_>, name: &str, kind: SymbolKind) -> bool {
+    if !matches!(kind, SymbolKind::Function | SymbolKind::Method) {
+        return false;
+    }
+    match file.language {
+        Language::Rust => rust_test_attribute(file.source, node) || name.starts_with("test_"),
+        Language::Python => name.starts_with("test_"),
+        Language::Go => name.starts_with("Test"),
+        Language::TypeScript | Language::JavaScript => name.starts_with("test"),
+        _ => false,
+    }
+}
+
+fn rust_test_attribute(source: &str, node: Node<'_>) -> bool {
+    node_has_test_attribute(source, node)
+        || node
+            .prev_named_sibling()
+            .is_some_and(|sibling| node_has_test_attribute(source, sibling))
+}
+
+fn node_has_test_attribute(source: &str, node: Node<'_>) -> bool {
+    node.utf8_text(source.as_bytes())
+        .is_ok_and(|text| text.contains("#[test]") || text.contains("#[tokio::test]"))
 }
 
 fn symbol_name(file: &SourceFile<'_>, node: Node<'_>) -> Option<String> {

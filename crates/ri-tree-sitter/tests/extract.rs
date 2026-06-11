@@ -20,7 +20,7 @@ fn total_works() {}
 
     assert!(has_symbol(&symbols, SymbolKind::Class, "Invoice"));
     assert!(has_symbol(&symbols, SymbolKind::Method, "Invoice::total"));
-    assert!(has_symbol(&symbols, SymbolKind::Function, "total_works"));
+    assert!(has_symbol(&symbols, SymbolKind::TestCase, "total_works"));
     Ok(())
 }
 

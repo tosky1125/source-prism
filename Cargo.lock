@@ -2240,9 +2240,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ri-behavior"
+version = "0.1.0"
+dependencies = [
+ "ri-core",
+ "ri-symbols",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "ri-cli"
 version = "0.1.0"
 dependencies = [
+ "ri-behavior",
  "ri-config",
  "ri-context",
  "ri-core",

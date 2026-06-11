@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/ri-api",
+    "crates/ri-behavior",
     "crates/ri-cli",
     "crates/ri-config",
     "crates/ri-core",

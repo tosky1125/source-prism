@@ -75,6 +75,10 @@ jobs:
           grep '"kind": "impact"' /tmp/source-prism-impact.json
           grep '"status": "ok"' /tmp/source-prism-impact.json
           grep '"impact_score"' /tmp/source-prism-impact.json
+          test_symbol=$(python3 -c 'import json; data=json.load(open("/tmp/source-prism-symbols.json")); print(next(symbol["fqn"] for symbol in data["symbols"] if symbol["kind"] == "test_case"))')
+          cargo run -p ri-cli -- test-context --symbol "$test_symbol" > /tmp/source-prism-test-context.json
+          grep '"kind": "test_context"' /tmp/source-prism-test-context.json
+          grep '"code_execution_allowed": false' /tmp/source-prism-test-context.json
 
       - name: Check formatting
         run: cargo fmt --all -- --check

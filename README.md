@@ -15,9 +15,9 @@ Source Prism is not a wrapper around complete repo-intelligence products such as
 - gix/gitoxide first for Git plumbing, with git2/libgit2 fallback if needed
 - Tokio and Axum for service runtime and HTTP API
 
-## Foundation Milestone
+## Current Milestone
 
-This repository is currently in the foundation phase. The first milestone creates the runnable base for later indexing work:
+This repository is currently past the bare foundation phase. The runnable base now includes:
 
 - Git repository hygiene and project documentation
 - Rust workspace scaffold
@@ -25,9 +25,27 @@ This repository is currently in the foundation phase. The first milestone create
 - Local Postgres/OpenSearch development stack
 - SQLx migrations and offline query checks
 - CLI, API, and worker smoke surfaces
+- Tree-sitter symbol extraction for Rust, TypeScript/JavaScript, Python, and Go
+- Postgres-backed file manifest, symbol, contains-graph, run, and search outbox indexing
+- Static test-context evidence from extracted test symbols
 - Evidence-based QA conventions
 
-The foundation milestone deliberately does not implement full symbol extraction, graph impact analysis, search ranking, MCP tools, GitHub/GitLab publishing, PR review generation, or refactor execution. Those come after the base is executable and verified.
+MCP tools, GitHub/GitLab publishing, PR review generation, and refactor execution are still roadmap work. Source execution remains forbidden until sandbox design lands.
+
+## Local Smoke Commands
+
+```bash
+cargo run -p ri-cli -- config check --env-file .env.example
+cargo run -p ri-cli -- db migrate
+cargo run -p ri-cli -- repo manifest --repo .
+cargo run -p ri-cli -- index --repo . --sha HEAD
+cargo run -p ri-cli -- symbols --repo .
+cargo run -p ri-cli -- impact --symbol search
+cargo run -p ri-cli -- search-context search
+cargo run -p ri-cli -- test-context --symbol extracts_rust_functions_methods_and_tests
+cargo run -p ri-api
+cargo run -p ri-worker -- --once
+```
 
 ## Planning Artifacts
 

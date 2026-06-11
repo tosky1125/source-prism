@@ -90,3 +90,34 @@ pub enum TrustLevel {
     Trusted,
     Untrusted,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum EvidenceSourceKind {
+    RepositoryCode,
+    RepositoryComment,
+    PullRequestDescription,
+    PullRequestComment,
+    Documentation,
+    CiArtifact,
+    RuntimeTrace,
+    UserInstruction,
+    SystemInstruction,
+}
+
+impl EvidenceSourceKind {
+    pub const fn default_trust_level(self) -> TrustLevel {
+        match self {
+            Self::RepositoryCode
+            | Self::RepositoryComment
+            | Self::PullRequestDescription
+            | Self::PullRequestComment
+            | Self::Documentation => TrustLevel::Untrusted,
+            Self::CiArtifact
+            | Self::RuntimeTrace
+            | Self::UserInstruction
+            | Self::SystemInstruction => TrustLevel::Trusted,
+        }
+    }
+}

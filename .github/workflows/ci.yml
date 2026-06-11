@@ -121,7 +121,7 @@ jobs:
               grep '"vector_only":false' /tmp/source-prism-api-context.json
               curl -fsS -X POST http://127.0.0.1:4096/v1/impact \
                 -H 'content-type: application/json' \
-                --data '{"symbol":"run"}' \
+                --data '{"repo_id":"source-prism-ci","symbol":"impact_symbols"}' \
                 > /tmp/source-prism-api-impact.json
               grep '"kind":"impact"' /tmp/source-prism-api-impact.json
               grep '"impact_score":' /tmp/source-prism-api-impact.json

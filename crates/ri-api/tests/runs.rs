@@ -179,6 +179,18 @@ fn assert_count_at_least(
 }
 
 async fn cleanup(pool: &PgPool, repo_id: &str) -> Result<(), sqlx::Error> {
+    let mut tx = pool.begin().await?;
+    let _locked_generations = sqlx::query(
+        r"
+        SELECT generation_id
+        FROM index_generations
+        WHERE repo_id = $1
+        FOR UPDATE
+        ",
+    )
+    .bind(repo_id)
+    .fetch_all(&mut *tx)
+    .await?;
     sqlx::query(
         r"
         DELETE FROM job_attempts
@@ -188,7 +200,7 @@ async fn cleanup(pool: &PgPool, repo_id: &str) -> Result<(), sqlx::Error> {
         ",
     )
     .bind(repo_id)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
     sqlx::query(
         r"
@@ -199,7 +211,7 @@ async fn cleanup(pool: &PgPool, repo_id: &str) -> Result<(), sqlx::Error> {
         ",
     )
     .bind(repo_id)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
     for table in [
         "search_sync_outbox",
@@ -215,8 +227,9 @@ async fn cleanup(pool: &PgPool, repo_id: &str) -> Result<(), sqlx::Error> {
     ] {
         sqlx::query(&format!("DELETE FROM {table} WHERE repo_id = $1"))
             .bind(repo_id)
-            .execute(pool)
+            .execute(&mut *tx)
             .await?;
     }
+    tx.commit().await?;
     Ok(())
 }

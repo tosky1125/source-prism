@@ -70,11 +70,10 @@ pub(crate) async fn impact_inputs(
     if repo_id.is_empty() {
         return Err(AppError::Validation("repo_id must not be empty".to_owned()));
     }
-    let pool = state
-        .database
-        .pool
-        .as_ref()
-        .ok_or(AppError::DatabaseNotConfigured)?;
+    let Some(pool) = state.database.pool.as_ref() else {
+        let evidence = state.context_index_evidence()?;
+        return Ok((evidence.symbols, context_call_edges(&evidence.calls)));
+    };
     let symbols = PgSymbolStore::new(pool.clone())
         .active_symbols_for_repo(repo_id)
         .await?;

@@ -45,22 +45,57 @@ async fn impact_returns_report_for_matching_symbol() -> Result<(), Box<dyn std::
 }
 
 #[tokio::test]
-async fn impact_with_repo_id_requires_database() -> Result<(), Box<dyn std::error::Error>> {
-    let app = app(AppState::for_test_symbols(Vec::new())?);
+async fn impact_with_repo_id_uses_local_evidence_without_database()
+-> Result<(), Box<dyn std::error::Error>> {
+    let app = app(AppState::for_test_symbols(vec![
+        symbol("src/invoice.rs", "InvoiceService::apply_tax")?,
+        symbol("src/invoice.rs", "InvoiceService::helper")?,
+    ])?);
     let request = Request::builder()
         .method(Method::POST)
         .uri("/v1/impact")
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(r#"{"repo_id":"repo","symbol":"run"}"#))?;
+        .body(Body::from(
+            r#"{"repo_id":"repo","symbol":"InvoiceService::apply_tax"}"#,
+        ))?;
 
     let response = app.oneshot(request).await?;
 
-    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(response.status(), StatusCode::OK);
     let bytes = to_bytes(response.into_body(), 1_000_000).await?;
     let body = serde_json::from_slice::<Value>(&bytes)?;
     assert_eq!(
-        body.pointer("/error/code").and_then(Value::as_str),
-        Some("database_not_configured")
+        body.pointer("/impact/symbol/fqn").and_then(Value::as_str),
+        Some("InvoiceService::apply_tax")
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn repo_impact_uses_local_evidence_without_database() -> Result<(), Box<dyn std::error::Error>>
+{
+    let app = app(AppState::for_test_symbols(vec![
+        symbol("src/invoice.rs", "InvoiceService::apply_tax")?,
+        symbol("src/invoice.rs", "InvoiceService::helper")?,
+    ])?);
+    let request = Request::builder()
+        .method(Method::POST)
+        .uri("/v1/repos/local/impact")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(r#"{"symbol":"InvoiceService::apply_tax"}"#))?;
+
+    let response = app.oneshot(request).await?;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = to_bytes(response.into_body(), 1_000_000).await?;
+    let body = serde_json::from_slice::<Value>(&bytes)?;
+    assert_eq!(
+        body.pointer("/impact/symbol/fqn").and_then(Value::as_str),
+        Some("InvoiceService::apply_tax")
+    );
+    assert_eq!(
+        body.pointer("/impact/impact_score").and_then(Value::as_u64),
+        Some(2)
     );
     Ok(())
 }

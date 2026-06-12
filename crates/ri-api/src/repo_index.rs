@@ -12,6 +12,7 @@ use ri_indexer::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use std::path::PathBuf;
 
 use crate::{AppError, state::AppState};
 
@@ -22,6 +23,7 @@ const EXTRACTOR_VERSION: &str = "ri-api-index-v1";
 #[derive(Debug, Deserialize)]
 pub(crate) struct IndexRepoRequest {
     sha: Option<String>,
+    repo_path: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -54,18 +56,18 @@ pub(crate) async fn index(
         .pool
         .as_ref()
         .ok_or(AppError::DatabaseNotConfigured)?;
-    let repo_path = state.context_repo_path();
+    let repo_path = repo_path(&request, &state)?;
     let sha = request.sha.as_deref().unwrap_or(DEFAULT_SHA).trim();
     if sha.is_empty() {
         return Err(AppError::Validation("sha must not be empty".to_owned()));
     }
-    let commit_sha = resolve_commit_sha(repo_path, sha)?;
+    let commit_sha = resolve_commit_sha(&repo_path, sha)?;
     let repo = RepoId::new(&repo_id).map_err(|error| AppError::Validation(error.to_string()))?;
     let commit =
         CommitSha::new(&commit_sha).map_err(|error| AppError::Validation(error.to_string()))?;
     upsert_repo_commit(pool, &repo_id, &commit_sha).await?;
 
-    let manifest = LocalManifest::extract(repo_path)?;
+    let manifest = LocalManifest::extract(&repo_path)?;
     let inputs = manifest_inputs(&manifest)?;
     let store = PgGenerationStore::new(pool.clone());
     let generation = store
@@ -74,7 +76,7 @@ pub(crate) async fn index(
     let inserted = store
         .replace_file_manifest_generation(&generation.generation_id, &inputs)
         .await?;
-    let evidence = extract_repo_index_for(repo_path, &repo, &commit)?;
+    let evidence = extract_repo_index_for(&repo_path, &repo, &commit)?;
     let symbols = evidence.symbols;
     let indexed_symbols = PgSymbolStore::new(pool.clone())
         .replace_symbol_generation(&generation.generation_id, &symbols)
@@ -82,7 +84,7 @@ pub(crate) async fn index(
     let indexed_test_cases = PgTestCaseStore::new(pool.clone())
         .replace_test_cases_for_generation(&generation.generation_id, &symbols)
         .await?;
-    let architecture = extract_architecture_entities_for(repo_path, &repo, &commit, &manifest)?;
+    let architecture = extract_architecture_entities_for(&repo_path, &repo, &commit, &manifest)?;
     let indexed_architecture_entities = PgArchitectureStore::new(pool.clone())
         .replace_architecture_entities_for_generation(&generation.generation_id, &architecture)
         .await?;
@@ -130,6 +132,19 @@ pub(crate) async fn index(
         indexed_test_cases,
         indexed_architecture_entities,
     }))
+}
+
+fn repo_path(request: &IndexRepoRequest, state: &AppState) -> Result<PathBuf, AppError> {
+    let Some(path) = request.repo_path.as_deref() else {
+        return Ok(state.context_repo_path().to_path_buf());
+    };
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err(AppError::Validation(
+            "repo_path must not be empty".to_owned(),
+        ));
+    }
+    Ok(PathBuf::from(trimmed))
 }
 
 fn call_inputs(calls: &[ResolvedCallReference]) -> Vec<CallEdgeInput> {

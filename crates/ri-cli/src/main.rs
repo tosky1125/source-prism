@@ -22,6 +22,7 @@ pub(crate) mod error;
 pub(crate) mod impact;
 pub(crate) mod index;
 pub(crate) mod index_args;
+pub(crate) mod mcp;
 pub(crate) mod refactor;
 pub(crate) mod references;
 pub(crate) mod review;
@@ -85,6 +86,7 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
             review::verify_command(args).map(|()| ExitCode::SUCCESS)
         }
         "embeddings" => embeddings::command(args).await.map(|()| ExitCode::SUCCESS),
+        "mcp" => mcp::command(args).map(|()| ExitCode::SUCCESS),
         "architecture" => architecture::architecture_command(args).map(|()| ExitCode::SUCCESS),
         "impact" => impact::impact_command(args).map(|()| ExitCode::SUCCESS),
         "search-context" => {

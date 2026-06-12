@@ -72,6 +72,9 @@ jobs:
           cargo run -p ri-cli -- impact --symbol 'InvoiceService::applyTax' > /tmp/source-prism-smoke-impact.json
           grep '"kind": "impact"' /tmp/source-prism-smoke-impact.json
           grep '"status": "ok"' /tmp/source-prism-smoke-impact.json
+          cargo run -p ri-cli -- mcp tools > /tmp/source-prism-mcp-tools.json
+          grep '"kind": "mcp_tool_catalog"' /tmp/source-prism-mcp-tools.json
+          grep '"repo.search_context"' /tmp/source-prism-mcp-tools.json
           embedding_provider="source-prism-ci-${GITHUB_RUN_ID:-local}"
           cargo run -p ri-cli -- embeddings cache-put --provider "$embedding_provider" --model local-v1 --kind symbol --dimensions 3 --input 'InvoiceService::applyTax' --vector '0.1,0.2,0.3' > /tmp/source-prism-embedding-first.json
           grep '"kind": "embedding_cache"' /tmp/source-prism-embedding-first.json

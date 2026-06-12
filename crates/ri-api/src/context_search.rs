@@ -1,7 +1,10 @@
 use axum::{Json, extract::State};
 use ri_context::{ContextPack, build_context_pack_with_calls};
 use ri_impact::ImpactCallEdge;
-use ri_indexer::{PgGraphStore, PgSearchSyncStore, PgSymbolStore};
+use ri_indexer::{
+    DEFAULT_SEARCH_INDEX, OpenSearchClient, OpenSearchTextHit, PgGraphStore, PgSearchSyncStore,
+    PgSymbolStore,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -27,6 +30,8 @@ pub(crate) struct ContextSearchResponse {
     hit_count: usize,
     impact_count: usize,
     search_chunk_count: i64,
+    bm25_hit_count: usize,
+    bm25_hits: Vec<OpenSearchTextHit>,
     context_pack: ContextPack,
 }
 
@@ -41,6 +46,7 @@ pub(crate) async fn search(
     let limit = request.limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT);
     let (symbols, calls, search_chunk_count) =
         context_inputs(&state, request.repo_id.as_deref()).await?;
+    let bm25_hits = bm25_hits(&state, request.repo_id.as_deref(), query, limit).await?;
     let context_pack =
         build_context_pack_with_calls(symbols.as_slice(), calls.as_slice(), query, limit);
     Ok(Json(ContextSearchResponse {
@@ -49,8 +55,26 @@ pub(crate) async fn search(
         hit_count: context_pack.hits.len(),
         impact_count: context_pack.impacts.len(),
         search_chunk_count,
+        bm25_hit_count: bm25_hits.len(),
+        bm25_hits,
         context_pack,
     }))
+}
+
+async fn bm25_hits(
+    state: &AppState,
+    repo_id: Option<&str>,
+    query: &str,
+    limit: usize,
+) -> Result<Vec<OpenSearchTextHit>, AppError> {
+    let (Some(repo_id), Some(opensearch_url)) = (repo_id, state.opensearch_url.as_deref()) else {
+        return Ok(Vec::new());
+    };
+    OpenSearchClient::new(opensearch_url)
+        .search_text(DEFAULT_SEARCH_INDEX, repo_id, query, limit)
+        .await
+        .map_err(ri_indexer::SearchSyncError::from)
+        .map_err(Into::into)
 }
 
 async fn context_inputs(

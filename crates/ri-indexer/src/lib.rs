@@ -41,7 +41,7 @@ pub use graph_query::{GraphEdgeRecord, GraphNodeRecord, GraphProjection};
 pub use overlay::{
     BaseFileRecord, OverlayEntry, OverlayFileStatus, OverlayMergedFile, merge_overlay,
 };
-pub use search_http::{OpenSearchClient, OpenSearchError};
+pub use search_http::{OpenSearchClient, OpenSearchError, OpenSearchTextHit};
 pub use search_sync::PgSearchSyncStore;
 pub use search_sync_types::{
     DriftReport, RebuildOutcome, SearchSyncError, SearchSyncInput, SearchSyncOperation,

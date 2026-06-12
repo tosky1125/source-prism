@@ -48,6 +48,7 @@ async fn repo_web_shell_returns_structure_explorer() -> Result<(), Box<dyn std::
     assert!(body.contains("related_tests"));
     assert!(body.contains("scrollIntoView"));
     assert!(body.contains("result.context_pack?.hits"));
+    assert!(body.contains("`${repoApi}/context/search`"));
     assert!(body.contains("result.bm25_hits"));
     assert!(body.contains("BM25"));
     assert!(body.contains("URLSearchParams"));

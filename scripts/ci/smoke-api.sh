@@ -191,6 +191,14 @@ assert payload["context_pack"]["hits"], payload
 assert payload["context_pack"]["impacts"], payload
 PY
 
+request POST "${api_base_url}/v1/repos/${repo_id}/context/search" \
+  /tmp/source-prism-api-repo-context.json \
+  -H 'content-type: application/json' \
+  --data '{"query":"search_context"}'
+grep -q '"kind":"context_search"' /tmp/source-prism-api-repo-context.json
+grep -q '"search_chunk_count":' /tmp/source-prism-api-repo-context.json
+grep -q '"bm25_hit_count":' /tmp/source-prism-api-repo-context.json
+
 request GET "${api_base_url}/v1/repos/${repo_id}/symbols" /tmp/source-prism-api-symbols.json
 grep -q '"kind":"symbols"' /tmp/source-prism-api-symbols.json
 grep -q '"symbol_count":' /tmp/source-prism-api-symbols.json

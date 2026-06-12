@@ -1,4 +1,7 @@
-use axum::{Json, extract::State};
+use axum::{
+    Json,
+    extract::{Path, State},
+};
 use ri_context::{ContextPack, build_context_pack_with_calls};
 use ri_impact::ImpactCallEdge;
 use ri_indexer::{
@@ -39,14 +42,30 @@ pub(crate) async fn search(
     State(state): State<AppState>,
     Json(request): Json<ContextSearchRequest>,
 ) -> Result<Json<ContextSearchResponse>, AppError> {
+    search_with_repo(state, request, None).await
+}
+
+pub(crate) async fn search_for_repo(
+    State(state): State<AppState>,
+    Path(repo_id): Path<String>,
+    Json(request): Json<ContextSearchRequest>,
+) -> Result<Json<ContextSearchResponse>, AppError> {
+    search_with_repo(state, request, Some(repo_id)).await
+}
+
+async fn search_with_repo(
+    state: AppState,
+    request: ContextSearchRequest,
+    repo_id: Option<String>,
+) -> Result<Json<ContextSearchResponse>, AppError> {
     let query = request.query.trim();
     if query.is_empty() {
         return Err(AppError::Validation("query must not be empty".to_owned()));
     }
     let limit = request.limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT);
-    let (symbols, calls, search_chunk_count) =
-        context_inputs(&state, request.repo_id.as_deref()).await?;
-    let bm25_hits = bm25_hits(&state, request.repo_id.as_deref(), query, limit).await?;
+    let repo_id = repo_id.as_deref().or(request.repo_id.as_deref());
+    let (symbols, calls, search_chunk_count) = context_inputs(&state, repo_id).await?;
+    let bm25_hits = bm25_hits(&state, repo_id, query, limit).await?;
     let context_pack =
         build_context_pack_with_calls(symbols.as_slice(), calls.as_slice(), query, limit);
     Ok(Json(ContextSearchResponse {

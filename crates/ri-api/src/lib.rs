@@ -60,6 +60,10 @@ pub fn app(state: AppState) -> Router {
             get(repo_architecture::list),
         )
         .route("/v1/repos/{repo_id}/coverage", get(repo_coverage::list))
+        .route(
+            "/v1/repos/{repo_id}/context/search",
+            post(context_search::search_for_repo),
+        )
         .route("/v1/repos/{repo_id}/files", get(repo_files::list))
         .route("/v1/repos/{repo_id}/graph", get(repo_graph::get))
         .route("/v1/repos/{repo_id}/index", post(repo_index::index))

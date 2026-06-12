@@ -373,10 +373,10 @@
     const runSearch = async (query) => {
       if (!query) return;
       setView("search");
-      const result = await fetch("/v1/context/search", {
+      const result = await fetch(`${repoApi}/context/search`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ repo_id: repoId, query })
+        body: JSON.stringify({ query })
       }).then((response) => response.json());
       const hits = result.context_pack?.hits ?? [];
       const bm25 = result.bm25_hits ?? [];

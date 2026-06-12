@@ -117,6 +117,10 @@ jobs:
           grep '"indexed_test_cases":' /tmp/source-prism-cli-index.json
           cli_repo_id=$(python3 -c 'import json; print(json.load(open("/tmp/source-prism-cli-index.json"))["repo_id"])')
           cli_run_id=$(python3 -c 'import json; print(json.load(open("/tmp/source-prism-cli-index.json"))["generation_id"])')
+          cargo run -p ri-cli -- search rebuild --from-postgres --generation "$cli_run_id" > /tmp/source-prism-cli-search-rebuild.txt
+          cargo run -p ri-cli -- search-context --repo-id "$cli_repo_id" search_context > /tmp/source-prism-cli-persisted-context.json
+          grep '"kind": "search_context"' /tmp/source-prism-cli-persisted-context.json
+          grep '"bm25_hit_count":' /tmp/source-prism-cli-persisted-context.json
           cargo run -p ri-cli -- run --run-id "$cli_run_id" > /tmp/source-prism-cli-run.json
           grep '"kind": "run"' /tmp/source-prism-cli-run.json
           grep '"status": "succeeded"' /tmp/source-prism-cli-run.json

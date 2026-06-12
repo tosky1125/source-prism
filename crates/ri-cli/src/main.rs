@@ -101,9 +101,9 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
         "mcp" => mcp::command(args).map(|()| ExitCode::SUCCESS),
         "architecture" => architecture::architecture_command(args).map(|()| ExitCode::SUCCESS),
         "impact" => impact::impact_command(args).map(|()| ExitCode::SUCCESS),
-        "search-context" => {
-            search_context::search_context_command(args).map(|()| ExitCode::SUCCESS)
-        }
+        "search-context" => search_context::search_context_command(args)
+            .await
+            .map(|()| ExitCode::SUCCESS),
         "test-context" => test_context::test_context_command(args).map(|()| ExitCode::SUCCESS),
         "tests" => tests::command(args).await.map(|()| ExitCode::SUCCESS),
         "search" => search::command(args).await.map(|()| ExitCode::SUCCESS),

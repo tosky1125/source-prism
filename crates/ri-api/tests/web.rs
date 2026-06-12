@@ -31,9 +31,12 @@ async fn repo_web_shell_returns_structure_explorer() -> Result<(), Box<dyn std::
     assert!(body.contains("Impact"));
     assert!(body.contains("Coverage"));
     assert!(body.contains("Docs"));
+    assert!(body.contains("Search Results"));
+    assert!(body.contains("id=\"searchResults\""));
     assert!(body.contains("api(\"references\")"));
     assert!(body.contains("api(\"coverage\")"));
     assert!(body.contains("graph.value?.graph?.edges"));
+    assert!(body.contains("scrollIntoView"));
     assert!(body.contains("result.context_pack?.hits"));
     Ok(())
 }

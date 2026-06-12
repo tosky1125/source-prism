@@ -17,6 +17,7 @@ pub(crate) mod graph_call_edges;
 pub(crate) mod graph_test_edges;
 pub(crate) mod health;
 pub(crate) mod impact;
+pub(crate) mod local_index;
 pub(crate) mod refactor;
 pub(crate) mod repo_architecture;
 pub(crate) mod repo_changed_symbols;

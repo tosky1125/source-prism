@@ -76,6 +76,51 @@ fn overview_fixture_is_indexed() {
     Ok(())
 }
 
+#[tokio::test]
+async fn get_repo_returns_local_evidence_without_database() -> Result<(), Box<dyn std::error::Error>>
+{
+    let repo = TempRepo::create()?;
+    repo.write_file(
+        "src/lib.rs",
+        r"
+pub fn local_overview_fixture() -> i32 {
+    7
+}
+
+#[test]
+fn local_overview_fixture_is_indexed() {
+    assert_eq!(local_overview_fixture(), 7);
+}
+",
+    )?;
+    repo.commit()?;
+    let app = app(AppState::for_test_repo_path(repo.path().to_path_buf())?);
+    let request = Request::builder()
+        .method(Method::GET)
+        .uri("/v1/repos/local")
+        .body(Body::empty())?;
+
+    let response = app.oneshot(request).await?;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = to_bytes(response.into_body(), 1_000_000).await?;
+    let body = serde_json::from_slice::<Value>(&bytes)?;
+    assert_eq!(body.pointer("/kind").and_then(Value::as_str), Some("repo"));
+    assert_eq!(
+        body.pointer("/latest_run/status").and_then(Value::as_str),
+        Some("succeeded")
+    );
+    assert_eq!(
+        body.pointer("/latest_run/evidence/file_manifests")
+            .and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_count_at_least(&body, "/latest_run/evidence/symbols", 2)?;
+    assert_count_at_least(&body, "/latest_run/evidence/test_cases", 1)?;
+    repo.cleanup()?;
+    Ok(())
+}
+
 struct TempRepo {
     path: PathBuf,
 }

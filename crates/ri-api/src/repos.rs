@@ -9,6 +9,10 @@ use sqlx::{PgPool, Row as _};
 
 use crate::{AppError, state::AppState};
 
+mod local;
+
+use local::{local_latest_run, local_repo};
+
 #[derive(Debug, Deserialize)]
 pub(crate) struct CreateRepoRequest {
     repo_id: Option<String>,
@@ -89,13 +93,17 @@ pub(crate) async fn get(
     State(state): State<AppState>,
     Path(repo_id): Path<String>,
 ) -> Result<Json<GetRepoResponse>, AppError> {
-    let pool = state
-        .database
-        .pool
-        .as_ref()
-        .ok_or(AppError::DatabaseNotConfigured)?;
-    let repo = find_repo(pool, &repo_id).await?;
-    let latest_run = latest_run(pool, &repo_id).await?;
+    let (repo, latest_run) = if let Some(pool) = state.database.pool.as_ref() {
+        (
+            find_repo(pool, &repo_id).await?,
+            latest_run(pool, &repo_id).await?,
+        )
+    } else {
+        (
+            local_repo(&repo_id),
+            Some(local_latest_run(&state, &repo_id)?),
+        )
+    };
     Ok(Json(GetRepoResponse {
         status: "ok",
         kind: "repo",

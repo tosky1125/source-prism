@@ -7,6 +7,7 @@ use sqlx::{PgPool, Row as _};
 
 use crate::{
     AppError,
+    local_index::{LocalIndexSummary, local_index_summary},
     run_jobs::{RunSearchSyncJob, find_search_sync_jobs},
     run_outbox::{
         RunSearchSyncOutboxItem, RunSearchSyncOutboxStateCounts, count_search_sync_outbox_states,
@@ -52,12 +53,11 @@ pub(crate) async fn list(
     State(state): State<AppState>,
     Path(repo_id): Path<String>,
 ) -> Result<Json<RepoRunsResponse>, AppError> {
-    let pool = state
-        .database
-        .pool
-        .as_ref()
-        .ok_or(AppError::DatabaseNotConfigured)?;
-    let runs = find_repo_runs(pool, &repo_id).await?;
+    let runs = if let Some(pool) = state.database.pool.as_ref() {
+        find_repo_runs(pool, &repo_id).await?
+    } else {
+        vec![local_run_summary(local_index_summary(&state, &repo_id)?)]
+    };
     Ok(Json(RepoRunsResponse {
         status: "ok",
         kind: "repo_runs",
@@ -65,6 +65,40 @@ pub(crate) async fn list(
         run_count: runs.len(),
         runs,
     }))
+}
+
+fn local_run_summary(local: LocalIndexSummary) -> RepoRunSummary {
+    RepoRunSummary {
+        run_id: local.run_id,
+        commit_sha: local.commit_sha,
+        index_kind: "local_worktree".to_owned(),
+        status: "succeeded".to_owned(),
+        started_at: local.started_at,
+        finished_at: local.finished_at,
+        evidence: RepoRunEvidence {
+            file_manifests: local.file_manifests,
+            symbols: local.symbols,
+            graph_edges: local.graph_edges,
+            search_chunks: local.search_chunks,
+            search_sync_outbox_details: Vec::new(),
+            search_sync_outbox_state_counts: empty_outbox_counts(),
+            search_sync_jobs: 0,
+            search_sync_job_details: Vec::new(),
+            test_cases: local.test_cases,
+        },
+    }
+}
+
+const fn empty_outbox_counts() -> RunSearchSyncOutboxStateCounts {
+    RunSearchSyncOutboxStateCounts {
+        queued: 0,
+        leased: 0,
+        succeeded: 0,
+        failed: 0,
+        dead_lettered: 0,
+        cancelled: 0,
+        total: 0,
+    }
 }
 
 async fn find_repo_runs(pool: &PgPool, repo_id: &str) -> Result<Vec<RepoRunSummary>, sqlx::Error> {

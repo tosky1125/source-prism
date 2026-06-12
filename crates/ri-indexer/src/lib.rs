@@ -20,6 +20,7 @@ mod overlay;
 mod search_chunks;
 mod search_drift;
 mod search_http;
+mod search_http_text;
 mod search_sync;
 mod search_sync_one;
 mod search_sync_types;
@@ -42,7 +43,8 @@ pub use graph_query::{GraphEdgeRecord, GraphEdgeRecordSpec, GraphNodeRecord, Gra
 pub use overlay::{
     BaseFileRecord, OverlayEntry, OverlayFileStatus, OverlayMergedFile, merge_overlay,
 };
-pub use search_http::{OpenSearchClient, OpenSearchError, OpenSearchTextHit};
+pub use search_http::{OpenSearchClient, OpenSearchError};
+pub use search_http_text::OpenSearchTextHit;
 pub use search_sync::PgSearchSyncStore;
 pub use search_sync_types::{
     DriftReport, RebuildOutcome, SearchSyncError, SearchSyncInput, SearchSyncOperation,

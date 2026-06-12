@@ -14,7 +14,7 @@ moved beyond foundation-only scope.
 
 ## Current Status
 
-Overall progress: 99%.
+Overall progress: 99.3%.
 
 Completed and verified slices:
 
@@ -222,6 +222,10 @@ Tasks:
 - Add durable job observability endpoints and dead-letter inspection.
 - Dead-letter inspection now exists through `GET /v1/repos/{repo_id}/dead-letters`
   and `ri-cli dead-letters --repo-id <repo_id>`.
+- API JSON request bodies are capped at 256 KiB and oversized requests are
+  rejected with HTTP 413 before route logic runs.
+- Generation-scoped search drift checks now refresh OpenSearch and count only
+  documents for that generation's repo/generation pair.
 
 Evidence:
 

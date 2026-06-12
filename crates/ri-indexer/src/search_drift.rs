@@ -62,6 +62,7 @@ impl PgSearchSyncStore {
         generation_id: Option<&str>,
     ) -> Result<DriftReport, SearchSyncError> {
         client.health().await?;
+        client.refresh_index(index).await?;
         let expected = sqlx::query(
             r"
             SELECT count(*)::bigint AS count
@@ -77,10 +78,40 @@ impl PgSearchSyncStore {
         .fetch_one(&self.pool)
         .await?
         .try_get("count")?;
-        let actual = client.count_documents(index).await?;
+        let actual = if let Some(generation_id) = generation_id {
+            match self.repo_id_for_generation(generation_id).await? {
+                Some(repo_id) => {
+                    client
+                        .count_documents_for_repo_generation(index, &repo_id, generation_id)
+                        .await?
+                }
+                None => 0,
+            }
+        } else {
+            client.count_documents(index).await?
+        };
         Ok(DriftReport {
             expected_documents: expected,
             actual_documents: actual,
         })
+    }
+
+    async fn repo_id_for_generation(
+        &self,
+        generation_id: &str,
+    ) -> Result<Option<String>, SearchSyncError> {
+        let row = sqlx::query(
+            r"
+            SELECT repo_id
+            FROM index_generations
+            WHERE generation_id = $1
+            ",
+        )
+        .bind(generation_id)
+        .fetch_optional(&self.pool)
+        .await?;
+        row.map(|row| row.try_get("repo_id"))
+            .transpose()
+            .map_err(Into::into)
     }
 }

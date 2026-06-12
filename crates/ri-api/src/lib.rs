@@ -45,6 +45,7 @@ pub(crate) mod web;
 
 use axum::{
     Router,
+    extract::DefaultBodyLimit,
     routing::{get, post},
 };
 use std::{env, net::SocketAddr};
@@ -54,6 +55,7 @@ pub use repo_files::{RepoFile, RepoFileFlags};
 pub use state::AppState;
 
 const DEFAULT_BIND_ADDR: &str = "127.0.0.1:3000";
+const API_MAX_REQUEST_BODY_BYTES: usize = 256 * 1024;
 
 pub fn app(state: AppState) -> Router {
     Router::new()
@@ -112,6 +114,7 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/repos/{repo_id}/tests", get(repo_tests::list))
         .route("/v1/repos/{repo_id}/test-runs", get(repo_test_runs::list))
         .route("/v1/runs/{run_id}", get(runs::get))
+        .layer(DefaultBodyLimit::max(API_MAX_REQUEST_BODY_BYTES))
         .with_state(state)
 }
 

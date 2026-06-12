@@ -43,6 +43,11 @@ async fn context_search_returns_context_pack_for_matching_symbol()
             .and_then(Value::as_str),
         Some("InvoiceService::apply_tax")
     );
+    assert_eq!(body.pointer("/hit_count").and_then(Value::as_u64), Some(1));
+    assert_eq!(
+        body.pointer("/impact_count").and_then(Value::as_u64),
+        Some(1)
+    );
     assert_eq!(
         body.pointer("/context_pack/impacts")
             .and_then(Value::as_array)

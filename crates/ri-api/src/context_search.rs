@@ -24,6 +24,8 @@ pub(crate) struct ContextSearchRequest {
 pub(crate) struct ContextSearchResponse {
     status: &'static str,
     kind: &'static str,
+    hit_count: usize,
+    impact_count: usize,
     context_pack: ContextPack,
 }
 
@@ -37,15 +39,14 @@ pub(crate) async fn search(
     }
     let limit = request.limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT);
     let (symbols, calls) = context_inputs(&state, request.repo_id.as_deref()).await?;
+    let context_pack =
+        build_context_pack_with_calls(symbols.as_slice(), calls.as_slice(), query, limit);
     Ok(Json(ContextSearchResponse {
         status: "ok",
         kind: "context_search",
-        context_pack: build_context_pack_with_calls(
-            symbols.as_slice(),
-            calls.as_slice(),
-            query,
-            limit,
-        ),
+        hit_count: context_pack.hits.len(),
+        impact_count: context_pack.impacts.len(),
+        context_pack,
     }))
 }
 

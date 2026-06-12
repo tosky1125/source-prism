@@ -130,6 +130,17 @@ request POST "${api_base_url}/v1/context/search" /tmp/source-prism-api-context.j
   --data "{\"repo_id\":\"${repo_id}\",\"query\":\"search_context\"}"
 grep -q '"kind":"context_search"' /tmp/source-prism-api-context.json
 grep -q '"vector_only":false' /tmp/source-prism-api-context.json
+python3 - <<'PY'
+import json
+
+with open("/tmp/source-prism-api-context.json", encoding="utf-8") as handle:
+    payload = json.load(handle)
+
+assert payload["hit_count"] > 0, payload
+assert payload["impact_count"] > 0, payload
+assert payload["context_pack"]["hits"], payload
+assert payload["context_pack"]["impacts"], payload
+PY
 
 request GET "${api_base_url}/v1/repos/${repo_id}/symbols" /tmp/source-prism-api-symbols.json
 grep -q '"kind":"symbols"' /tmp/source-prism-api-symbols.json

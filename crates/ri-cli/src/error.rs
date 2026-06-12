@@ -10,7 +10,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub(crate) enum CliError {
     #[error(
-        "usage: ri-cli config check --env-file <path> | db migrate | repo manifest --repo <path> | index --repo <path> --sha <sha> | symbols --repo <path> | changed-symbols --diff <diff> | references --symbol <symbol> | architecture --repo <path> | impact --symbol <symbol> | refactor plan --symbol <symbol> | search-context <query> | test-context --symbol <symbol> | review verify --input <file> | mcp tools | embeddings cache-put --provider <provider> --model <model> --kind <kind> --dimensions <n> --input <text> --vector <csv> | tests import-junit --repo <path> --sha <sha> --junit <file> | tests import-pytest-json --repo <path> --sha <sha> --pytest-json <file> | tests import-playwright-json --repo <path> --sha <sha> --playwright-json <file> | tests import-go-test-json --repo <path> --sha <sha> --go-test-json <file> | tests import-lcov --repo <path> --sha <sha> --lcov <file> | tests import-cobertura --repo <path> --sha <sha> --cobertura <file> | tests import-jacoco --repo <path> --sha <sha> --jacoco <file> | search sync --once | search drift-check [--expect-mismatch fixture] | search rebuild --from-postgres"
+        "usage: ri-cli config check --env-file <path> | db migrate | repo manifest --repo <path> | index --repo <path> --sha <sha> | symbols --repo <path> | changed-symbols --diff <diff> | references --symbol <symbol> | architecture --repo <path> | impact --symbol <symbol> | refactor plan --symbol <symbol> | search-context <query> | test-context --symbol <symbol> | review verify --input <file> | mcp tools | mcp call --repo <path> --tool <tool> [--symbol <symbol> | --query <query>] [--limit <n>] | embeddings cache-put --provider <provider> --model <model> --kind <kind> --dimensions <n> --input <text> --vector <csv> | tests import-junit --repo <path> --sha <sha> --junit <file> | tests import-pytest-json --repo <path> --sha <sha> --pytest-json <file> | tests import-playwright-json --repo <path> --sha <sha> --playwright-json <file> | tests import-go-test-json --repo <path> --sha <sha> --go-test-json <file> | tests import-lcov --repo <path> --sha <sha> --lcov <file> | tests import-cobertura --repo <path> --sha <sha> --cobertura <file> | tests import-jacoco --repo <path> --sha <sha> --jacoco <file> | search sync --once | search drift-check [--expect-mismatch fixture] | search rebuild --from-postgres"
     )]
     Usage,
     #[error("missing required env: {key}")]
@@ -49,6 +49,8 @@ pub(crate) enum CliError {
     Json(#[from] serde_json::Error),
     #[error(transparent)]
     Migrate(#[from] sqlx::migrate::MigrateError),
+    #[error(transparent)]
+    Mcp(#[from] ri_mcp::McpToolError),
     #[error(transparent)]
     OpenSearch(#[from] ri_indexer::OpenSearchError),
     #[error(transparent)]
@@ -89,6 +91,7 @@ impl CliError {
             | Self::Review(_)
             | Self::Json(_)
             | Self::Migrate(_)
+            | Self::Mcp(_)
             | Self::OpenSearch(_)
             | Self::SearchSync(_)
             | Self::SymbolStore(_)

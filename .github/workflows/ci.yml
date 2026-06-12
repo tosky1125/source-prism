@@ -74,6 +74,7 @@ jobs:
           grep '"indexed_symbols":' /tmp/source-prism-cli-index.json
           grep '"indexed_graph_edges":' /tmp/source-prism-cli-index.json
           grep '"indexed_import_edges":' /tmp/source-prism-cli-index.json
+          grep '"indexed_call_edges":' /tmp/source-prism-cli-index.json
           grep '"indexed_test_cover_edges":' /tmp/source-prism-cli-index.json
           grep '"indexed_search_chunks":' /tmp/source-prism-cli-index.json
           grep '"indexed_test_cases":' /tmp/source-prism-cli-index.json
@@ -124,6 +125,7 @@ jobs:
               grep '"indexed_symbols":' /tmp/source-prism-api-index.json
               grep '"indexed_graph_edges":' /tmp/source-prism-api-index.json
               grep '"indexed_import_edges":' /tmp/source-prism-api-index.json
+              grep '"indexed_call_edges":' /tmp/source-prism-api-index.json
               grep '"indexed_test_cover_edges":' /tmp/source-prism-api-index.json
               grep '"indexed_search_chunks":' /tmp/source-prism-api-index.json
               grep '"indexed_test_cases":' /tmp/source-prism-api-index.json
@@ -160,6 +162,7 @@ jobs:
               grep -q '"kind":"graph"' /tmp/source-prism-api-graph.json
               grep -q '"edge_count":' /tmp/source-prism-api-graph.json
               grep -q '"edge_type":"imports"' /tmp/source-prism-api-graph.json
+              grep -q '"edge_type":"calls"' /tmp/source-prism-api-graph.json
               grep -q '"edge_type":"test_covers"' /tmp/source-prism-api-graph.json
               curl -fsS http://127.0.0.1:4096/v1/repos/local/files > /tmp/source-prism-api-files.json
               grep '"kind":"files"' /tmp/source-prism-api-files.json

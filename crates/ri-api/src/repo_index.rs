@@ -2,12 +2,12 @@ use axum::{
     Json,
     extract::{Path, State},
 };
-use ri_context::extract_repo_symbols_for;
+use ri_context::{ResolvedCallReference, extract_repo_index_for};
 use ri_core::{CommitSha, Language, RepoId};
 use ri_git::{LocalManifest, resolve_commit_sha};
 use ri_indexer::{
-    DEFAULT_SEARCH_INDEX, FileManifestInput, PgGenerationStore, PgGraphStore, PgSearchSyncStore,
-    PgSymbolStore, PgTestCaseStore,
+    CallEdgeInput, DEFAULT_SEARCH_INDEX, FileManifestInput, PgGenerationStore, PgGraphStore,
+    PgSearchSyncStore, PgSymbolStore, PgTestCaseStore,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -36,6 +36,7 @@ pub(crate) struct IndexRepoResponse {
     indexed_graph_nodes: u64,
     indexed_graph_edges: u64,
     indexed_import_edges: u64,
+    indexed_call_edges: u64,
     indexed_test_cover_edges: u64,
     indexed_search_chunks: u64,
     indexed_test_cases: u64,
@@ -71,7 +72,8 @@ pub(crate) async fn index(
     let inserted = store
         .replace_file_manifest_generation(&generation.generation_id, &inputs)
         .await?;
-    let symbols = extract_repo_symbols_for(repo_path, &repo, &commit)?;
+    let evidence = extract_repo_index_for(repo_path, &repo, &commit)?;
+    let symbols = evidence.symbols;
     let indexed_symbols = PgSymbolStore::new(pool.clone())
         .replace_symbol_generation(&generation.generation_id, &symbols)
         .await?;
@@ -87,6 +89,9 @@ pub(crate) async fn index(
         .await?;
     let indexed_import_edges = graph_store
         .replace_import_graph(&generation.generation_id)
+        .await?;
+    let indexed_call_edges = graph_store
+        .replace_call_graph(&generation.generation_id, &call_inputs(&evidence.calls))
         .await?;
     let indexed_search_chunks = PgSearchSyncStore::new(pool.clone())
         .enqueue_symbol_chunks(
@@ -110,12 +115,29 @@ pub(crate) async fn index(
         indexed_graph_edges: graph
             .edges
             .saturating_add(indexed_test_cover_edges)
-            .saturating_add(indexed_import_edges),
+            .saturating_add(indexed_import_edges)
+            .saturating_add(indexed_call_edges),
         indexed_import_edges,
+        indexed_call_edges,
         indexed_test_cover_edges,
         indexed_search_chunks,
         indexed_test_cases,
     }))
+}
+
+fn call_inputs(calls: &[ResolvedCallReference]) -> Vec<CallEdgeInput> {
+    calls
+        .iter()
+        .map(|call| {
+            CallEdgeInput::new(
+                call.source_symbol_id.to_string(),
+                call.target_symbol_id.to_string(),
+                call.file_path.to_string(),
+                call.range.clone(),
+                call.target_name.clone(),
+            )
+        })
+        .collect()
 }
 
 async fn upsert_repo_commit(

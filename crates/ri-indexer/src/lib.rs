@@ -6,6 +6,7 @@
 
 mod generation;
 mod graph;
+mod graph_calls;
 pub mod graph_ids;
 mod graph_import_paths;
 mod graph_imports;
@@ -25,6 +26,7 @@ pub use generation::{
     FileManifestInput, GenerationError, GenerationRecord, GenerationStatus, PgGenerationStore,
 };
 pub use graph::{GraphIndexOutcome, GraphStoreError, PgGraphStore};
+pub use graph_calls::CallEdgeInput;
 pub use graph_query::{GraphEdgeRecord, GraphNodeRecord, GraphProjection};
 pub use overlay::{
     BaseFileRecord, OverlayEntry, OverlayFileStatus, OverlayMergedFile, merge_overlay,

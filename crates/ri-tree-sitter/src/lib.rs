@@ -7,11 +7,12 @@
     reason = "Tree-sitter grammar crates currently depend on adjacent tree-sitter versions."
 )]
 
+mod calls;
 mod names;
 mod traversal;
 
 use ri_core::Language;
-use ri_parser::{ParserError, SourceFile, SymbolExtractor};
+use ri_parser::{CallExtractor, CallReference, ParserError, SourceFile, SymbolExtractor};
 use ri_symbols::SymbolRecord;
 use tree_sitter::Parser;
 
@@ -27,22 +28,34 @@ impl TreeSitterExtractor {
 
 impl SymbolExtractor for TreeSitterExtractor {
     fn extract_symbols(&self, file: &SourceFile<'_>) -> Result<Vec<SymbolRecord>, ParserError> {
-        let mut parser = Parser::new();
-        set_language(&mut parser, file.language)?;
-        let tree = parser
-            .parse(file.source, None)
-            .ok_or_else(|| ParserError::ParseFailed {
-                path: file.path.to_string(),
-                message: "tree-sitter returned no tree".to_owned(),
-            })?;
-        if tree.root_node().has_error() {
-            return Err(ParserError::ParseFailed {
-                path: file.path.to_string(),
-                message: "syntax tree contains errors".to_owned(),
-            });
-        }
+        let tree = parse_tree(file)?;
         Ok(traversal::extract_tree_symbols(file, tree.root_node()))
     }
+}
+
+impl CallExtractor for TreeSitterExtractor {
+    fn extract_calls(&self, file: &SourceFile<'_>) -> Result<Vec<CallReference>, ParserError> {
+        let tree = parse_tree(file)?;
+        Ok(calls::extract_tree_calls(file, tree.root_node()))
+    }
+}
+
+fn parse_tree(file: &SourceFile<'_>) -> Result<tree_sitter::Tree, ParserError> {
+    let mut parser = Parser::new();
+    set_language(&mut parser, file.language)?;
+    let tree = parser
+        .parse(file.source, None)
+        .ok_or_else(|| ParserError::ParseFailed {
+            path: file.path.to_string(),
+            message: "tree-sitter returned no tree".to_owned(),
+        })?;
+    if tree.root_node().has_error() {
+        return Err(ParserError::ParseFailed {
+            path: file.path.to_string(),
+            message: "syntax tree contains errors".to_owned(),
+        });
+    }
+    Ok(tree)
 }
 
 fn set_language(parser: &mut Parser, language: Language) -> Result<(), ParserError> {

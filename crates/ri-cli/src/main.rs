@@ -19,6 +19,7 @@ use sqlx::postgres::PgPoolOptions;
 pub(crate) mod error;
 pub(crate) mod impact;
 pub(crate) mod index;
+pub(crate) mod index_args;
 pub(crate) mod search;
 pub(crate) mod search_context;
 pub(crate) mod symbols;

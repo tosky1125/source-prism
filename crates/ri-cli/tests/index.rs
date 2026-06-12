@@ -62,12 +62,14 @@ pub fn apply_tax(value: i32) -> i32 {
     assert_positive(&body, "/indexed_symbols")?;
     assert_positive(&body, "/indexed_graph_edges")?;
     assert_positive(&body, "/indexed_import_edges")?;
+    assert_positive(&body, "/indexed_call_edges")?;
     assert_positive(&body, "/indexed_test_cases")?;
     assert_positive(&body, "/indexed_test_cover_edges")?;
     assert_positive(&body, "/indexed_search_chunks")?;
     assert_eq!(active_count(&pool, repo_id, "symbols").await?, 3);
     assert_eq!(active_count(&pool, repo_id, "test_cases").await?, 1);
     assert_eq!(edge_count(&pool, repo_id, "imports").await?, 1);
+    assert_eq!(edge_count(&pool, repo_id, "calls").await?, 1);
     assert_eq!(edge_count(&pool, repo_id, "test_covers").await?, 1);
     cleanup(&pool, repo_id).await?;
     repo.cleanup()?;

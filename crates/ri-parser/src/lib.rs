@@ -4,7 +4,7 @@
 )]
 
 use ri_core::{CommitSha, FilePath, Language, RepoId};
-use ri_symbols::SymbolRecord;
+use ri_symbols::{SymbolRange, SymbolRecord};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -51,4 +51,33 @@ impl<'source> SourceFile<'source> {
 
 pub trait SymbolExtractor {
     fn extract_symbols(&self, file: &SourceFile<'_>) -> Result<Vec<SymbolRecord>, ParserError>;
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct CallReference {
+    pub file_path: FilePath,
+    pub language: Language,
+    pub target_name: String,
+    pub range: SymbolRange,
+}
+
+impl CallReference {
+    pub fn new(
+        file_path: FilePath,
+        language: Language,
+        target_name: impl Into<String>,
+        range: SymbolRange,
+    ) -> Self {
+        Self {
+            file_path,
+            language,
+            target_name: target_name.into(),
+            range,
+        }
+    }
+}
+
+pub trait CallExtractor {
+    fn extract_calls(&self, file: &SourceFile<'_>) -> Result<Vec<CallReference>, ParserError>;
 }

@@ -6,49 +6,27 @@
 use std::{
     env,
     io::{self, Write},
-    path::PathBuf,
 };
 
-use ri_context::extract_repo_symbols_for;
+use ri_context::{ResolvedCallReference, extract_repo_index_for};
 use ri_core::{CommitSha, Language, RepoId};
 use ri_git::{LocalManifest, discover_worktree, resolve_commit_sha};
 use ri_indexer::{
-    DEFAULT_SEARCH_INDEX, FileManifestInput, PgGenerationStore, PgGraphStore, PgSearchSyncStore,
-    PgSymbolStore, PgTestCaseStore,
+    CallEdgeInput, DEFAULT_SEARCH_INDEX, FileManifestInput, PgGenerationStore, PgGraphStore,
+    PgSearchSyncStore, PgSymbolStore, PgTestCaseStore,
 };
 use serde_json::json;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
-use crate::error::CliError;
+use crate::{error::CliError, index_args::IndexArgs};
 
 pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
-    let Some(repo_flag) = args.next() else {
-        return Err(CliError::Usage);
-    };
-    if repo_flag != "--repo" {
-        return Err(CliError::Usage);
-    }
-    let Some(repo_arg) = args.next() else {
-        return Err(CliError::Usage);
-    };
-    let Some(sha_flag) = args.next() else {
-        return Err(CliError::Usage);
-    };
-    if sha_flag != "--sha" {
-        return Err(CliError::Usage);
-    }
-    let Some(sha_arg) = args.next() else {
-        return Err(CliError::Usage);
-    };
-    if args.next().is_some() {
-        return Err(CliError::Usage);
-    }
-
+    let parsed = IndexArgs::parse(&mut args)?;
     let pool = database_pool().await?;
-    let repo_path = PathBuf::from(repo_arg);
+    let repo_path = parsed.repo_path;
     let worktree = discover_worktree(&repo_path)?;
     let repo_id = repo_id_for_worktree(&worktree)?;
-    let commit_sha = resolve_commit_sha(&repo_path, &sha_arg)?;
+    let commit_sha = resolve_commit_sha(&repo_path, &parsed.sha)?;
     let repo = RepoId::new(&repo_id)?;
     let commit = CommitSha::new(&commit_sha)?;
     upsert_repo_commit(&pool, &repo_id, &worktree, &commit_sha).await?;
@@ -76,7 +54,8 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
             return Err(error.into());
         }
     };
-    let symbols = extract_repo_symbols_for(&repo_path, &repo, &commit)?;
+    let evidence = extract_repo_index_for(&repo_path, &repo, &commit)?;
+    let symbols = evidence.symbols;
     let indexed_symbols = PgSymbolStore::new(pool.clone())
         .replace_symbol_generation(&generation.generation_id, &symbols)
         .await?;
@@ -92,6 +71,9 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
         .await?;
     let indexed_import_edges = graph_store
         .replace_import_graph(&generation.generation_id)
+        .await?;
+    let indexed_call_edges = graph_store
+        .replace_call_graph(&generation.generation_id, &call_inputs(&evidence.calls))
         .await?;
     let indexed_search_chunks = PgSearchSyncStore::new(pool)
         .enqueue_symbol_chunks(
@@ -112,8 +94,10 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
         indexed_graph_edges: graph
             .edges
             .saturating_add(indexed_test_cover_edges)
-            .saturating_add(indexed_import_edges),
+            .saturating_add(indexed_import_edges)
+            .saturating_add(indexed_call_edges),
         indexed_import_edges,
+        indexed_call_edges,
         indexed_test_cover_edges,
         indexed_search_chunks,
         indexed_test_cases,
@@ -210,6 +194,7 @@ struct IndexResult {
     indexed_graph_nodes: u64,
     indexed_graph_edges: u64,
     indexed_import_edges: u64,
+    indexed_call_edges: u64,
     indexed_test_cover_edges: u64,
     indexed_search_chunks: u64,
     indexed_test_cases: u64,
@@ -231,6 +216,7 @@ fn print_index_result(result: &IndexResult) -> Result<(), CliError> {
             "indexed_graph_nodes": result.indexed_graph_nodes,
             "indexed_graph_edges": result.indexed_graph_edges,
             "indexed_import_edges": result.indexed_import_edges,
+            "indexed_call_edges": result.indexed_call_edges,
             "indexed_test_cover_edges": result.indexed_test_cover_edges,
             "indexed_search_chunks": result.indexed_search_chunks,
             "indexed_test_cases": result.indexed_test_cases,
@@ -238,4 +224,19 @@ fn print_index_result(result: &IndexResult) -> Result<(), CliError> {
     )?;
     writeln!(lock)?;
     Ok(())
+}
+
+fn call_inputs(calls: &[ResolvedCallReference]) -> Vec<CallEdgeInput> {
+    calls
+        .iter()
+        .map(|call| {
+            CallEdgeInput::new(
+                call.source_symbol_id.to_string(),
+                call.target_symbol_id.to_string(),
+                call.file_path.to_string(),
+                call.range.clone(),
+                call.target_name.clone(),
+            )
+        })
+        .collect()
 }

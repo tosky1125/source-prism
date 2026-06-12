@@ -7,12 +7,12 @@
     reason = "Tree-sitter and SQLx-adjacent workspace dependencies pull duplicate transitive crates outside this crate's control."
 )]
 
-use ri_core::{CommitSha, FilePath, Language, RepoId};
+use ri_core::{CommitSha, FilePath, Language, RepoId, SymbolId};
 use ri_git::{LocalManifest, discover_worktree, resolve_commit_sha};
 use ri_impact::{ImpactReport, analyze_symbol_impact};
-use ri_parser::{SourceFile, SymbolExtractor};
+use ri_parser::{CallExtractor, CallReference, SourceFile, SymbolExtractor};
 use ri_search::{SearchHit, search_symbols};
-use ri_symbols::SymbolRecord;
+use ri_symbols::{SymbolRange, SymbolRecord, innermost_symbol_for_line};
 use ri_tree_sitter::TreeSitterExtractor;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
@@ -51,6 +51,23 @@ pub enum RetrievalMode {
     SymbolGraphProximity,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct RepoIndexEvidence {
+    pub symbols: Vec<SymbolRecord>,
+    pub calls: Vec<ResolvedCallReference>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ResolvedCallReference {
+    pub source_symbol_id: SymbolId,
+    pub target_symbol_id: SymbolId,
+    pub file_path: FilePath,
+    pub target_name: String,
+    pub range: SymbolRange,
+}
+
 pub fn build_context_pack(symbols: &[SymbolRecord], query: &str, limit: usize) -> ContextPack {
     let search = search_symbols(symbols, query, limit);
     let impacts = search
@@ -84,10 +101,19 @@ pub fn extract_repo_symbols_for(
     repo: &RepoId,
     commit: &CommitSha,
 ) -> Result<Vec<SymbolRecord>, ContextError> {
+    Ok(extract_repo_index_for(repo_path, repo, commit)?.symbols)
+}
+
+pub fn extract_repo_index_for(
+    repo_path: &Path,
+    repo: &RepoId,
+    commit: &CommitSha,
+) -> Result<RepoIndexEvidence, ContextError> {
     let worktree = discover_worktree(repo_path)?;
     let manifest = LocalManifest::extract(repo_path)?;
     let extractor = TreeSitterExtractor::new();
     let mut symbols = Vec::new();
+    let mut calls = Vec::new();
 
     for file in manifest.files() {
         if file.is_vendor() || file.is_generated() || !is_supported_language(file.language()) {
@@ -104,13 +130,17 @@ pub fn extract_repo_symbols_for(
             source.as_str(),
         );
         symbols.extend(extractor.extract_symbols(&source_file)?);
+        calls.extend(extractor.extract_calls(&source_file)?);
     }
     symbols.sort_by(|left, right| {
         left.file_path
             .cmp(&right.file_path)
             .then(left.fqn.cmp(&right.fqn))
     });
-    Ok(symbols)
+    Ok(RepoIndexEvidence {
+        calls: resolve_calls(&symbols, &calls),
+        symbols,
+    })
 }
 
 const fn is_supported_language(language: Language) -> bool {
@@ -122,4 +152,38 @@ const fn is_supported_language(language: Language) -> bool {
             | Language::Python
             | Language::Go
     )
+}
+
+fn resolve_calls(symbols: &[SymbolRecord], calls: &[CallReference]) -> Vec<ResolvedCallReference> {
+    calls
+        .iter()
+        .filter_map(|call| resolve_call(symbols, call))
+        .collect()
+}
+
+fn resolve_call(symbols: &[SymbolRecord], call: &CallReference) -> Option<ResolvedCallReference> {
+    let file_symbols = symbols
+        .iter()
+        .filter(|symbol| symbol.file_path == call.file_path)
+        .cloned()
+        .collect::<Vec<_>>();
+    let source = innermost_symbol_for_line(&file_symbols, call.range.start_line)?;
+    let target = symbols
+        .iter()
+        .filter(|symbol| symbol.name == call.target_name)
+        .filter(|symbol| symbol.versioned_symbol_id != source.versioned_symbol_id)
+        .min_by_key(|symbol| {
+            (
+                symbol.file_path != call.file_path,
+                symbol.file_path.as_str().to_owned(),
+                symbol.fqn.clone(),
+            )
+        })?;
+    Some(ResolvedCallReference {
+        source_symbol_id: source.versioned_symbol_id.clone(),
+        target_symbol_id: target.versioned_symbol_id.clone(),
+        file_path: call.file_path.clone(),
+        target_name: call.target_name.clone(),
+        range: call.range.clone(),
+    })
 }

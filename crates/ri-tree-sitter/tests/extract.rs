@@ -1,7 +1,7 @@
 #![allow(missing_docs, reason = "Integration test names document behavior.")]
 
 use ri_core::{CommitSha, FilePath, Language, RepoId, SymbolKind};
-use ri_parser::{SourceFile, SymbolExtractor};
+use ri_parser::{CallExtractor, SourceFile, SymbolExtractor};
 use ri_tree_sitter::TreeSitterExtractor;
 use sha2::{Digest, Sha256};
 
@@ -94,6 +94,24 @@ func ApplyTax() int { return 2 }
     Ok(())
 }
 
+#[test]
+fn extracts_rust_function_calls() -> Result<(), Box<dyn std::error::Error>> {
+    let source = r"
+fn apply_tax(value: i32) -> i32 { value + 1 }
+fn total() -> i32 { apply_tax(1) }
+";
+
+    let calls = extract_calls(Language::Rust, "src/lib.rs", source)?;
+    let call = calls
+        .first()
+        .ok_or_else(|| std::io::Error::other("missing call reference"))?;
+
+    assert_eq!(calls.len(), 1);
+    assert_eq!(call.target_name, "apply_tax");
+    assert_eq!(call.file_path.as_str(), "src/lib.rs");
+    Ok(())
+}
+
 fn extract(
     language: Language,
     path: &str,
@@ -105,6 +123,19 @@ fn extract(
     let hash = content_hash(source);
     let file = SourceFile::new(repo, commit, path, language, hash.as_str(), source);
     Ok(TreeSitterExtractor::new().extract_symbols(&file)?)
+}
+
+fn extract_calls(
+    language: Language,
+    path: &str,
+    source: &str,
+) -> Result<Vec<ri_parser::CallReference>, Box<dyn std::error::Error>> {
+    let repo = RepoId::new("repo")?;
+    let commit = CommitSha::new("commit")?;
+    let path = FilePath::new(path)?;
+    let hash = content_hash(source);
+    let file = SourceFile::new(repo, commit, path, language, hash.as_str(), source);
+    Ok(TreeSitterExtractor::new().extract_calls(&file)?)
 }
 
 fn has_symbol(symbols: &[ri_symbols::SymbolRecord], kind: SymbolKind, fqn: &str) -> bool {

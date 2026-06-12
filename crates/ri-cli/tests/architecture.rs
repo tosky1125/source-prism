@@ -44,6 +44,33 @@ fn architecture_command_returns_repo_contracts() -> Result<(), Box<dyn std::erro
 }
 
 #[test]
+fn impact_command_accepts_invoice_service_smoke_symbol() -> Result<(), Box<dyn std::error::Error>> {
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_ri-cli"))
+        .current_dir(repo_root)
+        .args(["impact", "--symbol", "InvoiceService::applyTax"])
+        .output()?;
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let body = serde_json::from_slice::<Value>(&output.stdout)?;
+    assert_eq!(
+        body.pointer("/kind").and_then(Value::as_str),
+        Some("impact")
+    );
+    assert_eq!(body.pointer("/status").and_then(Value::as_str), Some("ok"));
+    assert_eq!(
+        body.pointer("/symbol/fqn").and_then(Value::as_str),
+        Some("InvoiceService::applyTax")
+    );
+    Ok(())
+}
+
+#[test]
 fn impact_command_rejects_unknown_smoke_symbol() -> Result<(), Box<dyn std::error::Error>> {
     let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
 

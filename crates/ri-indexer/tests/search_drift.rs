@@ -41,6 +41,37 @@ async fn generation_drift_counts_only_documents_for_that_generation() -> TestRes
     Ok(())
 }
 
+#[tokio::test]
+async fn generation_drift_counts_distinct_documents_when_outbox_has_duplicate_upserts() -> TestResult
+{
+    let Some(database_url) = std::env::var("DATABASE_URL").ok() else {
+        return Ok(());
+    };
+    let Some(opensearch_url) = std::env::var("OPENSEARCH_URL").ok() else {
+        return Ok(());
+    };
+    let pool = PgPool::connect(database_url.as_str()).await?;
+    let client = OpenSearchClient::new(opensearch_url.as_str());
+    let fixture = Fixture::create(&pool, &client).await?;
+    fixture.seed_duplicate_search_chunks(&pool).await?;
+    let store = PgSearchSyncStore::new(pool.clone());
+
+    store.rebuild_index(&client, &fixture.search_index).await?;
+    let report = store
+        .drift_report_for_generation(
+            &client,
+            &fixture.search_index,
+            fixture.target_generation_id.as_str(),
+        )
+        .await?;
+
+    assert_eq!(report.expected_documents, 1);
+    assert_eq!(report.actual_documents, 1);
+    assert!(!report.has_drift());
+    fixture.cleanup(&pool, &client).await?;
+    Ok(())
+}
+
 struct Fixture {
     repo_id: String,
     other_repo_id: String,
@@ -115,6 +146,28 @@ impl Fixture {
                 }),
             ))
             .await?;
+        Ok(())
+    }
+
+    async fn seed_duplicate_search_chunks(&self, pool: &PgPool) -> TestResult {
+        let store = PgSearchSyncStore::new(pool.clone());
+        for text in ["first duplicate chunk", "second duplicate chunk"] {
+            store
+                .enqueue(&SearchSyncInput::upsert_for_generation(
+                    &self.repo_id,
+                    &self.target_generation_id,
+                    "symbol_chunk",
+                    "duplicate-chunk",
+                    &self.search_index,
+                    json!({
+                        "chunk_id": "duplicate-chunk",
+                        "repo_id": self.repo_id,
+                        "generation_id": self.target_generation_id,
+                        "text": text,
+                    }),
+                ))
+                .await?;
+        }
         Ok(())
     }
 

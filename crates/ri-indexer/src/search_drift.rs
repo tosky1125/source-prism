@@ -31,7 +31,7 @@ impl PgSearchSyncStore {
         client.health().await?;
         let expected = sqlx::query(
             r"
-            SELECT count(*)::bigint AS count
+            SELECT count(DISTINCT entity_id)::bigint AS count
             FROM search_sync_outbox
             WHERE target_index = $1
               AND repo_id = $2
@@ -65,7 +65,7 @@ impl PgSearchSyncStore {
         client.refresh_index(index).await?;
         let expected = sqlx::query(
             r"
-            SELECT count(*)::bigint AS count
+            SELECT count(DISTINCT entity_id)::bigint AS count
             FROM search_sync_outbox
             WHERE target_index = $1
               AND ($2::text IS NULL OR generation_id = $2)

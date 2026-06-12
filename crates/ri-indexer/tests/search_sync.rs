@@ -85,6 +85,53 @@ async fn symbol_chunks_are_enqueued_for_generation() -> Result<(), Box<dyn std::
     Ok(())
 }
 
+#[tokio::test]
+async fn symbol_chunk_upsert_moves_existing_document_to_latest_generation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let Some(pool) = test_pool().await? else {
+        return Ok(());
+    };
+    let repo_id = format!("repo-{}", Uuid::now_v7());
+    let commit_sha = "commit";
+    seed_repo_commit(&pool, &repo_id, commit_sha).await?;
+    let generation_store = PgGenerationStore::new(pool.clone());
+    let first_generation = generation_store
+        .begin_generation(&repo_id, commit_sha, "symbol_index", Some("test"))
+        .await?;
+    let second_generation = generation_store
+        .begin_generation(&repo_id, commit_sha, "symbol_index", Some("test"))
+        .await?;
+    let store = PgSearchSyncStore::new(pool.clone());
+    let symbol = symbol(&repo_id, commit_sha)?;
+
+    store
+        .enqueue_symbol_chunks(
+            &repo_id,
+            &first_generation.generation_id,
+            std::slice::from_ref(&symbol),
+            "source-prism-test",
+        )
+        .await?;
+    let enqueued = store
+        .enqueue_symbol_chunks(
+            &repo_id,
+            &second_generation.generation_id,
+            &[symbol],
+            "source-prism-test",
+        )
+        .await?;
+
+    assert_eq!(enqueued, 1);
+    assert_eq!(outbox_count(&pool, &repo_id).await?, 1);
+    let row = outbox_payload(&pool, &repo_id).await?;
+    assert_eq!(
+        row.try_get::<Option<String>, _>("generation_id")?,
+        Some(second_generation.generation_id.to_string())
+    );
+    cleanup(&pool, &repo_id).await?;
+    Ok(())
+}
+
 async fn test_pool() -> Result<Option<PgPool>, sqlx::Error> {
     let Ok(database_url) = std::env::var("DATABASE_URL") else {
         return Ok(None);

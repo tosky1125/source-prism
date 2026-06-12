@@ -1,11 +1,33 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-api_base_url="${API_BASE_URL:-http://127.0.0.1:4096}"
+load_default_env() {
+  local env_file=".env.example"
+  if [ ! -f "$env_file" ]; then
+    return 0
+  fi
+
+  local key value
+  while IFS='=' read -r key value; do
+    case "$key" in
+      "" | "#"*) continue ;;
+    esac
+    if [ -z "${!key:-}" ]; then
+      export "${key}=${value}"
+    fi
+  done < "$env_file"
+}
+
+load_default_env
+
+api_bind_addr="${API_BIND_ADDR:-127.0.0.1:4096}"
+export API_BIND_ADDR="$api_bind_addr"
+api_base_url="${API_BASE_URL:-http://${api_bind_addr}}"
 api_log="${API_LOG:-/tmp/source-prism-api.log}"
 repo_id="${SOURCE_PRISM_CI_REPO_ID:-source-prism-ci}"
 
 api_pid=""
+rm -f /tmp/source-prism-api-health.json /tmp/source-prism-api-last-response.txt
 
 cleanup() {
   local status=$?
@@ -30,7 +52,7 @@ api_pid=$!
 
 wait_for_health() {
   for attempt in $(seq 1 30); do
-    if curl -fsS "${api_base_url}/v1/health" > /tmp/source-prism-api-health.json 2>/dev/null &&
+    if curl -fsS --max-time 5 "${api_base_url}/v1/health" > /tmp/source-prism-api-health.json 2>/dev/null &&
       grep -q '"status":"ok"' /tmp/source-prism-api-health.json
     then
       return 0
@@ -38,8 +60,10 @@ wait_for_health() {
     sleep 1
   done
 
-  echo "api health did not become ready: ${api_base_url}/v1/health" \
-    > /tmp/source-prism-api-last-response.txt
+  {
+    echo "api health did not become ready: ${api_base_url}/v1/health"
+    cat /tmp/source-prism-api-health.json 2>/dev/null || true
+  } > /tmp/source-prism-api-last-response.txt
   return 1
 }
 
@@ -50,7 +74,7 @@ request() {
   shift 3
 
   local status
-  status=$(curl -sS -o "$output" -w '%{http_code}' -X "$method" "$url" "$@") || {
+  status=$(curl -sS --max-time 30 -o "$output" -w '%{http_code}' -X "$method" "$url" "$@") || {
     {
       echo "curl failed"
       echo "method=${method}"

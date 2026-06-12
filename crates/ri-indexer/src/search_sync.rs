@@ -30,7 +30,18 @@ impl PgSearchSyncStore {
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'queued')
             ON CONFLICT (target_index, entity_type, entity_id, operation, payload_hash)
-            DO UPDATE SET updated_at = search_sync_outbox.updated_at
+            DO UPDATE SET
+                repo_id = EXCLUDED.repo_id,
+                generation_id = EXCLUDED.generation_id,
+                payload = EXCLUDED.payload,
+                state = 'queued',
+                attempt_count = 0,
+                run_after = now(),
+                leased_by = NULL,
+                leased_until = NULL,
+                processed_at = NULL,
+                last_error = NULL,
+                updated_at = now()
             RETURNING outbox_id, entity_id, operation, target_index, payload_hash, payload
             ",
         )

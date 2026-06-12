@@ -53,7 +53,7 @@ pub fn api_index_fixture() -> i32 {
     repo.commit()?;
     let repo_id = format!("api-index-{}", unique_suffix()?);
     let app = app(AppState::for_test_database(pool.clone())?);
-    let body = serde_json::json!({
+    let index_request_body = serde_json::json!({
         "sha": "HEAD",
         "repo_path": repo.path(),
     });
@@ -61,9 +61,9 @@ pub fn api_index_fixture() -> i32 {
         .method(Method::POST)
         .uri(format!("/v1/repos/{repo_id}/index"))
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(body.to_string()))?;
+        .body(Body::from(index_request_body.to_string()))?;
 
-    let response = app.oneshot(request).await?;
+    let response = app.clone().oneshot(request).await?;
 
     assert_eq!(response.status(), StatusCode::OK);
     let bytes = to_bytes(response.into_body(), 1_000_000).await?;
@@ -72,9 +72,48 @@ pub fn api_index_fixture() -> i32 {
         body.pointer("/repo_id").and_then(Value::as_str),
         Some(repo_id.as_str())
     );
+    let first_generation = body
+        .pointer("/generation_id")
+        .and_then(Value::as_str)
+        .ok_or_else(|| std::io::Error::other("missing generation_id"))?;
+    let first_search_chunks = body
+        .pointer("/indexed_search_chunks")
+        .and_then(Value::as_i64)
+        .ok_or_else(|| std::io::Error::other("missing indexed_search_chunks"))?;
+    assert!(first_search_chunks > 0);
+    assert_eq!(
+        search_chunk_count_for_generation(&pool, first_generation).await?,
+        first_search_chunks
+    );
     assert_eq!(
         indexed_file_path(&pool, &repo_id).await?,
         Some("src/lib.rs".to_owned())
+    );
+
+    let second_request = Request::builder()
+        .method(Method::POST)
+        .uri(format!("/v1/repos/{repo_id}/index"))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(index_request_body.to_string()))?;
+
+    let second_response = app.oneshot(second_request).await?;
+
+    assert_eq!(second_response.status(), StatusCode::OK);
+    let second_bytes = to_bytes(second_response.into_body(), 1_000_000).await?;
+    let second_body = serde_json::from_slice::<Value>(&second_bytes)?;
+    let second_generation = second_body
+        .pointer("/generation_id")
+        .and_then(Value::as_str)
+        .ok_or_else(|| std::io::Error::other("missing second generation_id"))?;
+    let second_search_chunks = second_body
+        .pointer("/indexed_search_chunks")
+        .and_then(Value::as_i64)
+        .ok_or_else(|| std::io::Error::other("missing second indexed_search_chunks"))?;
+    assert!(second_search_chunks > 0);
+    assert_ne!(second_generation, first_generation);
+    assert_eq!(
+        search_chunk_count_for_generation(&pool, second_generation).await?,
+        second_search_chunks
     );
     cleanup(&pool, &repo_id).await?;
     repo.cleanup()?;
@@ -154,6 +193,23 @@ async fn indexed_file_path(pool: &PgPool, repo_id: &str) -> Result<Option<String
     .fetch_optional(pool)
     .await?;
     row.map(|row| row.try_get("file_path")).transpose()
+}
+
+async fn search_chunk_count_for_generation(
+    pool: &PgPool,
+    generation_id: &str,
+) -> Result<i64, sqlx::Error> {
+    let row = sqlx::query(
+        r"
+        SELECT count(*)::bigint AS count
+        FROM search_sync_outbox
+        WHERE generation_id = $1 AND state <> 'cancelled'
+        ",
+    )
+    .bind(generation_id)
+    .fetch_one(pool)
+    .await?;
+    row.try_get("count")
 }
 
 async fn cleanup(pool: &PgPool, repo_id: &str) -> Result<(), sqlx::Error> {

@@ -104,6 +104,11 @@ run_id=$(python3 -c 'import json; print(json.load(open("/tmp/source-prism-api-in
 request GET "${api_base_url}/v1/runs/${run_id}" /tmp/source-prism-api-run.json
 grep -q '"kind":"run"' /tmp/source-prism-api-run.json
 grep -q '"status":"succeeded"' /tmp/source-prism-api-run.json
+grep -q '"evidence":' /tmp/source-prism-api-run.json
+grep -q '"file_manifests":' /tmp/source-prism-api-run.json
+grep -q '"symbols":' /tmp/source-prism-api-run.json
+grep -q '"graph_edges":' /tmp/source-prism-api-run.json
+grep -q '"search_chunks":' /tmp/source-prism-api-run.json
 
 request POST "${api_base_url}/v1/context/search" /tmp/source-prism-api-context.json \
   -H 'content-type: application/json' \

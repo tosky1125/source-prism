@@ -91,6 +91,11 @@ fn cli_runs_fixture_is_indexed() {
             .and_then(Value::as_str),
         Some("queued")
     );
+    assert_eq!(
+        body.pointer("/runs/0/evidence/search_sync_job_details/0/attempts/0/status")
+            .and_then(Value::as_str),
+        Some("started")
+    );
     assert_count_at_least(&body, "/runs/0/evidence/symbols", 2)?;
     cleanup(&pool, &repo_id).await?;
     repo.cleanup()?;
@@ -232,10 +237,16 @@ async fn insert_search_sync_job(
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         r"
-        INSERT INTO jobs (
+        WITH inserted AS (
+            INSERT INTO jobs (
             job_id, queue, kind, state, generation_id, payload
+            )
+            VALUES ($1, $2, 'search.sync_once', 'queued', $3, '{}'::jsonb)
+            RETURNING job_id
         )
-        VALUES ($1, $2, 'search.sync_once', 'queued', $3, '{}'::jsonb)
+        INSERT INTO job_attempts (job_id, attempt_no, worker_id, status)
+        SELECT job_id, 1, 'cli-runs-worker', 'started'
+        FROM inserted
         ",
     )
     .bind(format!("job-{}", unique_suffix().unwrap_or_default()))

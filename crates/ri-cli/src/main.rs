@@ -26,6 +26,7 @@ pub(crate) mod mcp;
 pub(crate) mod refactor;
 pub(crate) mod references;
 pub(crate) mod review;
+pub(crate) mod run_jobs;
 pub(crate) mod runs;
 pub(crate) mod search;
 pub(crate) mod search_context;

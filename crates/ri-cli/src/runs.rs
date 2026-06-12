@@ -11,7 +11,7 @@ use std::{
 use serde_json::json;
 use sqlx::{PgPool, Row as _, postgres::PgPoolOptions};
 
-use crate::CliError;
+use crate::{CliError, run_jobs::search_sync_jobs};
 
 pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
     let Some(flag) = args.next() else {
@@ -191,34 +191,6 @@ async fn run_by_id(pool: &PgPool, run_id: &str) -> Result<serde_json::Value, Cli
             "test_cases": row.try_get::<i64, _>("test_case_count")?,
         }
     }))
-}
-
-async fn search_sync_jobs(
-    pool: &PgPool,
-    generation_id: &str,
-) -> Result<Vec<serde_json::Value>, CliError> {
-    let rows = sqlx::query(
-        r"
-        SELECT job_id, state, attempt_count
-        FROM jobs
-        WHERE generation_id = $1
-          AND kind = 'search.sync_once'
-        ORDER BY created_at ASC
-        ",
-    )
-    .bind(generation_id)
-    .fetch_all(pool)
-    .await?;
-
-    rows.into_iter()
-        .map(|row| {
-            Ok(json!({
-                "job_id": row.try_get::<String, _>("job_id")?,
-                "state": row.try_get::<String, _>("state")?,
-                "attempt_count": row.try_get::<i32, _>("attempt_count")?,
-            }))
-        })
-        .collect()
 }
 
 async fn database_pool() -> Result<PgPool, CliError> {

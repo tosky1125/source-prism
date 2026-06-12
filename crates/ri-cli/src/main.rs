@@ -104,7 +104,9 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
         "search-context" => search_context::search_context_command(args)
             .await
             .map(|()| ExitCode::SUCCESS),
-        "test-context" => test_context::test_context_command(args).map(|()| ExitCode::SUCCESS),
+        "test-context" => test_context::test_context_command(args)
+            .await
+            .map(|()| ExitCode::SUCCESS),
         "tests" => tests::command(args).await.map(|()| ExitCode::SUCCESS),
         "search" => search::command(args).await.map(|()| ExitCode::SUCCESS),
         _ => Err(CliError::Usage),

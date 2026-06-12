@@ -137,6 +137,9 @@ jobs:
           cargo run -p ri-cli -- test-context --symbol "$test_symbol" > /tmp/source-prism-test-context.json
           grep '"kind": "test_context"' /tmp/source-prism-test-context.json
           grep '"code_execution_allowed": false' /tmp/source-prism-test-context.json
+          cargo run -p ri-cli -- test-context --repo-id "$cli_repo_id" --symbol "$test_symbol" > /tmp/source-prism-persisted-test-context.json
+          grep '"kind": "test_context"' /tmp/source-prism-persisted-test-context.json
+          grep '"code_execution_allowed": false' /tmp/source-prism-persisted-test-context.json
           cat > /tmp/source-prism-review-findings.json <<'JSON'
           [
             {

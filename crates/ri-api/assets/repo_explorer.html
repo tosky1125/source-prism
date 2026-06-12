@@ -287,10 +287,12 @@
         const fileRows = files.value?.files ?? [];
         const symbolRows = symbols.value?.symbols ?? [];
         const referenceRows = await referencesFor(symbolRows);
+        const testContext = await testContextFor(symbolRows);
         const graphNodes = graph.value?.graph?.nodes ?? [];
         const edgeRows = graph.value?.graph?.edges ?? [];
         const nodeNames = new Map(graphNodes.map((node) => [node.graph_node_id, node.display_name]));
         const testRows = tests.value?.tests ?? [];
+        const relatedTests = testContext?.related_tests ?? [];
         const coverageRows = coverage.value?.segments ?? [];
         const docRows = docs.value?.entities ?? [];
         document.querySelector("#fileCount").textContent = fileRows.length;
@@ -303,7 +305,7 @@
         renderList(document.querySelector("#symbols"), symbolRows.slice(0, 24).map((symbol) => row(symbol.fqn, `${symbol.kind} ${symbol.file_path}`)), "No symbols indexed");
         renderList(document.querySelector("#references"), referenceRows.slice(0, 24).map((ref) => row(`${ref.source_fqn} -> ${ref.target_fqn}`, `${ref.direction} ${ref.relation}`)), "No references indexed");
         renderList(document.querySelector("#graph"), edgeRows.slice(0, 24).map((edge) => row(`${nodeNames.get(edge.source_node_id) ?? edge.source_node_id} -> ${nodeNames.get(edge.target_node_id) ?? edge.target_node_id}`, `${edge.edge_type} ${edge.resolution_method}`)), "No graph edges indexed");
-        renderList(document.querySelector("#tests"), testRows.slice(0, 24).map((test) => row(test.fqn, `${test.framework ?? "static"} ${test.file_path ?? ""}`)), "No tests indexed");
+        renderList(document.querySelector("#tests"), relatedTests.slice(0, 24).map((test) => row(test.fqn, `${test.confidence} ${test.file_path}`)), "No related tests found");
         renderList(document.querySelector("#coverage"), coverageRows.slice(0, 24).map((segment) => row(segment.file_path, `${segment.format} lines ${segment.start_line}-${segment.end_line} hits ${segment.hit_count}`)), "No coverage evidence indexed");
         renderList(document.querySelector("#docs"), docRows.slice(0, 24).map((entity) => row(entity.name, `${entity.entity_type} ${entity.file_path}`)), "No docs or contracts indexed");
         status.textContent = "Live";
@@ -320,6 +322,17 @@
         return report.references ?? [];
       } catch (error) {
         return [];
+      }
+    };
+
+    const testContextFor = async (symbols) => {
+      const symbol = symbols.find((item) => item.kind !== "test_case" && item.fqn)?.fqn;
+      if (!symbol) return null;
+      try {
+        const report = await json(`${api("test-context")}?symbol=${encodeURIComponent(symbol)}`);
+        return report.test_context ?? null;
+      } catch (error) {
+        return null;
       }
     };
 

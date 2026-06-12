@@ -240,6 +240,14 @@ request POST "${api_base_url}/v1/test-context" /tmp/source-prism-api-test-contex
 grep -q '"kind":"test_context"' /tmp/source-prism-api-test-context.json
 grep -q '"code_execution_allowed":false' /tmp/source-prism-api-test-context.json
 
+encoded_impact_symbol=$(
+  python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$api_impact_symbol"
+)
+request GET "${api_base_url}/v1/repos/${repo_id}/test-context?symbol=${encoded_impact_symbol}" \
+  /tmp/source-prism-api-repo-test-context.json
+grep -q '"kind":"test_context"' /tmp/source-prism-api-repo-test-context.json
+grep -q '"code_execution_allowed":false' /tmp/source-prism-api-repo-test-context.json
+
 request GET "${api_base_url}/v1/repos/${repo_id}/graph" /tmp/source-prism-api-graph.json
 grep -q '"kind":"graph"' /tmp/source-prism-api-graph.json
 grep -q '"edge_count":' /tmp/source-prism-api-graph.json

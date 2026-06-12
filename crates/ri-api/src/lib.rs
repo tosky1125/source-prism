@@ -64,6 +64,10 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/repos/{repo_id}/index", post(repo_index::index))
         .route("/v1/repos/{repo_id}/references", get(repo_references::list))
         .route("/v1/repos/{repo_id}/symbols", get(repo_symbols::list))
+        .route(
+            "/v1/repos/{repo_id}/test-context",
+            get(test_context::get_for_repo),
+        )
         .route("/v1/repos/{repo_id}/tests", get(repo_tests::list))
         .route("/v1/repos/{repo_id}/test-runs", get(repo_test_runs::list))
         .route("/v1/runs/{run_id}", get(runs::get))

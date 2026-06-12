@@ -26,6 +26,7 @@ pub(crate) mod mcp;
 pub(crate) mod refactor;
 pub(crate) mod references;
 pub(crate) mod review;
+pub(crate) mod runs;
 pub(crate) mod search;
 pub(crate) mod search_context;
 pub(crate) mod symbols;
@@ -82,6 +83,7 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
             refactor::plan_command(args).map(|()| ExitCode::SUCCESS)
         }
         "review" => review::command(args).map(|()| ExitCode::SUCCESS),
+        "runs" => runs::command(args).await.map(|()| ExitCode::SUCCESS),
         "embeddings" => embeddings::command(args).await.map(|()| ExitCode::SUCCESS),
         "mcp" => mcp::command(args).map(|()| ExitCode::SUCCESS),
         "architecture" => architecture::architecture_command(args).map(|()| ExitCode::SUCCESS),

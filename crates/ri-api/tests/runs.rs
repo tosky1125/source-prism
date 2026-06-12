@@ -75,6 +75,7 @@ fn run_evidence_fixture_is_indexed() {
         .pointer("/run_id")
         .and_then(Value::as_str)
         .ok_or("missing run id")?;
+    insert_started_search_sync_attempt(&pool, run_id).await?;
 
     let run_request = Request::builder()
         .method(Method::GET)
@@ -114,6 +115,16 @@ fn run_evidence_fixture_is_indexed() {
         run.pointer("/run/evidence/search_sync_job_details/0/attempt_count")
             .and_then(Value::as_i64),
         Some(0)
+    );
+    assert_eq!(
+        run.pointer("/run/evidence/search_sync_job_details/0/attempts/0/status")
+            .and_then(Value::as_str),
+        Some("started")
+    );
+    assert_eq!(
+        run.pointer("/run/evidence/search_sync_job_details/0/attempts/0/worker_id")
+            .and_then(Value::as_str),
+        Some("api-test-worker")
     );
     assert_count_at_least(&run, "/run/evidence/test_cases", 1)?;
     cleanup(&pool, &repo_id).await?;
@@ -179,6 +190,26 @@ async fn test_pool() -> Result<Option<PgPool>, sqlx::Error> {
     PgPool::connect(database_url.as_str()).await.map(Some)
 }
 
+async fn insert_started_search_sync_attempt(
+    pool: &PgPool,
+    generation_id: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r"
+        INSERT INTO job_attempts (job_id, attempt_no, worker_id, status)
+        SELECT job_id, 1, 'api-test-worker', 'started'
+        FROM jobs
+        WHERE generation_id = $1 AND kind = 'search.sync_once'
+        ORDER BY created_at ASC
+        LIMIT 1
+        ",
+    )
+    .bind(generation_id)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 fn assert_count_at_least(
     body: &Value,
     pointer: &str,
@@ -205,17 +236,6 @@ async fn cleanup(pool: &PgPool, repo_id: &str) -> Result<(), sqlx::Error> {
     )
     .bind(repo_id)
     .fetch_all(&mut *tx)
-    .await?;
-    sqlx::query(
-        r"
-        DELETE FROM job_attempts
-        WHERE job_id IN (SELECT job_id FROM jobs WHERE generation_id IN (
-            SELECT generation_id FROM index_generations WHERE repo_id = $1
-        ))
-        ",
-    )
-    .bind(repo_id)
-    .execute(&mut *tx)
     .await?;
     sqlx::query(
         r"

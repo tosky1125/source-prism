@@ -5,7 +5,11 @@ use axum::{
 use serde::Serialize;
 use sqlx::{PgPool, Row as _};
 
-use crate::{AppError, state::AppState};
+use crate::{
+    AppError,
+    run_jobs::{RunSearchSyncJob, find_search_sync_jobs},
+    state::AppState,
+};
 
 #[derive(Debug, Serialize)]
 pub(crate) struct RunResponse {
@@ -42,13 +46,6 @@ pub(crate) struct RunEvidence {
     test_runs: i64,
     coverage_segments: i64,
     architecture_entities: i64,
-}
-
-#[derive(Debug, Serialize)]
-pub(crate) struct RunSearchSyncJob {
-    job_id: String,
-    state: String,
-    attempt_count: i32,
 }
 
 pub(crate) async fn get(
@@ -161,37 +158,10 @@ async fn find_run(pool: &PgPool, run_id: &str) -> Result<RunSummary, AppError> {
     })
 }
 
-async fn find_search_sync_jobs(
-    pool: &PgPool,
-    generation_id: &str,
-) -> Result<Vec<RunSearchSyncJob>, sqlx::Error> {
-    let rows = sqlx::query(
-        r"
-        SELECT job_id, state, attempt_count
-        FROM jobs
-        WHERE generation_id = $1
-          AND kind = 'search.sync_once'
-        ORDER BY created_at ASC
-        ",
-    )
-    .bind(generation_id)
-    .fetch_all(pool)
-    .await?;
-
-    rows.into_iter()
-        .map(|row| {
-            Ok(RunSearchSyncJob {
-                job_id: row.try_get("job_id")?,
-                state: row.try_get("state")?,
-                attempt_count: row.try_get("attempt_count")?,
-            })
-        })
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{RunEvidence, RunSearchSyncJob};
+    use super::RunEvidence;
+    use crate::run_jobs::{RunSearchSyncJob, RunSearchSyncJobAttempt};
     use serde_json::Value;
 
     #[test]
@@ -207,6 +177,14 @@ mod tests {
                 job_id: "job-1".to_owned(),
                 state: "queued".to_owned(),
                 attempt_count: 0,
+                attempts: vec![RunSearchSyncJobAttempt {
+                    attempt_no: 1,
+                    worker_id: "worker-1".to_owned(),
+                    status: "started".to_owned(),
+                    error: None,
+                    started_at: "2026-06-12 00:00:00+00".to_owned(),
+                    finished_at: None,
+                }],
             }],
             test_cases: 6,
             test_runs: 7,
@@ -225,6 +203,11 @@ mod tests {
             body.pointer("/search_sync_job_details/0/state")
                 .and_then(Value::as_str),
             Some("queued")
+        );
+        assert_eq!(
+            body.pointer("/search_sync_job_details/0/attempts/0/status")
+                .and_then(Value::as_str),
+            Some("started")
         );
         Ok(())
     }

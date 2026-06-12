@@ -5,7 +5,11 @@ use axum::{
 use serde::Serialize;
 use sqlx::{PgPool, Row as _};
 
-use crate::{AppError, state::AppState};
+use crate::{
+    AppError,
+    run_jobs::{RunSearchSyncJob, find_search_sync_jobs},
+    state::AppState,
+};
 
 #[derive(Debug, Serialize)]
 pub(crate) struct RepoRunsResponse {
@@ -34,15 +38,8 @@ pub(crate) struct RepoRunEvidence {
     graph_edges: i64,
     search_chunks: i64,
     search_sync_jobs: i64,
-    search_sync_job_details: Vec<RepoRunSearchSyncJob>,
+    search_sync_job_details: Vec<RunSearchSyncJob>,
     test_cases: i64,
-}
-
-#[derive(Debug, Serialize)]
-pub(crate) struct RepoRunSearchSyncJob {
-    job_id: String,
-    state: String,
-    attempt_count: i32,
 }
 
 pub(crate) async fn list(
@@ -132,32 +129,4 @@ async fn find_repo_runs(pool: &PgPool, repo_id: &str) -> Result<Vec<RepoRunSumma
         });
     }
     Ok(runs)
-}
-
-async fn find_search_sync_jobs(
-    pool: &PgPool,
-    generation_id: &str,
-) -> Result<Vec<RepoRunSearchSyncJob>, sqlx::Error> {
-    let rows = sqlx::query(
-        r"
-        SELECT job_id, state, attempt_count
-        FROM jobs
-        WHERE generation_id = $1
-          AND kind = 'search.sync_once'
-        ORDER BY created_at ASC
-        ",
-    )
-    .bind(generation_id)
-    .fetch_all(pool)
-    .await?;
-
-    rows.into_iter()
-        .map(|row| {
-            Ok(RepoRunSearchSyncJob {
-                job_id: row.try_get("job_id")?,
-                state: row.try_get("state")?,
-                attempt_count: row.try_get("attempt_count")?,
-            })
-        })
-        .collect()
 }

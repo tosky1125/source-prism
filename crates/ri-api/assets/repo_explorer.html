@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Source Prism</title>
+  <style>
+    :root {
+      --paper: #f7f4ed;
+      --ink: #191a16;
+      --muted: #6d6a60;
+      --line: #d8d0c1;
+      --panel: #fffdf8;
+      --teal: #0f766e;
+      --amber: #b45309;
+      --rose: #9f1239;
+      --graphite: #2b2c27;
+      --shadow: 0 18px 48px rgba(25, 26, 22, .10);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(15,118,110,.08) 1px, transparent 1px),
+        linear-gradient(rgba(180,83,9,.08) 1px, transparent 1px),
+        var(--paper);
+      background-size: 32px 32px;
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+    }
+    button, input { font: inherit; }
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(220px, 280px) 1fr;
+    }
+    aside {
+      border-right: 1px solid var(--line);
+      background: rgba(255,253,248,.78);
+      padding: 24px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+    .brand {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 0;
+      margin-bottom: 18px;
+    }
+    .repo {
+      color: var(--muted);
+      overflow-wrap: anywhere;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--line);
+    }
+    nav {
+      display: grid;
+      gap: 8px;
+      margin-top: 22px;
+    }
+    nav a {
+      color: var(--ink);
+      text-decoration: none;
+      padding: 10px 0;
+      border-bottom: 1px solid transparent;
+    }
+    nav a[aria-current="page"] {
+      border-color: var(--ink);
+      color: var(--teal);
+      font-weight: 800;
+    }
+    main { padding: 28px; }
+    .topline {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+    h1 {
+      font-size: 34px;
+      line-height: 1.05;
+      letter-spacing: 0;
+      margin: 0;
+    }
+    .search {
+      display: flex;
+      gap: 8px;
+      min-width: min(440px, 100%);
+    }
+    input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px 12px;
+      background: var(--panel);
+      color: var(--ink);
+    }
+    button {
+      border: 1px solid var(--graphite);
+      border-radius: 6px;
+      padding: 10px 12px;
+      background: var(--graphite);
+      color: var(--paper);
+      cursor: pointer;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .metric, .panel {
+      background: rgba(255,253,248,.92);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .metric { padding: 14px; }
+    .metric strong {
+      display: block;
+      font-size: 30px;
+      line-height: 1;
+    }
+    .metric span { color: var(--muted); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .panel {
+      min-height: 260px;
+      padding: 16px;
+      overflow: hidden;
+    }
+    .wide { grid-column: span 2; }
+    .panel h2 {
+      font-size: 18px;
+      margin: 0 0 12px;
+    }
+    .list {
+      display: grid;
+      gap: 8px;
+      max-height: 360px;
+      overflow: auto;
+    }
+    .row {
+      display: grid;
+      gap: 4px;
+      border-left: 3px solid var(--teal);
+      padding: 8px 10px;
+      background: rgba(15,118,110,.06);
+      overflow-wrap: anywhere;
+    }
+    .row:nth-child(3n) { border-color: var(--amber); background: rgba(180,83,9,.06); }
+    .row:nth-child(4n) { border-color: var(--rose); background: rgba(159,18,57,.06); }
+    .meta { color: var(--muted); font-size: 13px; }
+    .empty { color: var(--muted); padding: 12px 0; }
+    .status {
+      color: var(--muted);
+      min-height: 20px;
+      margin-top: 14px;
+    }
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      aside {
+        position: relative;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .topline { display: grid; }
+      .metrics, .grid { grid-template-columns: 1fr; }
+      .wide { grid-column: span 1; }
+    }
+  </style>
+</head>
+<body data-repo-id="__REPO_ID__" data-initial-view="__INITIAL_VIEW__">
+  <div class="shell">
+    <aside>
+      <div class="brand">Source Prism</div>
+      <div class="repo" id="repoLabel"></div>
+      <nav aria-label="Repository views">
+        <a href="#overview" data-view="overview">Overview</a>
+        <a href="#files" data-view="files">Files</a>
+        <a href="#symbols" data-view="symbols">Symbols</a>
+        <a href="#impact" data-view="impact">Impact</a>
+        <a href="#search" data-view="search">Search</a>
+      </nav>
+    </aside>
+    <main>
+      <div class="topline">
+        <h1>Repo Structure Explorer</h1>
+        <form class="search" id="searchForm">
+          <input id="query" name="query" autocomplete="off" placeholder="symbol, file, contract">
+          <button type="submit" aria-label="Search">Search</button>
+        </form>
+      </div>
+      <section class="metrics" aria-label="Repository metrics">
+        <div class="metric"><strong id="fileCount">0</strong><span>Files</span></div>
+        <div class="metric"><strong id="symbolCount">0</strong><span>Symbols</span></div>
+        <div class="metric"><strong id="edgeCount">0</strong><span>Edges</span></div>
+        <div class="metric"><strong id="testCount">0</strong><span>Tests</span></div>
+      </section>
+      <section class="grid">
+        <article class="panel wide" data-panel="files"><h2>Files</h2><div class="list" id="files"></div></article>
+        <article class="panel" data-panel="symbols"><h2>Symbols</h2><div class="list" id="symbols"></div></article>
+        <article class="panel" data-panel="impact"><h2>Impact Map</h2><div class="list" id="graph"></div></article>
+        <article class="panel" data-panel="tests"><h2>Related Tests</h2><div class="list" id="tests"></div></article>
+        <article class="panel" data-panel="docs"><h2>Docs / Contracts</h2><div class="list" id="docs"></div></article>
+      </section>
+      <div class="status" id="status"></div>
+    </main>
+  </div>
+  <script>
+    const repoId = document.body.dataset.repoId;
+    const initialView = document.body.dataset.initialView || "overview";
+    const repoPath = encodeURIComponent(repoId);
+    const api = (path) => `/v1/repos/${repoPath}/${path}`;
+    const status = document.querySelector("#status");
+    document.querySelector("#repoLabel").textContent = repoId;
+
+    const setView = (view) => {
+      document.querySelectorAll("nav a").forEach((item) => {
+        item.setAttribute("aria-current", item.dataset.view === view ? "page" : "false");
+      });
+      document.querySelectorAll("[data-panel]").forEach((panel) => {
+        panel.style.outline = panel.dataset.panel === view ? "2px solid var(--teal)" : "0";
+      });
+    };
+
+    const json = async (url) => {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`${response.status} ${url}`);
+      return response.json();
+    };
+
+    const row = (title, meta) => {
+      const item = document.createElement("div");
+      item.className = "row";
+      const strong = document.createElement("strong");
+      strong.textContent = title;
+      const small = document.createElement("span");
+      small.className = "meta";
+      small.textContent = meta;
+      item.append(strong, small);
+      return item;
+    };
+
+    const renderList = (target, values, emptyText) => {
+      target.replaceChildren();
+      if (!values.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = emptyText;
+        target.append(empty);
+        return;
+      }
+      values.forEach((value) => target.append(value));
+    };
+
+    const load = async () => {
+      setView(initialView);
+      try {
+        const [files, symbols, graph, tests, docs] = await Promise.allSettled([
+          json(api("files")),
+          json(api("symbols")),
+          json(api("graph")),
+          json(api("tests")),
+          json(api("architecture"))
+        ]);
+        const fileRows = files.value?.files ?? [];
+        const symbolRows = symbols.value?.symbols ?? [];
+        const edgeRows = graph.value?.edges ?? [];
+        const testRows = tests.value?.tests ?? [];
+        const docRows = docs.value?.entities ?? [];
+        document.querySelector("#fileCount").textContent = fileRows.length;
+        document.querySelector("#symbolCount").textContent = symbolRows.length;
+        document.querySelector("#edgeCount").textContent = edgeRows.length;
+        document.querySelector("#testCount").textContent = testRows.length;
+        renderList(document.querySelector("#files"), fileRows.slice(0, 24).map((file) => row(file.path, `${file.language} ${file.size_bytes ?? 0} bytes`)), "No files indexed");
+        renderList(document.querySelector("#symbols"), symbolRows.slice(0, 24).map((symbol) => row(symbol.fqn, `${symbol.kind} ${symbol.file_path}`)), "No symbols indexed");
+        renderList(document.querySelector("#graph"), edgeRows.slice(0, 24).map((edge) => row(`${edge.source_fqn ?? edge.source_id} -> ${edge.target_fqn ?? edge.target_id}`, edge.edge_type ?? edge.relation)), "No graph edges indexed");
+        renderList(document.querySelector("#tests"), testRows.slice(0, 24).map((test) => row(test.fqn, `${test.framework ?? "static"} ${test.file_path ?? ""}`)), "No tests indexed");
+        renderList(document.querySelector("#docs"), docRows.slice(0, 24).map((entity) => row(entity.name, `${entity.entity_type} ${entity.file_path}`)), "No docs or contracts indexed");
+        status.textContent = "Live";
+      } catch (error) {
+        status.textContent = error.message;
+      }
+    };
+
+    document.querySelectorAll("nav a").forEach((link) => {
+      link.addEventListener("click", () => setView(link.dataset.view));
+    });
+    document.querySelector("#searchForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const query = document.querySelector("#query").value.trim();
+      if (!query) return;
+      setView("search");
+      const result = await fetch("/v1/context/search", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ repo_id: repoId, query })
+      }).then((response) => response.json());
+      const hits = result.context_pack?.search?.hits ?? [];
+      renderList(document.querySelector("#symbols"), hits.map((hit) => row(hit.symbol.fqn, `score ${hit.score}`)), "No matches");
+    });
+    load();
+  </script>
+</body>
+</html>

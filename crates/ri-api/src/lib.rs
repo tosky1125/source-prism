@@ -30,6 +30,7 @@ pub(crate) mod repos;
 pub(crate) mod runs;
 pub(crate) mod state;
 pub(crate) mod test_context;
+pub(crate) mod web;
 
 use axum::{
     Router,
@@ -49,6 +50,8 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/context/search", post(context_search::search))
         .route("/v1/impact", post(impact::analyze))
         .route("/v1/test-context", post(test_context::get))
+        .route("/repo/{repo_id}", get(web::repo))
+        .route("/repo/{repo_id}/{view}", get(web::repo_view))
         .route("/v1/repos", post(repos::create))
         .route(
             "/v1/repos/{repo_id}/architecture",

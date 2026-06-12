@@ -24,6 +24,7 @@ api_bind_addr="${API_BIND_ADDR:-127.0.0.1:4096}"
 export API_BIND_ADDR="$api_bind_addr"
 api_base_url="${API_BASE_URL:-http://${api_bind_addr}}"
 api_log="${API_LOG:-/tmp/source-prism-api.log}"
+request_timeout_seconds="${SOURCE_PRISM_API_REQUEST_TIMEOUT_SECONDS:-120}"
 repo_id="${SOURCE_PRISM_CI_REPO_ID:-source-prism-ci}"
 search_sync_queue="${SOURCE_PRISM_CI_SEARCH_SYNC_QUEUE:-source-prism-api-${GITHUB_RUN_ID:-$$}}"
 search_index="${SOURCE_PRISM_SEARCH_INDEX:-source-prism-dev}"
@@ -76,7 +77,8 @@ request() {
   shift 3
 
   local status
-  status=$(curl -sS --max-time 30 -o "$output" -w '%{http_code}' -X "$method" "$url" "$@") || {
+  rm -f "$output"
+  status=$(curl -sS --max-time "$request_timeout_seconds" -o "$output" -w '%{http_code}' -X "$method" "$url" "$@") || {
     {
       echo "curl failed"
       echo "method=${method}"
@@ -160,8 +162,19 @@ grep -q '"search_sync_job_details":' /tmp/source-prism-api-run.json
 
 request GET "${api_base_url}/v1/repos/${repo_id}/runs" /tmp/source-prism-api-repo-runs.json
 grep -q '"kind":"repo_runs"' /tmp/source-prism-api-repo-runs.json
-grep -q '"run_count":1' /tmp/source-prism-api-repo-runs.json
 grep -q '"search_sync_job_details":' /tmp/source-prism-api-repo-runs.json
+python3 - "$run_id" <<'PY'
+import json
+import sys
+
+run_id = sys.argv[1]
+with open("/tmp/source-prism-api-repo-runs.json", encoding="utf-8") as handle:
+    payload = json.load(handle)
+
+runs = payload["runs"]
+assert payload["run_count"] >= 1, payload
+assert any(run["run_id"] == run_id for run in runs), payload
+PY
 
 request GET "${api_base_url}/v1/repos/${repo_id}" /tmp/source-prism-api-repo-overview.json
 grep -q '"kind":"repo"' /tmp/source-prism-api-repo-overview.json

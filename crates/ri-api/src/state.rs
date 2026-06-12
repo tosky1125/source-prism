@@ -57,6 +57,20 @@ impl AppState {
         })
     }
 
+    pub fn for_test_database(pool: PgPool) -> Result<Self, ApiError> {
+        Ok(Self {
+            database: DatabaseState {
+                configured: true,
+                pool: Some(pool),
+            },
+            opensearch_url: None,
+            http_client: http_client()?,
+            context_repo_path: PathBuf::from("."),
+            repo_files: None,
+            context_symbols: None,
+        })
+    }
+
     pub(crate) fn repo_files(&self) -> Result<Cow<'_, [RepoFile]>, ri_git::GitError> {
         if let Some(files) = self.repo_files.as_ref() {
             return Ok(Cow::Borrowed(files.as_ref()));

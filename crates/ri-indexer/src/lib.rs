@@ -5,6 +5,7 @@
 )]
 
 mod generation;
+mod generation_files;
 mod graph;
 mod graph_calls;
 pub mod graph_ids;
@@ -25,6 +26,7 @@ pub const DEFAULT_SEARCH_INDEX: &str = "source-prism-dev";
 pub use generation::{
     FileManifestInput, GenerationError, GenerationRecord, GenerationStatus, PgGenerationStore,
 };
+pub use generation_files::FileManifestRecord;
 pub use graph::{GraphIndexOutcome, GraphStoreError, PgGraphStore};
 pub use graph_calls::CallEdgeInput;
 pub use graph_query::{GraphEdgeRecord, GraphNodeRecord, GraphProjection};

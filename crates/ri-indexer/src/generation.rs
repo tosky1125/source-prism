@@ -85,7 +85,7 @@ impl FileManifestInput {
 
 #[derive(Debug, Clone)]
 pub struct PgGenerationStore {
-    pool: PgPool,
+    pub(crate) pool: PgPool,
 }
 
 impl PgGenerationStore {

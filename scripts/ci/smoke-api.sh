@@ -182,6 +182,15 @@ grep -q '"edge_type":"imports"' /tmp/source-prism-api-graph.json
 grep -q '"edge_type":"calls"' /tmp/source-prism-api-graph.json
 grep -q '"edge_type":"test_covers"' /tmp/source-prism-api-graph.json
 
-request GET "${api_base_url}/v1/repos/local/files" /tmp/source-prism-api-files.json
+request GET "${api_base_url}/v1/repos/${repo_id}/files" /tmp/source-prism-api-files.json
 grep -q '"kind":"files"' /tmp/source-prism-api-files.json
 grep -q '"file_count":' /tmp/source-prism-api-files.json
+python3 - <<'PY'
+import json
+
+with open("/tmp/source-prism-api-files.json", encoding="utf-8") as handle:
+    payload = json.load(handle)
+
+assert payload["file_count"] > 0, payload
+assert any(item["path"] == "Cargo.toml" for item in payload["files"]), payload
+PY

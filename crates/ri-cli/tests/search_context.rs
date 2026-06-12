@@ -45,6 +45,11 @@ fn apply_tax_adds_rate() {
         body.pointer("/kind").and_then(Value::as_str),
         Some("search_context")
     );
+    assert_eq!(body.pointer("/hit_count").and_then(Value::as_u64), Some(2));
+    assert_eq!(
+        body.pointer("/impact_count").and_then(Value::as_u64),
+        Some(2)
+    );
     assert_json_array_contains(
         &body,
         "/context_pack/impacts/0/direct_callers",

@@ -29,6 +29,8 @@ pub(crate) fn search_context_command(
     print_json(&json!({
         "status": "ok",
         "kind": "search_context",
+        "hit_count": pack.hits.len(),
+        "impact_count": pack.impacts.len(),
         "context_pack": pack,
     }))
 }

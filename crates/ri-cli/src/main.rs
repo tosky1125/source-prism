@@ -83,7 +83,9 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
         "index" => index::command(args).await.map(|()| ExitCode::SUCCESS),
         "symbols" => symbols::symbols_command(args).map(|()| ExitCode::SUCCESS),
         "changed-symbols" => symbols::changed_symbols_command(args).map(|()| ExitCode::SUCCESS),
-        "references" => references::references_command(args).map(|()| ExitCode::SUCCESS),
+        "references" => references::references_command(args)
+            .await
+            .map(|()| ExitCode::SUCCESS),
         "refactor" => {
             expect_subcommand(&mut args, "plan")?;
             refactor::plan_command(args).map(|()| ExitCode::SUCCESS)

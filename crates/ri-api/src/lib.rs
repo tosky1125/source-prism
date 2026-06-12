@@ -19,6 +19,7 @@ pub(crate) mod health;
 pub(crate) mod impact;
 pub(crate) mod refactor;
 pub(crate) mod repo_architecture;
+pub(crate) mod repo_changed_symbols;
 pub(crate) mod repo_coverage;
 pub(crate) mod repo_files;
 pub(crate) mod repo_graph;
@@ -69,6 +70,10 @@ pub fn app(state: AppState) -> Router {
         .route(
             "/v1/repos/{repo_id}/architecture",
             get(repo_architecture::list),
+        )
+        .route(
+            "/v1/repos/{repo_id}/changed-symbols",
+            post(repo_changed_symbols::map),
         )
         .route("/v1/repos/{repo_id}/coverage", get(repo_coverage::list))
         .route(

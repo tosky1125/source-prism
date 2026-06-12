@@ -4,14 +4,13 @@
 )]
 
 use std::{
-    collections::BTreeMap,
     env, fs,
     io::{self, Write},
     path::PathBuf,
 };
 
 use ri_indexer::PgSymbolStore;
-use ri_symbols::{SymbolRecord, innermost_symbol_for_line};
+use ri_symbols::{SymbolRecord, changed_symbols_for_diff};
 use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
 
@@ -25,7 +24,6 @@ pub(crate) async fn changed_symbols_command(
 ) -> Result<(), CliError> {
     let request = ChangedSymbolsArgs::parse(&mut args)?;
     let diff = fs::read_to_string(&request.diff_path)?;
-    let changed_lines = parse_changed_lines(&diff);
     let (repo_id, symbols) = match &request.source {
         ChangedSymbolsSource::Worktree(repo) => (None, extract_repo_symbols(repo)?),
         ChangedSymbolsSource::PersistedRepo(repo_id) => {
@@ -33,17 +31,15 @@ pub(crate) async fn changed_symbols_command(
             (Some(repo_id.as_str()), symbols)
         }
     };
-    let by_file = symbols_by_file(&symbols);
-    let changed_symbols = changed_lines
+    let (changed_lines, changed_symbols) = changed_symbols_for_diff(&symbols, &diff);
+    let changed_symbols = changed_symbols
         .iter()
-        .filter_map(|line| {
-            let file_symbols = by_file.get(line.file_path.as_str())?;
-            let symbol = innermost_symbol_for_line(file_symbols, line.line)?;
-            Some(json!({
-                "file_path": line.file_path,
-                "line": line.line,
-                "symbol": symbol_json(symbol),
-            }))
+        .map(|changed| {
+            json!({
+                "file_path": changed.file_path,
+                "line": changed.line,
+                "symbol": symbol_json(&changed.symbol),
+            })
         })
         .collect::<Vec<_>>();
 
@@ -126,74 +122,10 @@ async fn persisted_symbols(repo_id: &str) -> Result<Vec<SymbolRecord>, CliError>
         .await?)
 }
 
-fn symbols_by_file(symbols: &[SymbolRecord]) -> BTreeMap<String, Vec<SymbolRecord>> {
-    let mut by_file = BTreeMap::<String, Vec<SymbolRecord>>::new();
-    for symbol in symbols {
-        by_file
-            .entry(symbol.file_path.to_string())
-            .or_default()
-            .push(symbol.clone());
-    }
-    by_file
-}
-
-fn parse_changed_lines(diff: &str) -> Vec<ChangedLine> {
-    let mut file_path = None::<String>;
-    let mut new_line = None::<u32>;
-    let mut changed = Vec::new();
-
-    for line in diff.lines() {
-        if let Some(path) = line.strip_prefix("+++ ") {
-            file_path = parse_diff_path(path);
-            continue;
-        }
-        if let Some(header) = line.strip_prefix("@@") {
-            new_line = parse_hunk_new_start(header);
-            continue;
-        }
-        let Some(current_line) = new_line else {
-            continue;
-        };
-        if line.starts_with('+') {
-            if let Some(path) = &file_path {
-                changed.push(ChangedLine {
-                    file_path: path.clone(),
-                    line: current_line,
-                });
-            }
-            new_line = current_line.checked_add(1);
-        } else if !line.starts_with('-') && !line.starts_with('\\') {
-            new_line = current_line.checked_add(1);
-        }
-    }
-    changed
-}
-
-fn parse_diff_path(path: &str) -> Option<String> {
-    if path == "/dev/null" {
-        return None;
-    }
-    Some(path.strip_prefix("b/").unwrap_or(path).to_owned())
-}
-
-fn parse_hunk_new_start(header: &str) -> Option<u32> {
-    header
-        .split_whitespace()
-        .find_map(|part| part.strip_prefix('+'))
-        .and_then(|part| part.split(',').next())
-        .and_then(|line| line.parse::<u32>().ok())
-}
-
 fn print_json(value: &serde_json::Value) -> Result<(), CliError> {
     let stdout = io::stdout();
     let mut lock = stdout.lock();
     serde_json::to_writer_pretty(&mut lock, value)?;
     writeln!(lock)?;
     Ok(())
-}
-
-#[derive(Debug)]
-struct ChangedLine {
-    file_path: String,
-    line: u32,
 }

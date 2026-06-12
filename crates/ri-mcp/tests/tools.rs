@@ -4,7 +4,7 @@ use ri_context::ResolvedCallReference;
 use ri_core::{CommitSha, FilePath, Language, RepoId, SymbolKind};
 use ri_mcp::{
     ImpactToolRequest, McpToolCatalog, ReferenceToolRequest, RepositoryToolHandler,
-    SearchContextToolRequest, SymbolToolRequest,
+    SearchContextToolRequest, SymbolToolRequest, handle_json_rpc_request,
 };
 use ri_symbols::{SymbolRange, SymbolRecord, SymbolSpec};
 
@@ -80,6 +80,68 @@ fn handler_answers_repo_tools_from_existing_evidence() -> Result<(), Box<dyn std
     Ok(())
 }
 
+#[test]
+fn runtime_handles_json_rpc_tool_calls() -> Result<(), Box<dyn std::error::Error>> {
+    let handler = fixture_handler()?;
+    let request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 42,
+        "method": "tools/call",
+        "params": {
+            "name": "repo.get_symbol",
+            "arguments": {
+                "symbol": "apply_tax"
+            }
+        }
+    });
+
+    let response = handle_json_rpc_request(&handler, &request);
+
+    assert_eq!(
+        response
+            .pointer("/jsonrpc")
+            .and_then(serde_json::Value::as_str),
+        Some("2.0")
+    );
+    assert_eq!(
+        response.pointer("/id").and_then(serde_json::Value::as_u64),
+        Some(42)
+    );
+    assert_eq!(
+        response
+            .pointer("/result/structuredContent/fqn")
+            .and_then(serde_json::Value::as_str),
+        Some("apply_tax")
+    );
+    assert_eq!(
+        response
+            .pointer("/result/isError")
+            .and_then(serde_json::Value::as_bool),
+        Some(false)
+    );
+    Ok(())
+}
+
+#[test]
+fn runtime_lists_tools() -> Result<(), Box<dyn std::error::Error>> {
+    let handler = fixture_handler()?;
+    let request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/list"
+    });
+
+    let response = handle_json_rpc_request(&handler, &request);
+
+    assert_eq!(
+        response
+            .pointer("/result/tools/0/name")
+            .and_then(serde_json::Value::as_str),
+        Some("repo.get_symbol")
+    );
+    Ok(())
+}
+
 fn symbol(
     repo: &RepoId,
     commit: &CommitSha,
@@ -95,4 +157,33 @@ fn symbol(
         "hash",
         SymbolSpec::new(Language::Rust, kind, fqn, fqn, range),
     ))
+}
+
+fn fixture_handler() -> Result<RepositoryToolHandler, Box<dyn std::error::Error>> {
+    let repo = RepoId::new("repo")?;
+    let commit = CommitSha::new("commit")?;
+    let target = symbol(
+        &repo,
+        &commit,
+        SymbolKind::Function,
+        "apply_tax",
+        "src/invoice.rs",
+        SymbolRange::new(1, 0, 3, 1),
+    )?;
+    let caller = symbol(
+        &repo,
+        &commit,
+        SymbolKind::TestCase,
+        "apply_tax_adds_rate",
+        "tests/invoice.rs",
+        SymbolRange::new(5, 0, 8, 1),
+    )?;
+    let calls = vec![ResolvedCallReference::new(
+        caller.versioned_symbol_id.clone(),
+        target.versioned_symbol_id.clone(),
+        FilePath::new("tests/invoice.rs")?,
+        "apply_tax".to_owned(),
+        SymbolRange::new(6, 4, 6, 13),
+    )];
+    Ok(RepositoryToolHandler::new(vec![target, caller], calls))
 }

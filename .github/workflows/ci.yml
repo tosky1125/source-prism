@@ -78,6 +78,23 @@ jobs:
           cargo run -p ri-cli -- mcp call --repo . --tool repo.get_symbol --symbol search_context_command > /tmp/source-prism-mcp-call.json
           grep '"kind": "mcp_tool_result"' /tmp/source-prism-mcp-call.json
           grep '"tool": "repo.get_symbol"' /tmp/source-prism-mcp-call.json
+          cat > /tmp/source-prism-mcp-request.json <<'JSON'
+          {
+            "jsonrpc": "2.0",
+            "id": 7,
+            "method": "tools/call",
+            "params": {
+              "name": "repo.get_symbol",
+              "arguments": {
+                "symbol": "search_context_command"
+              }
+            }
+          }
+          JSON
+          cargo run -p ri-cli -- mcp serve --repo . --once --request /tmp/source-prism-mcp-request.json > /tmp/source-prism-mcp-response.json
+          grep '"jsonrpc": "2.0"' /tmp/source-prism-mcp-response.json
+          grep '"isError": false' /tmp/source-prism-mcp-response.json
+          grep '"fqn": "search_context_command"' /tmp/source-prism-mcp-response.json
           embedding_provider="source-prism-ci-${GITHUB_RUN_ID:-local}"
           cargo run -p ri-cli -- embeddings cache-put --provider "$embedding_provider" --model local-v1 --kind symbol --dimensions 3 --input 'InvoiceService::applyTax' --vector '0.1,0.2,0.3' > /tmp/source-prism-embedding-first.json
           grep '"kind": "embedding_cache"' /tmp/source-prism-embedding-first.json

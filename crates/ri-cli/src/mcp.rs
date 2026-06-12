@@ -4,13 +4,14 @@
 )]
 
 use std::{
+    fs,
     io::{self, Write},
     path::PathBuf,
 };
 
 use ri_mcp::{
     ImpactToolRequest, McpToolCatalog, ReferenceToolRequest, RepositoryToolHandler,
-    SearchContextToolRequest, SymbolToolRequest,
+    SearchContextToolRequest, SymbolToolRequest, handle_json_rpc_request,
 };
 use serde_json::json;
 
@@ -25,6 +26,7 @@ pub(crate) fn command(mut args: impl Iterator<Item = String>) -> Result<(), CliE
     match subcommand.as_str() {
         "tools" => tools_command(args),
         "call" => call_command(args),
+        "serve" => serve_command(args),
         _ => Err(CliError::Usage),
     }
 }
@@ -64,6 +66,16 @@ fn call_command(args: impl Iterator<Item = String>) -> Result<(), CliError> {
         "tool": request.tool,
         "result": result,
     }))
+}
+
+fn serve_command(args: impl Iterator<Item = String>) -> Result<(), CliError> {
+    let request = McpServeArgs::parse(args)?;
+    let evidence = ri_context::extract_repo_index(&request.repo)?;
+    let handler = RepositoryToolHandler::new(evidence.symbols, evidence.calls);
+    let body = fs::read_to_string(request.request_path)?;
+    let request = serde_json::from_str::<serde_json::Value>(body.as_str())?;
+    let response = handle_json_rpc_request(&handler, &request);
+    print_json(&response)
 }
 
 #[derive(Debug)]
@@ -110,6 +122,38 @@ impl McpCallArgs {
 
     fn required_query(&self) -> Result<&str, CliError> {
         self.query.as_deref().ok_or(CliError::Usage)
+    }
+}
+
+#[derive(Debug)]
+struct McpServeArgs {
+    repo: PathBuf,
+    request_path: PathBuf,
+}
+
+impl McpServeArgs {
+    fn parse(args: impl Iterator<Item = String>) -> Result<Self, CliError> {
+        let mut repo = None;
+        let mut request_path = None;
+        let mut once = false;
+        let mut args = args.peekable();
+
+        while let Some(flag) = args.next() {
+            match flag.as_str() {
+                "--repo" => repo = Some(PathBuf::from(next_value(&mut args)?)),
+                "--once" => once = true,
+                "--request" => request_path = Some(PathBuf::from(next_value(&mut args)?)),
+                _ => return Err(CliError::Usage),
+            }
+        }
+
+        if !once {
+            return Err(CliError::Usage);
+        }
+        Ok(Self {
+            repo: repo.ok_or(CliError::Usage)?,
+            request_path: request_path.ok_or(CliError::Usage)?,
+        })
     }
 }
 

@@ -29,7 +29,7 @@ This repository is currently past the bare foundation phase. The runnable base n
 - Postgres-backed file manifest, symbol, graph, test-case, run, and search outbox indexing
 - Static imports, calls, test-context, and `test_covers` graph evidence from extracted symbols
 - Provider-neutral embedding cache backed by Postgres `embedding_cache`
-- MCP tool contracts for symbol/reference/impact/context queries
+- MCP tool contracts and JSON-RPC once-runner for symbol/reference/impact/context queries
 - Evidence-backed review finding verification
 - GitHub/GitLab dry-run review payloads from verified findings
 - Planner-only refactor slicing from impact evidence
@@ -56,6 +56,7 @@ cargo run -p ri-cli -- review github-dry-run --input /path/to/findings.json
 cargo run -p ri-cli -- review gitlab-dry-run --input /path/to/findings.json
 cargo run -p ri-cli -- mcp tools
 cargo run -p ri-cli -- mcp call --repo . --tool repo.get_symbol --symbol search_context_command
+cargo run -p ri-cli -- mcp serve --repo . --once --request /path/to/mcp-request.json
 cargo run -p ri-api
 curl -fsS -X POST http://127.0.0.1:3000/v1/test-context \
   -H 'content-type: application/json' \

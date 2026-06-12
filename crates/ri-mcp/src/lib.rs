@@ -7,6 +7,8 @@
     reason = "Tree-sitter and SQLx-adjacent workspace dependencies pull duplicate transitive crates outside this crate's control."
 )]
 
+mod runtime;
+
 use ri_context::{
     ContextError, ContextPack, ReferenceReport, ResolvedCallReference,
     build_context_pack_with_calls, find_symbol_references, symbol_for_query,
@@ -16,6 +18,8 @@ use ri_symbols::SymbolRecord;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use thiserror::Error;
+
+pub use runtime::handle_json_rpc_request;
 
 const GET_SYMBOL: &str = "repo.get_symbol";
 const FIND_REFERENCES: &str = "repo.find_references";

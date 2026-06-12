@@ -91,6 +91,11 @@ jobs:
           cargo run -p ri-cli -- test-context --symbol "$test_symbol" > /tmp/source-prism-test-context.json
           grep '"kind": "test_context"' /tmp/source-prism-test-context.json
           grep '"code_execution_allowed": false' /tmp/source-prism-test-context.json
+          printf '%s\n' '<coverage><packages><package><classes><class filename="src/lib.rs"><lines><line number="1" hits="1"/></lines></class></classes></package></packages></coverage>' > /tmp/source-prism-cobertura.xml
+          cargo run -p ri-cli -- tests import-cobertura --repo . --sha HEAD --cobertura /tmp/source-prism-cobertura.xml > /tmp/source-prism-cobertura.json
+          grep '"kind": "coverage"' /tmp/source-prism-cobertura.json
+          grep '"format": "cobertura"' /tmp/source-prism-cobertura.json
+          grep '"imported_segments": 1' /tmp/source-prism-cobertura.json
 
       - name: Check formatting
         run: cargo fmt --all -- --check

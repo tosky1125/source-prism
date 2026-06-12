@@ -9,10 +9,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ri_behavior::{parse_junit_xml, parse_lcov};
+use ri_behavior::{CoverageReport, parse_cobertura_xml, parse_lcov};
 use ri_core::CommitSha;
 use ri_git::{discover_worktree, resolve_commit_sha};
-use ri_indexer::{PgCoverageStore, PgGenerationStore, PgTestRunStore};
+use ri_indexer::{PgCoverageStore, PgGenerationStore};
 use serde_json::json;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
@@ -23,55 +23,26 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
         return Err(CliError::Usage);
     };
     match subcommand.as_str() {
-        "import-junit" => import_junit(args).await,
+        "import-junit" => crate::test_junit::import(args, database_pool().await?).await,
         "import-lcov" => import_lcov(args).await,
+        "import-cobertura" => import_cobertura(args).await,
         _ => Err(CliError::Usage),
     }
 }
 
-async fn import_junit(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
-    let parsed = ImportJunitArgs::parse(&mut args)?;
-    let pool = database_pool().await?;
-    let worktree = discover_worktree(&parsed.repo_path)?;
-    let repo_id = repo_id_for_worktree(&worktree)?;
-    let commit_sha = resolve_commit_sha(&parsed.repo_path, &parsed.sha)?;
-    let _commit = CommitSha::new(&commit_sha)?;
-    upsert_repo_commit(&pool, &repo_id, &worktree, &commit_sha).await?;
-
-    let junit = fs::read_to_string(&parsed.junit_path)?;
-    let report = parse_junit_xml(&junit)?;
-    let generation_store = PgGenerationStore::new(pool.clone());
-    let generation = generation_store
-        .begin_generation(
-            &repo_id,
-            &commit_sha,
-            "test_results",
-            Some("ri-cli-junit-v1"),
-        )
-        .await?;
-    let outcome = PgTestRunStore::new(pool)
-        .replace_junit_run_for_generation(
-            &generation.generation_id,
-            parsed.junit_path.to_string_lossy().as_ref(),
-            &report,
-        )
-        .await?;
-    generation_store
-        .finish_generation(&generation.generation_id)
-        .await?;
-    print_json(&json!({
-        "status": "ok",
-        "kind": "test_runs",
-        "repo_id": repo_id,
-        "commit_sha": commit_sha,
-        "generation_id": generation.generation_id,
-        "test_run_id": outcome.test_run_id,
-        "imported_results": outcome.result_count,
-    }))
+async fn import_lcov(args: impl Iterator<Item = String>) -> Result<(), CliError> {
+    import_coverage(args, CoverageImport::Lcov).await
 }
 
-async fn import_lcov(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
-    let parsed = ImportCoverageArgs::parse(&mut args)?;
+async fn import_cobertura(args: impl Iterator<Item = String>) -> Result<(), CliError> {
+    import_coverage(args, CoverageImport::Cobertura).await
+}
+
+async fn import_coverage(
+    mut args: impl Iterator<Item = String>,
+    import: CoverageImport,
+) -> Result<(), CliError> {
+    let parsed = ImportCoverageArgs::parse(&mut args, import.path_flag())?;
     let pool = database_pool().await?;
     let worktree = discover_worktree(&parsed.repo_path)?;
     let repo_id = repo_id_for_worktree(&worktree)?;
@@ -79,25 +50,40 @@ async fn import_lcov(mut args: impl Iterator<Item = String>) -> Result<(), CliEr
     let _commit = CommitSha::new(&commit_sha)?;
     upsert_repo_commit(&pool, &repo_id, &worktree, &commit_sha).await?;
 
-    let lcov = fs::read_to_string(&parsed.lcov_path)?;
-    let report = parse_lcov(&lcov)?;
+    let coverage = fs::read_to_string(&parsed.coverage_path)?;
+    let report = import.parse_report(&coverage)?;
     let generation_store = PgGenerationStore::new(pool.clone());
     let generation = generation_store
-        .begin_generation(&repo_id, &commit_sha, "coverage", Some("ri-cli-lcov-v1"))
+        .begin_generation(&repo_id, &commit_sha, "coverage", Some(import.extractor()))
         .await?;
-    let outcome = PgCoverageStore::new(pool)
-        .replace_lcov_for_generation(
-            &generation.generation_id,
-            parsed.lcov_path.to_string_lossy().as_ref(),
-            &report,
-        )
-        .await?;
+    let store = PgCoverageStore::new(pool);
+    let outcome = match import {
+        CoverageImport::Lcov => {
+            store
+                .replace_lcov_for_generation(
+                    &generation.generation_id,
+                    parsed.coverage_path.to_string_lossy().as_ref(),
+                    &report,
+                )
+                .await?
+        }
+        CoverageImport::Cobertura => {
+            store
+                .replace_cobertura_for_generation(
+                    &generation.generation_id,
+                    parsed.coverage_path.to_string_lossy().as_ref(),
+                    &report,
+                )
+                .await?
+        }
+    };
     generation_store
         .finish_generation(&generation.generation_id)
         .await?;
     print_json(&json!({
         "status": "ok",
         "kind": "coverage",
+        "format": import.format(),
         "repo_id": repo_id,
         "commit_sha": commit_sha,
         "generation_id": generation.generation_id,
@@ -105,58 +91,66 @@ async fn import_lcov(mut args: impl Iterator<Item = String>) -> Result<(), CliEr
     }))
 }
 
-#[derive(Debug)]
-struct ImportJunitArgs {
-    repo_path: PathBuf,
-    sha: String,
-    junit_path: PathBuf,
+#[derive(Clone, Copy, Debug)]
+enum CoverageImport {
+    Lcov,
+    Cobertura,
+}
+
+impl CoverageImport {
+    const fn path_flag(self) -> &'static str {
+        match self {
+            Self::Lcov => "--lcov",
+            Self::Cobertura => "--cobertura",
+        }
+    }
+
+    const fn format(self) -> &'static str {
+        match self {
+            Self::Lcov => "lcov",
+            Self::Cobertura => "cobertura",
+        }
+    }
+
+    const fn extractor(self) -> &'static str {
+        match self {
+            Self::Lcov => "ri-cli-lcov-v1",
+            Self::Cobertura => "ri-cli-cobertura-v1",
+        }
+    }
+
+    fn parse_report(self, body: &str) -> Result<CoverageReport, CliError> {
+        Ok(match self {
+            Self::Lcov => parse_lcov(body)?,
+            Self::Cobertura => parse_cobertura_xml(body)?,
+        })
+    }
 }
 
 #[derive(Debug)]
 struct ImportCoverageArgs {
     repo_path: PathBuf,
     sha: String,
-    lcov_path: PathBuf,
-}
-
-impl ImportJunitArgs {
-    fn parse(args: &mut impl Iterator<Item = String>) -> Result<Self, CliError> {
-        let mut repo_path = None;
-        let mut sha = None;
-        let mut junit_path = None;
-        while let Some(flag) = args.next() {
-            match flag.as_str() {
-                "--repo" => repo_path = args.next().map(PathBuf::from),
-                "--sha" => sha = args.next(),
-                "--junit" => junit_path = args.next().map(PathBuf::from),
-                _ => return Err(CliError::Usage),
-            }
-        }
-        Ok(Self {
-            repo_path: repo_path.ok_or(CliError::Usage)?,
-            sha: sha.ok_or(CliError::Usage)?,
-            junit_path: junit_path.ok_or(CliError::Usage)?,
-        })
-    }
+    coverage_path: PathBuf,
 }
 
 impl ImportCoverageArgs {
-    fn parse(args: &mut impl Iterator<Item = String>) -> Result<Self, CliError> {
+    fn parse(args: &mut impl Iterator<Item = String>, path_flag: &str) -> Result<Self, CliError> {
         let mut repo_path = None;
         let mut sha = None;
-        let mut lcov_path = None;
+        let mut coverage_path = None;
         while let Some(flag) = args.next() {
             match flag.as_str() {
                 "--repo" => repo_path = args.next().map(PathBuf::from),
                 "--sha" => sha = args.next(),
-                "--lcov" => lcov_path = args.next().map(PathBuf::from),
+                value if value == path_flag => coverage_path = args.next().map(PathBuf::from),
                 _ => return Err(CliError::Usage),
             }
         }
         Ok(Self {
             repo_path: repo_path.ok_or(CliError::Usage)?,
             sha: sha.ok_or(CliError::Usage)?,
-            lcov_path: lcov_path.ok_or(CliError::Usage)?,
+            coverage_path: coverage_path.ok_or(CliError::Usage)?,
         })
     }
 }
@@ -207,7 +201,7 @@ async fn upsert_repo_commit(
     Ok(())
 }
 
-fn print_json(value: &serde_json::Value) -> Result<(), CliError> {
+pub(crate) fn print_json(value: &serde_json::Value) -> Result<(), CliError> {
     let stdout = io::stdout();
     let mut lock = stdout.lock();
     serde_json::to_writer_pretty(&mut lock, value)?;

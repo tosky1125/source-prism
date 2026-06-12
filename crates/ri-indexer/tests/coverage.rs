@@ -52,6 +52,43 @@ async fn active_coverage_returns_lcov_segments_for_repo() -> Result<(), Box<dyn 
     Ok(())
 }
 
+#[tokio::test]
+async fn active_coverage_preserves_cobertura_format_for_repo()
+-> Result<(), Box<dyn std::error::Error>> {
+    let Some(pool) = test_pool().await? else {
+        return Ok(());
+    };
+    let fixture = Fixture::create(&pool).await?;
+    let generation = PgGenerationStore::new(pool.clone())
+        .begin_generation(
+            &fixture.repo_id,
+            &fixture.commit_sha,
+            "coverage",
+            Some("test"),
+        )
+        .await?;
+    let report = parse_lcov("SF:src/invoice.rs\nDA:3,1\nend_of_record\n")?;
+    let store = PgCoverageStore::new(pool.clone());
+    let outcome = store
+        .replace_cobertura_for_generation(&generation.generation_id, "coverage.xml", &report)
+        .await?;
+    PgGenerationStore::new(pool.clone())
+        .finish_generation(&generation.generation_id)
+        .await?;
+
+    let segments = store
+        .active_coverage_segments_for_repo(&fixture.repo_id)
+        .await?;
+
+    assert_eq!(outcome.segment_count, 1);
+    let segment = segments
+        .first()
+        .ok_or_else(|| std::io::Error::other("missing coverage segment"))?;
+    assert_eq!(segment.format, "cobertura");
+    fixture.cleanup(&pool).await?;
+    Ok(())
+}
+
 #[derive(Debug)]
 struct Fixture {
     repo_id: String,

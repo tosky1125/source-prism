@@ -50,17 +50,42 @@ impl PgCoverageStore {
         source_path: &str,
         report: &CoverageReport,
     ) -> Result<CoverageIngestOutcome, CoverageStoreError> {
+        self.replace_for_generation(generation_id, source_path, "lcov", report)
+            .await
+    }
+
+    pub async fn replace_cobertura_for_generation(
+        &self,
+        generation_id: &GenerationId,
+        source_path: &str,
+        report: &CoverageReport,
+    ) -> Result<CoverageIngestOutcome, CoverageStoreError> {
+        self.replace_for_generation(generation_id, source_path, "cobertura", report)
+            .await
+    }
+
+    async fn replace_for_generation(
+        &self,
+        generation_id: &GenerationId,
+        source_path: &str,
+        format: &str,
+        report: &CoverageReport,
+    ) -> Result<CoverageIngestOutcome, CoverageStoreError> {
         let generation = self.generation(generation_id).await?;
+        let context = CoverageWriteContext {
+            generation_id,
+            source_path,
+            format,
+        };
         let mut transaction = self.pool.begin().await?;
-        stale_previous_segments(&mut transaction, &generation, generation_id, source_path).await?;
+        stale_previous_segments(&mut transaction, &generation, &context).await?;
         let mut segment_count = 0_u64;
         for file in &report.files {
             for segment in &file.segments {
                 let result = upsert_segment(
                     &mut transaction,
                     &generation,
-                    generation_id,
-                    source_path,
+                    &context,
                     file.file_path.as_str(),
                     segment,
                 )
@@ -121,24 +146,31 @@ struct StoredGeneration {
     commit_sha: String,
 }
 
+#[derive(Clone, Copy, Debug)]
+struct CoverageWriteContext<'a> {
+    generation_id: &'a GenerationId,
+    source_path: &'a str,
+    format: &'a str,
+}
+
 async fn stale_previous_segments(
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     generation: &StoredGeneration,
-    generation_id: &GenerationId,
-    source_path: &str,
+    context: &CoverageWriteContext<'_>,
 ) -> Result<(), CoverageStoreError> {
     sqlx::query(
         r"
         UPDATE coverage_segments
         SET stale_at = now()
-        WHERE repo_id = $1 AND commit_sha = $2 AND source_path = $3
-          AND generation_id <> $4 AND stale_at IS NULL
+        WHERE repo_id = $1 AND commit_sha = $2 AND source_path = $3 AND format = $4
+          AND generation_id <> $5 AND stale_at IS NULL
         ",
     )
     .bind(&generation.repo_id)
     .bind(&generation.commit_sha)
-    .bind(source_path)
-    .bind(generation_id.to_string())
+    .bind(context.source_path)
+    .bind(context.format)
+    .bind(context.generation_id.to_string())
     .execute(&mut **transaction)
     .await?;
     Ok(())
@@ -147,8 +179,7 @@ async fn stale_previous_segments(
 async fn upsert_segment(
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     generation: &StoredGeneration,
-    generation_id: &GenerationId,
-    source_path: &str,
+    context: &CoverageWriteContext<'_>,
     file_path: &str,
     segment: &ri_behavior::CoverageSegment,
 ) -> Result<u64, CoverageStoreError> {
@@ -161,28 +192,23 @@ async fn upsert_segment(
             coverage_segment_id, repo_id, commit_sha, generation_id, source_path,
             file_path, start_line, end_line, hit_count, format, stale_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'lcov', NULL)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NULL)
         ON CONFLICT (coverage_segment_id) DO UPDATE
         SET generation_id = EXCLUDED.generation_id,
             hit_count = EXCLUDED.hit_count,
             stale_at = NULL
         ",
     )
-    .bind(segment_id(
-        generation,
-        generation_id,
-        source_path,
-        file_path,
-        segment,
-    ))
+    .bind(segment_id(generation, context, file_path, segment))
     .bind(&generation.repo_id)
     .bind(&generation.commit_sha)
-    .bind(generation_id.to_string())
-    .bind(source_path)
+    .bind(context.generation_id.to_string())
+    .bind(context.source_path)
     .bind(file_path)
     .bind(start_line)
     .bind(end_line)
     .bind(hit_count)
+    .bind(context.format)
     .execute(&mut **transaction)
     .await?;
     Ok(result.rows_affected())
@@ -208,8 +234,7 @@ fn coverage_value(value: u32, field: &'static str) -> Result<i32, CoverageStoreE
 
 fn segment_id(
     generation: &StoredGeneration,
-    generation_id: &GenerationId,
-    source_path: &str,
+    context: &CoverageWriteContext<'_>,
     file_path: &str,
     segment: &ri_behavior::CoverageSegment,
 ) -> String {
@@ -218,8 +243,9 @@ fn segment_id(
         &[
             generation.repo_id.as_str(),
             generation.commit_sha.as_str(),
-            generation_id.as_str(),
-            source_path,
+            context.generation_id.as_str(),
+            context.source_path,
+            context.format,
             file_path,
             segment.start_line.to_string().as_str(),
             segment.end_line.to_string().as_str(),

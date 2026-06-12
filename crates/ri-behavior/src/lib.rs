@@ -3,6 +3,7 @@
     reason = "Behavior evidence contracts are self-describing at this milestone."
 )]
 
+mod cobertura;
 mod junit;
 mod lcov;
 
@@ -12,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use thiserror::Error;
 
+pub use cobertura::parse_cobertura_xml;
 pub use junit::{JunitReport, TestCaseResult, TestResultStatus, TestSuiteResult, parse_junit_xml};
 pub use lcov::{CoverageFile, CoverageReport, CoverageSegment, parse_lcov};
 
@@ -53,6 +55,8 @@ pub enum BehaviorError {
     JunitXml { message: String },
     #[error("failed to parse lcov: {message}")]
     Lcov { message: String },
+    #[error("failed to parse cobertura xml: {message}")]
+    CoberturaXml { message: String },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

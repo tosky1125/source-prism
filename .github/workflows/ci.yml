@@ -114,6 +114,10 @@ jobs:
           grep '"indexed_search_chunks":' /tmp/source-prism-cli-index.json
           grep '"indexed_test_cases":' /tmp/source-prism-cli-index.json
           cli_repo_id=$(python3 -c 'import json; print(json.load(open("/tmp/source-prism-cli-index.json"))["repo_id"])')
+          cli_run_id=$(python3 -c 'import json; print(json.load(open("/tmp/source-prism-cli-index.json"))["generation_id"])')
+          cargo run -p ri-cli -- run --run-id "$cli_run_id" > /tmp/source-prism-cli-run.json
+          grep '"kind": "run"' /tmp/source-prism-cli-run.json
+          grep '"status": "succeeded"' /tmp/source-prism-cli-run.json
           cargo run -p ri-cli -- runs --repo-id "$cli_repo_id" > /tmp/source-prism-cli-runs.json
           grep '"kind": "repo_runs"' /tmp/source-prism-cli-runs.json
           grep '"run_count": 1' /tmp/source-prism-cli-runs.json

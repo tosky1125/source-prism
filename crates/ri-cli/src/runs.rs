@@ -37,6 +37,28 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
     }))
 }
 
+pub(crate) async fn run_command(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
+    let Some(flag) = args.next() else {
+        return Err(CliError::Usage);
+    };
+    if flag != "--run-id" {
+        return Err(CliError::Usage);
+    }
+    let Some(run_id) = args.next() else {
+        return Err(CliError::Usage);
+    };
+    if args.next().is_some() {
+        return Err(CliError::Usage);
+    }
+    let pool = database_pool().await?;
+    let run = run_by_id(&pool, run_id.as_str()).await?;
+    print_json(&json!({
+        "status": "ok",
+        "kind": "run",
+        "run": run,
+    }))
+}
+
 async fn repo_runs(pool: &PgPool, repo_id: &str) -> Result<Vec<serde_json::Value>, CliError> {
     let rows = sqlx::query(
         r"
@@ -105,6 +127,70 @@ async fn repo_runs(pool: &PgPool, repo_id: &str) -> Result<Vec<serde_json::Value
         }));
     }
     Ok(runs)
+}
+
+async fn run_by_id(pool: &PgPool, run_id: &str) -> Result<serde_json::Value, CliError> {
+    let row = sqlx::query(
+        r"
+        SELECT
+            g.generation_id,
+            g.repo_id,
+            g.commit_sha,
+            g.index_kind,
+            g.status,
+            g.started_at::text AS started_at,
+            g.finished_at::text AS finished_at,
+            (
+                SELECT count(*)::bigint FROM file_manifests AS item
+                WHERE item.generation_id = g.generation_id
+            ) AS file_manifest_count,
+            (
+                SELECT count(*)::bigint FROM symbols AS item
+                WHERE item.generation_id = g.generation_id
+            ) AS symbol_count,
+            (
+                SELECT count(*)::bigint FROM graph_edges AS item
+                WHERE item.generation_id = g.generation_id
+            ) AS graph_edge_count,
+            (
+                SELECT count(*)::bigint FROM search_sync_outbox AS item
+                WHERE item.generation_id = g.generation_id
+            ) AS search_chunk_count,
+            (
+                SELECT count(*)::bigint FROM jobs AS item
+                WHERE item.generation_id = g.generation_id
+                  AND item.kind = 'search.sync_once'
+            ) AS search_sync_job_count,
+            (
+                SELECT count(*)::bigint FROM test_cases AS item
+                WHERE item.generation_id = g.generation_id
+            ) AS test_case_count
+        FROM index_generations AS g
+        WHERE g.generation_id = $1
+        ",
+    )
+    .bind(run_id)
+    .fetch_one(pool)
+    .await?;
+    let search_sync_job_details = search_sync_jobs(pool, run_id).await?;
+    Ok(json!({
+        "run_id": row.try_get::<String, _>("generation_id")?,
+        "repo_id": row.try_get::<String, _>("repo_id")?,
+        "commit_sha": row.try_get::<String, _>("commit_sha")?,
+        "index_kind": row.try_get::<String, _>("index_kind")?,
+        "status": row.try_get::<String, _>("status")?,
+        "started_at": row.try_get::<String, _>("started_at")?,
+        "finished_at": row.try_get::<Option<String>, _>("finished_at")?,
+        "evidence": {
+            "file_manifests": row.try_get::<i64, _>("file_manifest_count")?,
+            "symbols": row.try_get::<i64, _>("symbol_count")?,
+            "graph_edges": row.try_get::<i64, _>("graph_edge_count")?,
+            "search_chunks": row.try_get::<i64, _>("search_chunk_count")?,
+            "search_sync_jobs": row.try_get::<i64, _>("search_sync_job_count")?,
+            "search_sync_job_details": search_sync_job_details,
+            "test_cases": row.try_get::<i64, _>("test_case_count")?,
+        }
+    }))
 }
 
 async fn search_sync_jobs(

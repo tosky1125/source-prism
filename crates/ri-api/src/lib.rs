@@ -18,6 +18,7 @@ pub(crate) mod graph_test_edges;
 pub(crate) mod health;
 pub(crate) mod impact;
 pub(crate) mod repo_architecture;
+pub(crate) mod repo_coverage;
 pub(crate) mod repo_files;
 pub(crate) mod repo_graph;
 pub(crate) mod repo_index;
@@ -53,6 +54,7 @@ pub fn app(state: AppState) -> Router {
             "/v1/repos/{repo_id}/architecture",
             get(repo_architecture::list),
         )
+        .route("/v1/repos/{repo_id}/coverage", get(repo_coverage::list))
         .route("/v1/repos/{repo_id}/files", get(repo_files::list))
         .route("/v1/repos/{repo_id}/graph", get(repo_graph::get))
         .route("/v1/repos/{repo_id}/index", post(repo_index::index))

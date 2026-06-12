@@ -4,6 +4,7 @@
 )]
 
 mod junit;
+mod lcov;
 
 use ri_core::{Confidence, Language, SymbolId, SymbolKind};
 use ri_symbols::{SymbolRange, SymbolRecord};
@@ -12,6 +13,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use thiserror::Error;
 
 pub use junit::{JunitReport, TestCaseResult, TestResultStatus, TestSuiteResult, parse_junit_xml};
+pub use lcov::{CoverageFile, CoverageReport, CoverageSegment, parse_lcov};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -49,6 +51,8 @@ pub enum BehaviorError {
     SymbolNotFound { symbol: String },
     #[error("failed to parse junit xml: {message}")]
     JunitXml { message: String },
+    #[error("failed to parse lcov: {message}")]
+    Lcov { message: String },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -9,10 +9,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ri_behavior::parse_junit_xml;
+use ri_behavior::{parse_junit_xml, parse_lcov};
 use ri_core::CommitSha;
 use ri_git::{discover_worktree, resolve_commit_sha};
-use ri_indexer::{PgGenerationStore, PgTestRunStore};
+use ri_indexer::{PgCoverageStore, PgGenerationStore, PgTestRunStore};
 use serde_json::json;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
@@ -24,6 +24,7 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
     };
     match subcommand.as_str() {
         "import-junit" => import_junit(args).await,
+        "import-lcov" => import_lcov(args).await,
         _ => Err(CliError::Usage),
     }
 }
@@ -69,11 +70,53 @@ async fn import_junit(mut args: impl Iterator<Item = String>) -> Result<(), CliE
     }))
 }
 
+async fn import_lcov(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
+    let parsed = ImportCoverageArgs::parse(&mut args)?;
+    let pool = database_pool().await?;
+    let worktree = discover_worktree(&parsed.repo_path)?;
+    let repo_id = repo_id_for_worktree(&worktree)?;
+    let commit_sha = resolve_commit_sha(&parsed.repo_path, &parsed.sha)?;
+    let _commit = CommitSha::new(&commit_sha)?;
+    upsert_repo_commit(&pool, &repo_id, &worktree, &commit_sha).await?;
+
+    let lcov = fs::read_to_string(&parsed.lcov_path)?;
+    let report = parse_lcov(&lcov)?;
+    let generation_store = PgGenerationStore::new(pool.clone());
+    let generation = generation_store
+        .begin_generation(&repo_id, &commit_sha, "coverage", Some("ri-cli-lcov-v1"))
+        .await?;
+    let outcome = PgCoverageStore::new(pool)
+        .replace_lcov_for_generation(
+            &generation.generation_id,
+            parsed.lcov_path.to_string_lossy().as_ref(),
+            &report,
+        )
+        .await?;
+    generation_store
+        .finish_generation(&generation.generation_id)
+        .await?;
+    print_json(&json!({
+        "status": "ok",
+        "kind": "coverage",
+        "repo_id": repo_id,
+        "commit_sha": commit_sha,
+        "generation_id": generation.generation_id,
+        "imported_segments": outcome.segment_count,
+    }))
+}
+
 #[derive(Debug)]
 struct ImportJunitArgs {
     repo_path: PathBuf,
     sha: String,
     junit_path: PathBuf,
+}
+
+#[derive(Debug)]
+struct ImportCoverageArgs {
+    repo_path: PathBuf,
+    sha: String,
+    lcov_path: PathBuf,
 }
 
 impl ImportJunitArgs {
@@ -93,6 +136,27 @@ impl ImportJunitArgs {
             repo_path: repo_path.ok_or(CliError::Usage)?,
             sha: sha.ok_or(CliError::Usage)?,
             junit_path: junit_path.ok_or(CliError::Usage)?,
+        })
+    }
+}
+
+impl ImportCoverageArgs {
+    fn parse(args: &mut impl Iterator<Item = String>) -> Result<Self, CliError> {
+        let mut repo_path = None;
+        let mut sha = None;
+        let mut lcov_path = None;
+        while let Some(flag) = args.next() {
+            match flag.as_str() {
+                "--repo" => repo_path = args.next().map(PathBuf::from),
+                "--sha" => sha = args.next(),
+                "--lcov" => lcov_path = args.next().map(PathBuf::from),
+                _ => return Err(CliError::Usage),
+            }
+        }
+        Ok(Self {
+            repo_path: repo_path.ok_or(CliError::Usage)?,
+            sha: sha.ok_or(CliError::Usage)?,
+            lcov_path: lcov_path.ok_or(CliError::Usage)?,
         })
     }
 }

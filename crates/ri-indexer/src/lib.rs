@@ -5,6 +5,7 @@
 )]
 
 mod architecture;
+mod coverage;
 mod generation;
 mod generation_files;
 mod graph;
@@ -26,6 +27,9 @@ mod test_runs;
 pub const DEFAULT_SEARCH_INDEX: &str = "source-prism-dev";
 
 pub use architecture::{ArchitectureEntityRecord, ArchitectureStoreError, PgArchitectureStore};
+pub use coverage::{
+    CoverageIngestOutcome, CoverageSegmentRecord, CoverageStoreError, PgCoverageStore,
+};
 pub use generation::{
     FileManifestInput, GenerationError, GenerationRecord, GenerationStatus, PgGenerationStore,
 };

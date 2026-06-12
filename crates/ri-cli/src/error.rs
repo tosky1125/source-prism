@@ -10,7 +10,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub(crate) enum CliError {
     #[error(
-        "usage: ri-cli config check --env-file <path> | db migrate | repo manifest --repo <path> | index --repo <path> --sha <sha> | symbols --repo <path> | changed-symbols --diff <diff> | references --symbol <symbol> | architecture --repo <path> | impact --symbol <symbol> | search-context <query> | test-context --symbol <symbol> | tests import-junit --repo <path> --sha <sha> --junit <file> | search sync --once | search drift-check [--expect-mismatch fixture] | search rebuild --from-postgres"
+        "usage: ri-cli config check --env-file <path> | db migrate | repo manifest --repo <path> | index --repo <path> --sha <sha> | symbols --repo <path> | changed-symbols --diff <diff> | references --symbol <symbol> | architecture --repo <path> | impact --symbol <symbol> | search-context <query> | test-context --symbol <symbol> | tests import-junit --repo <path> --sha <sha> --junit <file> | tests import-lcov --repo <path> --sha <sha> --lcov <file> | search sync --once | search drift-check [--expect-mismatch fixture] | search rebuild --from-postgres"
     )]
     Usage,
     #[error("missing required env: {key}")]
@@ -56,6 +56,8 @@ pub(crate) enum CliError {
     #[error(transparent)]
     TestRunStore(#[from] ri_indexer::TestRunStoreError),
     #[error(transparent)]
+    CoverageStore(#[from] ri_indexer::CoverageStoreError),
+    #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
     #[error(transparent)]
     Io(#[from] io::Error),
@@ -86,6 +88,7 @@ impl CliError {
             | Self::SymbolStore(_)
             | Self::TestCaseStore(_)
             | Self::TestRunStore(_)
+            | Self::CoverageStore(_)
             | Self::Sqlx(_)
             | Self::Io(_) => ExitCode::FAILURE,
         }

@@ -1,8 +1,14 @@
 use axum::{Json, extract::State};
-use ri_context::{ContextPack, build_context_pack};
+use ri_context::{ContextPack, build_context_pack_with_calls};
+use ri_impact::ImpactCallEdge;
+use ri_indexer::{PgGraphStore, PgSymbolStore};
 use serde::{Deserialize, Serialize};
 
-use crate::{AppError, state::AppState};
+use crate::{
+    AppError,
+    graph_call_edges::{context_call_edges, graph_call_edges},
+    state::AppState,
+};
 
 const DEFAULT_LIMIT: usize = 8;
 const MAX_LIMIT: usize = 50;
@@ -30,12 +36,41 @@ pub(crate) async fn search(
         return Err(AppError::Validation("query must not be empty".to_owned()));
     }
     let limit = request.limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT);
-    let symbols = state
-        .symbols_for_optional_repo(request.repo_id.as_deref())
-        .await?;
+    let (symbols, calls) = context_inputs(&state, request.repo_id.as_deref()).await?;
     Ok(Json(ContextSearchResponse {
         status: "ok",
         kind: "context_search",
-        context_pack: build_context_pack(symbols.as_slice(), query, limit),
+        context_pack: build_context_pack_with_calls(
+            symbols.as_slice(),
+            calls.as_slice(),
+            query,
+            limit,
+        ),
     }))
+}
+
+async fn context_inputs(
+    state: &AppState,
+    repo_id: Option<&str>,
+) -> Result<(Vec<ri_symbols::SymbolRecord>, Vec<ImpactCallEdge>), AppError> {
+    let Some(repo_id) = repo_id else {
+        let evidence = state.context_index_evidence()?;
+        return Ok((evidence.symbols, context_call_edges(&evidence.calls)));
+    };
+    let repo_id = repo_id.trim();
+    if repo_id.is_empty() {
+        return Err(AppError::Validation("repo_id must not be empty".to_owned()));
+    }
+    let pool = state
+        .database
+        .pool
+        .as_ref()
+        .ok_or(AppError::DatabaseNotConfigured)?;
+    let symbols = PgSymbolStore::new(pool.clone())
+        .active_symbols_for_repo(repo_id)
+        .await?;
+    let graph = PgGraphStore::new(pool.clone())
+        .active_graph_for_repo(repo_id)
+        .await?;
+    Ok((symbols, graph_call_edges(&graph)?))
 }

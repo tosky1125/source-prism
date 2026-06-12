@@ -13,6 +13,7 @@
 
 pub(crate) mod context_search;
 pub(crate) mod error;
+pub(crate) mod graph_call_edges;
 pub(crate) mod health;
 pub(crate) mod impact;
 pub(crate) mod repo_files;

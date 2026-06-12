@@ -82,6 +82,21 @@ pub fn apply_tax(value: i32) -> i32 {
     );
     let impact_body = serde_json::from_slice::<Value>(&impact_output.stdout)?;
     assert_json_array_contains(&impact_body, "/direct_callers", "apply_tax_adds_rate")?;
+    let context_output = Command::new(env!("CARGO_BIN_EXE_ri-cli"))
+        .current_dir(repo.path())
+        .args(["search-context", "apply_tax"])
+        .output()?;
+    assert!(
+        context_output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&context_output.stderr)
+    );
+    let context_body = serde_json::from_slice::<Value>(&context_output.stdout)?;
+    assert_json_array_contains(
+        &context_body,
+        "/context_pack/impacts/0/direct_callers",
+        "apply_tax_adds_rate",
+    )?;
     cleanup(&pool, repo_id).await?;
     repo.cleanup()?;
     Ok(())

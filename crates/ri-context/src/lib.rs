@@ -9,7 +9,7 @@
 
 use ri_core::{CommitSha, FilePath, Language, RepoId, SymbolId};
 use ri_git::{LocalManifest, discover_worktree, resolve_commit_sha};
-use ri_impact::{ImpactReport, analyze_symbol_impact};
+use ri_impact::{ImpactCallEdge, ImpactReport, analyze_symbol_impact_with_calls};
 use ri_parser::{CallExtractor, CallReference, SourceFile, SymbolExtractor};
 use ri_search::{SearchHit, search_symbols};
 use ri_symbols::{SymbolRange, SymbolRecord, innermost_symbol_for_line};
@@ -75,11 +75,22 @@ pub struct ResolvedCallReference {
 }
 
 pub fn build_context_pack(symbols: &[SymbolRecord], query: &str, limit: usize) -> ContextPack {
+    build_context_pack_with_calls(symbols, &[], query, limit)
+}
+
+pub fn build_context_pack_with_calls(
+    symbols: &[SymbolRecord],
+    calls: &[ImpactCallEdge],
+    query: &str,
+    limit: usize,
+) -> ContextPack {
     let search = search_symbols(symbols, query, limit);
     let impacts = search
         .hits
         .iter()
-        .filter_map(|hit| analyze_symbol_impact(symbols.to_vec(), &hit.symbol.fqn).ok())
+        .filter_map(|hit| {
+            analyze_symbol_impact_with_calls(symbols.to_vec(), calls, &hit.symbol.fqn).ok()
+        })
         .collect::<Vec<_>>();
     ContextPack {
         query: query.to_owned(),

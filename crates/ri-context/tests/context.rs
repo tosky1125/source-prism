@@ -1,7 +1,8 @@
 #![allow(missing_docs, reason = "Integration test names document behavior.")]
 
-use ri_context::{RetrievalMode, build_context_pack};
+use ri_context::{RetrievalMode, build_context_pack, build_context_pack_with_calls};
 use ri_core::{CommitSha, FilePath, Language, RepoId, SymbolKind};
+use ri_impact::ImpactCallEdge;
 use ri_symbols::{SymbolRange, SymbolRecord, SymbolSpec};
 
 #[test]
@@ -21,6 +22,28 @@ fn context_pack_is_not_vector_only_and_includes_impact() -> Result<(), Box<dyn s
     );
     assert_eq!(pack.hits.len(), 1);
     assert_eq!(pack.impacts.len(), 1);
+    Ok(())
+}
+
+#[test]
+fn context_pack_impacts_include_call_graph_edges() -> Result<(), Box<dyn std::error::Error>> {
+    let repo = RepoId::new("repo")?;
+    let commit = CommitSha::new("commit")?;
+    let target = symbol(&repo, &commit, "search")?;
+    let callee = symbol(&repo, &commit, "build_context_pack")?;
+    let calls = vec![ImpactCallEdge::new(
+        target.versioned_symbol_id.clone(),
+        callee.versioned_symbol_id.clone(),
+    )];
+
+    let pack = build_context_pack_with_calls(&[target, callee], calls.as_slice(), "search", 5);
+
+    assert_eq!(
+        pack.impacts
+            .first()
+            .map(|impact| impact.direct_callees.as_slice()),
+        Some(&["build_context_pack".to_owned()][..])
+    );
     Ok(())
 }
 

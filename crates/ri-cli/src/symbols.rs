@@ -33,23 +33,10 @@ pub(crate) fn symbols_command(mut args: impl Iterator<Item = String>) -> Result<
 pub(crate) fn changed_symbols_command(
     mut args: impl Iterator<Item = String>,
 ) -> Result<(), CliError> {
-    let Some(flag) = args.next() else {
-        return Err(CliError::Usage);
-    };
-    if flag != "--diff" {
-        return Err(CliError::Usage);
-    }
-    let Some(diff_path) = args.next() else {
-        return Err(CliError::Usage);
-    };
-    if args.next().is_some() {
-        return Err(CliError::Usage);
-    }
-
-    let diff = fs::read_to_string(diff_path)?;
+    let request = ChangedSymbolsArgs::parse(&mut args)?;
+    let diff = fs::read_to_string(request.diff_path)?;
     let changed_lines = parse_changed_lines(&diff);
-    let repo_path = PathBuf::from(".");
-    let symbols = extract_repo_symbols(&repo_path)?;
+    let symbols = extract_repo_symbols(&request.repo)?;
     let by_file = symbols_by_file(&symbols);
     let changed_symbols = changed_lines
         .iter()
@@ -71,6 +58,42 @@ pub(crate) fn changed_symbols_command(
         "matched_symbol_count": changed_symbols.len(),
         "changed_symbols": changed_symbols,
     }))
+}
+
+#[derive(Debug)]
+struct ChangedSymbolsArgs {
+    repo: PathBuf,
+    diff_path: PathBuf,
+}
+
+impl ChangedSymbolsArgs {
+    fn parse(args: &mut impl Iterator<Item = String>) -> Result<Self, CliError> {
+        let mut repo = PathBuf::from(".");
+        let mut diff_path = None::<PathBuf>;
+
+        while let Some(flag) = args.next() {
+            match flag.as_str() {
+                "--repo" => {
+                    let Some(path) = args.next() else {
+                        return Err(CliError::Usage);
+                    };
+                    repo = PathBuf::from(path);
+                }
+                "--diff" => {
+                    let Some(path) = args.next() else {
+                        return Err(CliError::Usage);
+                    };
+                    diff_path = Some(PathBuf::from(path));
+                }
+                _ => return Err(CliError::Usage),
+            }
+        }
+
+        Ok(Self {
+            repo,
+            diff_path: diff_path.ok_or(CliError::Usage)?,
+        })
+    }
 }
 
 fn parse_repo_args(args: &mut impl Iterator<Item = String>) -> Result<PathBuf, CliError> {

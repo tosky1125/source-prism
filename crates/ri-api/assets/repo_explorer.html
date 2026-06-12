@@ -324,7 +324,7 @@
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ repo_id: repoId, query })
       }).then((response) => response.json());
-      const hits = result.context_pack?.search?.hits ?? [];
+      const hits = result.context_pack?.hits ?? [];
       renderList(document.querySelector("#symbols"), hits.map((hit) => row(hit.symbol.fqn, `score ${hit.score}`)), "No matches");
     });
     load();

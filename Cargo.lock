@@ -2243,6 +2243,7 @@ dependencies = [
  "ri-impact",
  "ri-indexer",
  "ri-refactor",
+ "ri-review",
  "ri-symbols",
  "serde",
  "serde_json",

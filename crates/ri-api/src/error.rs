@@ -12,6 +12,7 @@ use ri_indexer::{
     ArchitectureStoreError, CoverageStoreError, GenerationError, GraphStoreError, SearchSyncError,
     SymbolStoreError, TestCaseStoreError, TestRunStoreError,
 };
+use ri_review::ReviewError;
 use serde::Serialize;
 
 #[derive(Debug, thiserror::Error)]
@@ -53,6 +54,8 @@ pub enum AppError {
     Git(#[from] ri_git::GitError),
     #[error(transparent)]
     Impact(#[from] ImpactError),
+    #[error(transparent)]
+    Review(#[from] ReviewError),
     #[error(transparent)]
     Generation(#[from] GenerationError),
     #[error(transparent)]
@@ -103,6 +106,11 @@ impl IntoResponse for AppError {
                 StatusCode::NOT_FOUND,
                 "symbol_not_found",
                 format!("symbol not found: {query}"),
+            ),
+            Self::Review(error) => parts(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "review_verification_failed",
+                error.to_string(),
             ),
             Self::Architecture(_) => internal("architecture", "architecture extraction failed"),
             Self::ArchitectureStore(_) => {

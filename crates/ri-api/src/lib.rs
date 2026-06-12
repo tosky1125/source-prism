@@ -29,6 +29,7 @@ pub(crate) mod repo_symbols;
 pub(crate) mod repo_test_runs;
 pub(crate) mod repo_tests;
 pub(crate) mod repos;
+pub(crate) mod review;
 pub(crate) mod runs;
 pub(crate) mod state;
 pub(crate) mod test_context;
@@ -52,6 +53,7 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/context/search", post(context_search::search))
         .route("/v1/impact", post(impact::analyze))
         .route("/v1/refactor/plan", post(refactor::plan))
+        .route("/v1/review/verify", post(review::verify))
         .route("/v1/test-context", post(test_context::get))
         .route("/repo/{repo_id}", get(web::repo))
         .route("/repo/{repo_id}/{view}", get(web::repo_view))

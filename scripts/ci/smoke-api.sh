@@ -232,6 +232,71 @@ request POST "${api_base_url}/v1/repos/${repo_id}/refactor/plan" \
 grep -q '"kind":"refactor_plan"' /tmp/source-prism-api-repo-refactor.json
 grep -q '"planner_only_sandbox_required"' /tmp/source-prism-api-repo-refactor.json
 
+cat > /tmp/source-prism-api-review.json <<'JSON'
+{
+  "findings": [
+    {
+      "title": "Tax rounding can skip fractional cents",
+      "severity": "medium",
+      "file_path": "src/invoice.rs",
+      "start_line": 12,
+      "end_line": 16,
+      "evidence": [
+        {
+          "file_path": "src/invoice.rs",
+          "start_line": 12,
+          "end_line": 16,
+          "summary": "rounding happens before line item aggregation"
+        }
+      ],
+      "impact_path": [
+        {
+          "source": "InvoiceService::applyTax",
+          "relation": "calls",
+          "target": "Money::round"
+        }
+      ],
+      "recommendation": "Round only after summing line item tax amounts."
+    }
+  ]
+}
+JSON
+request POST "${api_base_url}/v1/review/verify" \
+  /tmp/source-prism-api-review-verified.json \
+  -H 'content-type: application/json' \
+  --data @/tmp/source-prism-api-review.json
+grep -q '"kind":"review_verification"' /tmp/source-prism-api-review-verified.json
+grep -q '"verified_count":1' /tmp/source-prism-api-review-verified.json
+
+cat > /tmp/source-prism-api-review-invalid.json <<'JSON'
+{
+  "findings": [
+    {
+      "title": "No evidence",
+      "severity": "medium",
+      "file_path": "src/invoice.rs",
+      "start_line": 12,
+      "end_line": 16,
+      "impact_path": [
+        {
+          "source": "InvoiceService::applyTax",
+          "relation": "calls",
+          "target": "Money::round"
+        }
+      ],
+      "recommendation": "Add evidence before publishing."
+    }
+  ]
+}
+JSON
+if curl -fsS "${api_base_url}/v1/review/verify" \
+  -H 'content-type: application/json' \
+  --data @/tmp/source-prism-api-review-invalid.json \
+  > /tmp/source-prism-api-review-invalid.out; then
+  echo "expected invalid review verification to fail" >&2
+  exit 1
+fi
+
 request GET "${api_base_url}/repo/${repo_id}" /tmp/source-prism-api-web.html
 grep -q 'Repo Structure Explorer' /tmp/source-prism-api-web.html
 grep -q "data-repo-id=\"${repo_id}\"" /tmp/source-prism-api-web.html

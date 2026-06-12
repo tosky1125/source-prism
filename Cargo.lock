@@ -2284,6 +2284,7 @@ dependencies = [
  "ri-config",
  "ri-context",
  "ri-core",
+ "ri-embedding",
  "ri-git",
  "ri-impact",
  "ri-indexer",
@@ -2332,6 +2333,20 @@ dependencies = [
  "serde_json",
  "sha2",
  "thiserror",
+]
+
+[[package]]
+name = "ri-embedding"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sqlx",
+ "thiserror",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

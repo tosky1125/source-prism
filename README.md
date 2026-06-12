@@ -28,6 +28,7 @@ This repository is currently past the bare foundation phase. The runnable base n
 - Tree-sitter symbol extraction for Rust, TypeScript/JavaScript, Python, and Go
 - Postgres-backed file manifest, symbol, graph, test-case, run, and search outbox indexing
 - Static imports, calls, test-context, and `test_covers` graph evidence from extracted symbols
+- Provider-neutral embedding cache backed by Postgres `embedding_cache`
 - MCP tool contracts for symbol/reference/impact/context queries
 - Evidence-backed review finding verification
 - Planner-only refactor slicing from impact evidence
@@ -45,6 +46,7 @@ cargo run -p ri-cli -- index --repo . --sha HEAD
 cargo run -p ri-cli -- symbols --repo .
 curl -fsS http://127.0.0.1:3000/v1/repos/source-prism-ci/tests
 cargo run -p ri-cli -- impact --symbol search
+cargo run -p ri-cli -- embeddings cache-put --provider local --model local-v1 --kind symbol --dimensions 3 --input InvoiceService::applyTax --vector 0.1,0.2,0.3
 cargo run -p ri-cli -- refactor plan --symbol search
 cargo run -p ri-cli -- search-context search
 cargo run -p ri-cli -- test-context --symbol extracts_rust_functions_methods_and_tests

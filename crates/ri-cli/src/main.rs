@@ -17,6 +17,7 @@ use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
 
 pub(crate) mod architecture;
+pub(crate) mod embeddings;
 pub(crate) mod error;
 pub(crate) mod impact;
 pub(crate) mod index;
@@ -83,6 +84,7 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
             expect_subcommand(&mut args, "verify")?;
             review::verify_command(args).map(|()| ExitCode::SUCCESS)
         }
+        "embeddings" => embeddings::command(args).await.map(|()| ExitCode::SUCCESS),
         "architecture" => architecture::architecture_command(args).map(|()| ExitCode::SUCCESS),
         "impact" => impact::impact_command(args).map(|()| ExitCode::SUCCESS),
         "search-context" => {

@@ -72,6 +72,12 @@ jobs:
           cargo run -p ri-cli -- impact --symbol 'InvoiceService::applyTax' > /tmp/source-prism-smoke-impact.json
           grep '"kind": "impact"' /tmp/source-prism-smoke-impact.json
           grep '"status": "ok"' /tmp/source-prism-smoke-impact.json
+          embedding_provider="source-prism-ci-${GITHUB_RUN_ID:-local}"
+          cargo run -p ri-cli -- embeddings cache-put --provider "$embedding_provider" --model local-v1 --kind symbol --dimensions 3 --input 'InvoiceService::applyTax' --vector '0.1,0.2,0.3' > /tmp/source-prism-embedding-first.json
+          grep '"kind": "embedding_cache"' /tmp/source-prism-embedding-first.json
+          grep '"cache_hit": false' /tmp/source-prism-embedding-first.json
+          cargo run -p ri-cli -- embeddings cache-put --provider "$embedding_provider" --model local-v1 --kind symbol --dimensions 3 --input 'InvoiceService::applyTax' --vector '0.1,0.2,0.3' > /tmp/source-prism-embedding-second.json
+          grep '"cache_hit": true' /tmp/source-prism-embedding-second.json
           cargo run -p ri-cli -- index --repo . --sha HEAD > /tmp/source-prism-cli-index.json
           grep '"kind": "index"' /tmp/source-prism-cli-index.json
           grep '"indexed_symbols":' /tmp/source-prism-cli-index.json

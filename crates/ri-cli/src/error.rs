@@ -10,7 +10,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub(crate) enum CliError {
     #[error(
-        "usage: ri-cli config check --env-file <path> | db migrate | repo manifest --repo <path> | index --repo <path> --sha <sha> | symbols --repo <path> | changed-symbols --diff <diff> | references --symbol <symbol> | architecture --repo <path> | impact --symbol <symbol> | refactor plan --symbol <symbol> | search-context <query> | test-context --symbol <symbol> | review verify --input <file> | tests import-junit --repo <path> --sha <sha> --junit <file> | tests import-pytest-json --repo <path> --sha <sha> --pytest-json <file> | tests import-playwright-json --repo <path> --sha <sha> --playwright-json <file> | tests import-go-test-json --repo <path> --sha <sha> --go-test-json <file> | tests import-lcov --repo <path> --sha <sha> --lcov <file> | tests import-cobertura --repo <path> --sha <sha> --cobertura <file> | tests import-jacoco --repo <path> --sha <sha> --jacoco <file> | search sync --once | search drift-check [--expect-mismatch fixture] | search rebuild --from-postgres"
+        "usage: ri-cli config check --env-file <path> | db migrate | repo manifest --repo <path> | index --repo <path> --sha <sha> | symbols --repo <path> | changed-symbols --diff <diff> | references --symbol <symbol> | architecture --repo <path> | impact --symbol <symbol> | refactor plan --symbol <symbol> | search-context <query> | test-context --symbol <symbol> | review verify --input <file> | embeddings cache-put --provider <provider> --model <model> --kind <kind> --dimensions <n> --input <text> --vector <csv> | tests import-junit --repo <path> --sha <sha> --junit <file> | tests import-pytest-json --repo <path> --sha <sha> --pytest-json <file> | tests import-playwright-json --repo <path> --sha <sha> --playwright-json <file> | tests import-go-test-json --repo <path> --sha <sha> --go-test-json <file> | tests import-lcov --repo <path> --sha <sha> --lcov <file> | tests import-cobertura --repo <path> --sha <sha> --cobertura <file> | tests import-jacoco --repo <path> --sha <sha> --jacoco <file> | search sync --once | search drift-check [--expect-mismatch fixture] | search rebuild --from-postgres"
     )]
     Usage,
     #[error("missing required env: {key}")]
@@ -25,6 +25,8 @@ pub(crate) enum CliError {
     Context(#[from] ri_context::ContextError),
     #[error(transparent)]
     Core(#[from] ri_core::CoreError),
+    #[error(transparent)]
+    Embedding(#[from] ri_embedding::EmbeddingCacheError),
     #[error(transparent)]
     Git(#[from] ri_git::GitError),
     #[error(transparent)]
@@ -75,6 +77,7 @@ impl CliError {
             | Self::Config(_)
             | Self::Context(_)
             | Self::Core(_)
+            | Self::Embedding(_)
             | Self::Git(_)
             | Self::Impact(_)
             | Self::Drift { .. }

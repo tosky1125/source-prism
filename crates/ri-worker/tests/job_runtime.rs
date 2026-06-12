@@ -155,3 +155,27 @@ async fn no_op_job_succeeds_when_run_once_processes_one_job()
     assert_eq!(stored.attempt_count, 1);
     Ok(())
 }
+
+#[tokio::test]
+async fn run_polls_processes_until_poll_limit() -> Result<(), Box<dyn std::error::Error>> {
+    // Given: one queued no-op job and a bounded daemon poll budget.
+    let store = MemoryJobStore::default();
+    let runtime = JobRuntime::new(
+        store.clone(),
+        WorkerId::parse("worker-a")?,
+        LeaseConfig::for_tests(Duration::from_secs(30)),
+    );
+    let request = EnqueueJob::new(JobQueue::default(), JobKind::parse("noop")?, json!({}))
+        .with_idempotency_key("run-polls-noop");
+    let job = runtime.enqueue(request).await?;
+
+    // When: daemon mode runs exactly two polls.
+    let outcome = runtime.run_polls(2).await?;
+
+    // Then: the queued job succeeds and the loop reports both polls.
+    assert_eq!(outcome.polls, 2);
+    assert_eq!(outcome.processed, 1);
+    let stored = store.get(job.job_id)?;
+    assert_eq!(stored.state, JobState::Succeeded);
+    Ok(())
+}

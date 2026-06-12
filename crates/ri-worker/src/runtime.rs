@@ -3,7 +3,8 @@ use std::time::Duration;
 use uuid::Error as UuidError;
 
 use crate::model::{
-    EnqueueJob, JobId, JobLease, JobRecord, LeaseConfig, LeasedJob, RunOnceOutcome, WorkerId,
+    EnqueueJob, JobId, JobLease, JobRecord, LeaseConfig, LeasedJob, RunOnceOutcome,
+    RunPollsOutcome, WorkerId,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -110,6 +111,19 @@ where
             processed: true,
             job_id: Some(job.lease.job_id),
         })
+    }
+
+    pub async fn run_polls(&self, poll_limit: u64) -> Result<RunPollsOutcome, JobError> {
+        let mut polls = 0_u64;
+        let mut processed = 0_u64;
+
+        while polls < poll_limit {
+            let outcome = self.run_once().await?;
+            polls = polls.saturating_add(1);
+            processed = processed.saturating_add(u64::from(outcome.processed));
+        }
+
+        Ok(RunPollsOutcome { polls, processed })
     }
 }
 

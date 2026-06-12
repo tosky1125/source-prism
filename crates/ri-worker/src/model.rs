@@ -238,6 +238,13 @@ pub struct RunOnceOutcome {
     pub job_id: Option<JobId>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct RunPollsOutcome {
+    pub polls: u64,
+    pub processed: u64,
+}
+
 fn parse_name(raw: &str) -> Result<String, JobError> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {

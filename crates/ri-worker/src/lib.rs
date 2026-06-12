@@ -15,7 +15,7 @@ mod runtime;
 pub use memory::MemoryJobStore;
 pub use model::{
     Backoff, EnqueueJob, JobId, JobKind, JobLease, JobQueue, JobRecord, JobState, LeaseConfig,
-    LeasedJob, RunOnceOutcome, WorkerId,
+    LeasedJob, RunOnceOutcome, RunPollsOutcome, WorkerId,
 };
 pub use pg::PgJobStore;
 pub use runtime::{JobError, JobRuntime, JobStore};

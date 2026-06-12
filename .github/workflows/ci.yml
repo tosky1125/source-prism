@@ -282,4 +282,6 @@ jobs:
           exit 1
 
       - name: Smoke worker
-        run: cargo run -p ri-worker -- --once | grep 'ri-worker once processed='
+        run: |
+          cargo run -p ri-worker -- --once | grep 'ri-worker once processed='
+          cargo run -p ri-worker -- --max-polls 1 --poll-interval-ms 1 | grep 'ri-worker daemon polls=1 processed='

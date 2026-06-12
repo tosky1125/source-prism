@@ -28,14 +28,12 @@ struct Cli {
     lease_seconds: u64,
     #[arg(long, default_value_t = 1_000)]
     poll_interval_ms: u64,
+    #[arg(long)]
+    max_polls: Option<u64>,
 }
 
 #[derive(Debug, thiserror::Error)]
 enum CliError {
-    #[error(
-        "daemon mode is not implemented yet; requested poll interval was {poll_interval_ms} ms"
-    )]
-    RunModeRequired { poll_interval_ms: u64 },
     #[error(transparent)]
     Job(#[from] ri_worker::JobError),
     #[error(transparent)]
@@ -58,11 +56,19 @@ async fn main() -> Result<(), CliError> {
         LeaseConfig::new(Duration::from_secs(cli.lease_seconds)),
     );
 
-    if !cli.once {
-        return Err(CliError::RunModeRequired {
-            poll_interval_ms: cli.poll_interval_ms,
-        });
+    if cli.once {
+        return run_once(&runtime).await;
     }
+
+    run_daemon(
+        &runtime,
+        cli.max_polls,
+        Duration::from_millis(cli.poll_interval_ms),
+    )
+    .await
+}
+
+async fn run_once(runtime: &JobRuntime<PgJobStore>) -> Result<(), CliError> {
     let outcome = runtime.run_once().await?;
     writeln!(
         std::io::stdout(),
@@ -71,6 +77,34 @@ async fn main() -> Result<(), CliError> {
         outcome
             .job_id
             .map_or_else(|| "none".to_owned(), |job_id| job_id.to_string())
+    )?;
+    Ok(())
+}
+
+async fn run_daemon(
+    runtime: &JobRuntime<PgJobStore>,
+    max_polls: Option<u64>,
+    poll_interval: Duration,
+) -> Result<(), CliError> {
+    let mut polls = 0_u64;
+    let mut processed = 0_u64;
+
+    loop {
+        if max_polls.is_some_and(|limit| polls >= limit) {
+            break;
+        }
+
+        let outcome = runtime.run_once().await?;
+        polls = polls.saturating_add(1);
+        processed = processed.saturating_add(u64::from(outcome.processed));
+        if !outcome.processed && max_polls.is_none_or(|limit| polls < limit) {
+            tokio::time::sleep(poll_interval).await;
+        }
+    }
+
+    writeln!(
+        std::io::stdout(),
+        "ri-worker daemon polls={polls} processed={processed}"
     )?;
     Ok(())
 }

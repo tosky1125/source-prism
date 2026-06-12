@@ -10,23 +10,23 @@ use std::{
 };
 
 use ri_mcp::{
-    ImpactToolRequest, McpToolCatalog, ReferenceToolRequest, RepositoryToolHandler,
-    SearchContextToolRequest, SymbolToolRequest, TestContextToolRequest, handle_json_rpc_request,
+    ImpactToolRequest, McpToolCatalog, ReferenceToolRequest, SearchContextToolRequest,
+    SymbolToolRequest, TestContextToolRequest, handle_json_rpc_request,
 };
 use serde_json::json;
 
-use crate::error::CliError;
+use crate::{error::CliError, mcp_handler::handler_for_source};
 
 const DEFAULT_LIMIT: usize = 8;
 
-pub(crate) fn command(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
+pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
     let Some(subcommand) = args.next() else {
         return Err(CliError::Usage);
     };
     match subcommand.as_str() {
         "tools" => tools_command(args),
-        "call" => call_command(args),
-        "serve" => serve_command(args),
+        "call" => call_command(args).await,
+        "serve" => serve_command(args).await,
         _ => Err(CliError::Usage),
     }
 }
@@ -41,10 +41,9 @@ fn tools_command(mut args: impl Iterator<Item = String>) -> Result<(), CliError>
     }))
 }
 
-fn call_command(args: impl Iterator<Item = String>) -> Result<(), CliError> {
+async fn call_command(args: impl Iterator<Item = String>) -> Result<(), CliError> {
     let request = McpCallArgs::parse(args)?;
-    let evidence = ri_context::extract_repo_index(&request.repo)?;
-    let handler = RepositoryToolHandler::new(evidence.symbols, evidence.calls);
+    let handler = handler_for_source(&request.source).await?;
     let result = match request.tool.as_str() {
         "repo.get_symbol" => serde_json::to_value(
             handler.get_symbol(&SymbolToolRequest::new(request.required_symbol()?))?,
@@ -71,10 +70,9 @@ fn call_command(args: impl Iterator<Item = String>) -> Result<(), CliError> {
     }))
 }
 
-fn serve_command(args: impl Iterator<Item = String>) -> Result<(), CliError> {
+async fn serve_command(args: impl Iterator<Item = String>) -> Result<(), CliError> {
     let request = McpServeArgs::parse(args)?;
-    let evidence = ri_context::extract_repo_index(&request.repo)?;
-    let handler = RepositoryToolHandler::new(evidence.symbols, evidence.calls);
+    let handler = handler_for_source(&request.source).await?;
     let body = fs::read_to_string(request.request_path)?;
     let request = serde_json::from_str::<serde_json::Value>(body.as_str())?;
     let response = handle_json_rpc_request(&handler, &request);
@@ -82,8 +80,14 @@ fn serve_command(args: impl Iterator<Item = String>) -> Result<(), CliError> {
 }
 
 #[derive(Debug)]
+pub(crate) enum McpRepoSource {
+    Worktree(PathBuf),
+    PersistedRepo(String),
+}
+
+#[derive(Debug)]
 struct McpCallArgs {
-    repo: PathBuf,
+    source: McpRepoSource,
     tool: String,
     symbol: Option<String>,
     query: Option<String>,
@@ -92,7 +96,7 @@ struct McpCallArgs {
 
 impl McpCallArgs {
     fn parse(args: impl Iterator<Item = String>) -> Result<Self, CliError> {
-        let mut repo = None;
+        let mut source = None;
         let mut tool = None;
         let mut symbol = None;
         let mut query = None;
@@ -101,7 +105,18 @@ impl McpCallArgs {
 
         while let Some(flag) = args.next() {
             match flag.as_str() {
-                "--repo" => repo = Some(PathBuf::from(next_value(&mut args)?)),
+                "--repo" => {
+                    set_repo_source(
+                        &mut source,
+                        McpRepoSource::Worktree(PathBuf::from(next_value(&mut args)?)),
+                    )?;
+                }
+                "--repo-id" => {
+                    set_repo_source(
+                        &mut source,
+                        McpRepoSource::PersistedRepo(next_value(&mut args)?),
+                    )?;
+                }
                 "--tool" => tool = Some(next_value(&mut args)?),
                 "--symbol" => symbol = Some(next_value(&mut args)?),
                 "--query" => query = Some(next_value(&mut args)?),
@@ -111,7 +126,7 @@ impl McpCallArgs {
         }
 
         Ok(Self {
-            repo: repo.ok_or(CliError::Usage)?,
+            source: source.ok_or(CliError::Usage)?,
             tool: tool.ok_or(CliError::Usage)?,
             symbol,
             query,
@@ -130,20 +145,31 @@ impl McpCallArgs {
 
 #[derive(Debug)]
 struct McpServeArgs {
-    repo: PathBuf,
+    source: McpRepoSource,
     request_path: PathBuf,
 }
 
 impl McpServeArgs {
     fn parse(args: impl Iterator<Item = String>) -> Result<Self, CliError> {
-        let mut repo = None;
+        let mut source = None;
         let mut request_path = None;
         let mut once = false;
         let mut args = args.peekable();
 
         while let Some(flag) = args.next() {
             match flag.as_str() {
-                "--repo" => repo = Some(PathBuf::from(next_value(&mut args)?)),
+                "--repo" => {
+                    set_repo_source(
+                        &mut source,
+                        McpRepoSource::Worktree(PathBuf::from(next_value(&mut args)?)),
+                    )?;
+                }
+                "--repo-id" => {
+                    set_repo_source(
+                        &mut source,
+                        McpRepoSource::PersistedRepo(next_value(&mut args)?),
+                    )?;
+                }
                 "--once" => once = true,
                 "--request" => request_path = Some(PathBuf::from(next_value(&mut args)?)),
                 _ => return Err(CliError::Usage),
@@ -154,10 +180,21 @@ impl McpServeArgs {
             return Err(CliError::Usage);
         }
         Ok(Self {
-            repo: repo.ok_or(CliError::Usage)?,
+            source: source.ok_or(CliError::Usage)?,
             request_path: request_path.ok_or(CliError::Usage)?,
         })
     }
+}
+
+fn set_repo_source(
+    current: &mut Option<McpRepoSource>,
+    next: McpRepoSource,
+) -> Result<(), CliError> {
+    if current.is_some() {
+        return Err(CliError::Usage);
+    }
+    *current = Some(next);
+    Ok(())
 }
 
 fn next_value(args: &mut impl Iterator<Item = String>) -> Result<String, CliError> {

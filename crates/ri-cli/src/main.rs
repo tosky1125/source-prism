@@ -26,6 +26,7 @@ pub(crate) mod index_args;
 pub(crate) mod index_jobs;
 pub(crate) mod index_output;
 pub(crate) mod mcp;
+pub(crate) mod mcp_handler;
 pub(crate) mod refactor;
 pub(crate) mod references;
 pub(crate) mod repo_search_drift;
@@ -105,7 +106,7 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
             .await
             .map(|()| ExitCode::SUCCESS),
         "embeddings" => embeddings::command(args).await.map(|()| ExitCode::SUCCESS),
-        "mcp" => mcp::command(args).map(|()| ExitCode::SUCCESS),
+        "mcp" => mcp::command(args).await.map(|()| ExitCode::SUCCESS),
         "architecture" => architecture::architecture_command(args)
             .await
             .map(|()| ExitCode::SUCCESS),

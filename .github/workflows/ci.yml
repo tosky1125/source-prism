@@ -145,6 +145,9 @@ jobs:
           cargo run -p ri-cli -- references --repo-id "$cli_repo_id" --symbol "$impact_symbol" > /tmp/source-prism-persisted-references.json
           grep '"kind": "references"' /tmp/source-prism-persisted-references.json
           grep '"repo_id":' /tmp/source-prism-persisted-references.json
+          cargo run -p ri-cli -- mcp call --repo-id "$cli_repo_id" --tool repo.get_impact --symbol "$impact_symbol" > /tmp/source-prism-persisted-mcp-impact.json
+          grep '"kind": "mcp_tool_result"' /tmp/source-prism-persisted-mcp-impact.json
+          grep '"tool": "repo.get_impact"' /tmp/source-prism-persisted-mcp-impact.json
           test_symbol=$(python3 -c 'import json; data=json.load(open("/tmp/source-prism-symbols.json")); print(next(symbol["fqn"] for symbol in data["symbols"] if symbol["kind"] == "test_case"))')
           cargo run -p ri-cli -- test-context --symbol "$test_symbol" > /tmp/source-prism-test-context.json
           grep '"kind": "test_context"' /tmp/source-prism-test-context.json

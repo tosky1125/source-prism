@@ -25,6 +25,7 @@ pub(crate) mod repo_graph;
 pub(crate) mod repo_index;
 pub(crate) mod repo_index_jobs;
 pub(crate) mod repo_references;
+pub(crate) mod repo_runs;
 pub(crate) mod repo_symbols;
 pub(crate) mod repo_test_runs;
 pub(crate) mod repo_tests;
@@ -79,6 +80,7 @@ pub fn app(state: AppState) -> Router {
             "/v1/repos/{repo_id}/refactor/plan",
             post(refactor::plan_for_repo),
         )
+        .route("/v1/repos/{repo_id}/runs", get(repo_runs::list))
         .route("/v1/repos/{repo_id}/symbols", get(repo_symbols::list))
         .route(
             "/v1/repos/{repo_id}/test-context",

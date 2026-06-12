@@ -156,6 +156,12 @@ grep -q '"symbols":' /tmp/source-prism-api-run.json
 grep -q '"graph_edges":' /tmp/source-prism-api-run.json
 grep -q '"search_chunks":' /tmp/source-prism-api-run.json
 grep -q '"search_sync_jobs":1' /tmp/source-prism-api-run.json
+grep -q '"search_sync_job_details":' /tmp/source-prism-api-run.json
+
+request GET "${api_base_url}/v1/repos/${repo_id}/runs" /tmp/source-prism-api-repo-runs.json
+grep -q '"kind":"repo_runs"' /tmp/source-prism-api-repo-runs.json
+grep -q '"run_count":1' /tmp/source-prism-api-repo-runs.json
+grep -q '"search_sync_job_details":' /tmp/source-prism-api-repo-runs.json
 
 request GET "${api_base_url}/v1/repos/${repo_id}" /tmp/source-prism-api-repo-overview.json
 grep -q '"kind":"repo"' /tmp/source-prism-api-repo-overview.json

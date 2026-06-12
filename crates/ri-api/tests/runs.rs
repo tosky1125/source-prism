@@ -100,6 +100,21 @@ fn run_evidence_fixture_is_indexed() {
     assert_count_at_least(&run, "/run/evidence/graph_edges", 1)?;
     assert_count_at_least(&run, "/run/evidence/search_chunks", 1)?;
     assert_count_at_least(&run, "/run/evidence/search_sync_jobs", 1)?;
+    assert_eq!(
+        run.pointer("/run/evidence/search_sync_job_details/0/state")
+            .and_then(Value::as_str),
+        Some("queued")
+    );
+    assert!(
+        run.pointer("/run/evidence/search_sync_job_details/0/job_id")
+            .and_then(Value::as_str)
+            .is_some()
+    );
+    assert_eq!(
+        run.pointer("/run/evidence/search_sync_job_details/0/attempt_count")
+            .and_then(Value::as_i64),
+        Some(0)
+    );
     assert_count_at_least(&run, "/run/evidence/test_cases", 1)?;
     cleanup(&pool, &repo_id).await?;
     repo.cleanup()?;

@@ -4,6 +4,7 @@
 )]
 
 mod cobertura;
+mod go_test_json;
 mod jacoco;
 mod junit;
 mod lcov;
@@ -17,6 +18,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use thiserror::Error;
 
 pub use cobertura::parse_cobertura_xml;
+pub use go_test_json::parse_go_test_json;
 pub use jacoco::parse_jacoco_xml;
 pub use junit::{JunitReport, TestCaseResult, TestResultStatus, TestSuiteResult, parse_junit_xml};
 pub use lcov::{CoverageFile, CoverageReport, CoverageSegment, parse_lcov};
@@ -69,6 +71,8 @@ pub enum BehaviorError {
     PytestJson { message: String },
     #[error("failed to parse playwright json: {message}")]
     PlaywrightJson { message: String },
+    #[error("failed to parse go test json: {message}")]
+    GoTestJson { message: String },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

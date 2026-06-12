@@ -108,6 +108,11 @@ jobs:
           grep '"kind": "test_runs"' /tmp/source-prism-playwright.json.out
           grep '"framework": "playwright"' /tmp/source-prism-playwright.json.out
           grep '"imported_results": 1' /tmp/source-prism-playwright.json.out
+          printf '%s\n' '{"Action":"pass","Package":"example.com/invoice","Test":"TestAddsRate","Elapsed":0.005}' > /tmp/source-prism-go-test.json
+          cargo run -p ri-cli -- tests import-go-test-json --repo . --sha HEAD --go-test-json /tmp/source-prism-go-test.json > /tmp/source-prism-go-test.json.out
+          grep '"kind": "test_runs"' /tmp/source-prism-go-test.json.out
+          grep '"framework": "go_test"' /tmp/source-prism-go-test.json.out
+          grep '"imported_results": 1' /tmp/source-prism-go-test.json.out
 
       - name: Check formatting
         run: cargo fmt --all -- --check

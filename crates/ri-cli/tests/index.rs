@@ -82,6 +82,7 @@ pub fn apply_tax(value: i32) -> i32 {
     );
     let impact_body = serde_json::from_slice::<Value>(&impact_output.stdout)?;
     assert_json_array_contains(&impact_body, "/direct_callers", "apply_tax_adds_rate")?;
+    assert_references_include_call_site(&repo)?;
     let context_output = Command::new(env!("CARGO_BIN_EXE_ri-cli"))
         .current_dir(repo.path())
         .args(["search-context", "apply_tax"])
@@ -99,6 +100,29 @@ pub fn apply_tax(value: i32) -> i32 {
     )?;
     cleanup(&pool, repo_id).await?;
     repo.cleanup()?;
+    Ok(())
+}
+
+fn assert_references_include_call_site(repo: &TempRepo) -> Result<(), Box<dyn std::error::Error>> {
+    let output = Command::new(env!("CARGO_BIN_EXE_ri-cli"))
+        .current_dir(repo.path())
+        .args(["references", "--symbol", "apply_tax"])
+        .output()?;
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let body = serde_json::from_slice::<Value>(&output.stdout)?;
+    assert_eq!(
+        body.pointer("/kind").and_then(Value::as_str),
+        Some("references")
+    );
+    assert_eq!(
+        body.pointer("/references/0/source_fqn")
+            .and_then(Value::as_str),
+        Some("apply_tax_adds_rate")
+    );
     Ok(())
 }
 

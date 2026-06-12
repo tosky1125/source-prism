@@ -112,6 +112,37 @@ fn total() -> i32 { apply_tax(1) }
     Ok(())
 }
 
+#[test]
+fn extracts_rust_calls_inside_macro_tokens() -> Result<(), Box<dyn std::error::Error>> {
+    let source = r"
+fn apply_tax(value: i32) -> i32 { value + 1 }
+fn total_works() { assert_eq!(invoice::apply_tax(1), 2) }
+";
+
+    let calls = extract_calls(Language::Rust, "src/lib.rs", source)?;
+
+    assert!(
+        calls.iter().any(|call| call.target_name == "apply_tax"),
+        "macro token call should include apply_tax"
+    );
+    Ok(())
+}
+
+#[test]
+fn ignores_unresolved_rust_receiver_method_calls() -> Result<(), Box<dyn std::error::Error>> {
+    let source = r"
+fn total(target: String) -> bool { target.is_empty() }
+";
+
+    let calls = extract_calls(Language::Rust, "src/lib.rs", source)?;
+
+    assert!(
+        calls.iter().all(|call| call.target_name != "is_empty"),
+        "receiver method calls need precise resolution before graph insertion"
+    );
+    Ok(())
+}
+
 fn extract(
     language: Language,
     path: &str,

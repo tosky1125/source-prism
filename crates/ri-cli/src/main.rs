@@ -20,6 +20,7 @@ pub(crate) mod error;
 pub(crate) mod impact;
 pub(crate) mod index;
 pub(crate) mod index_args;
+pub(crate) mod references;
 pub(crate) mod search;
 pub(crate) mod search_context;
 pub(crate) mod symbols;
@@ -65,6 +66,7 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
         "index" => index::command(args).await.map(|()| ExitCode::SUCCESS),
         "symbols" => symbols::symbols_command(args).map(|()| ExitCode::SUCCESS),
         "changed-symbols" => symbols::changed_symbols_command(args).map(|()| ExitCode::SUCCESS),
+        "references" => references::references_command(args).map(|()| ExitCode::SUCCESS),
         "impact" => impact::impact_command(args).map(|()| ExitCode::SUCCESS),
         "search-context" => {
             search_context::search_context_command(args).map(|()| ExitCode::SUCCESS)

@@ -6,6 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use ri_behavior::BehaviorError;
+use ri_context::ContextError;
 use ri_impact::ImpactError;
 use ri_indexer::{
     GenerationError, GraphStoreError, SearchSyncError, SymbolStoreError, TestCaseStoreError,
@@ -78,10 +79,12 @@ impl IntoResponse for AppError {
                 "run_not_found",
                 format!("run not found: {run_id}"),
             ),
-            Self::Behavior(BehaviorError::SymbolNotFound { symbol }) => (
+            Self::Behavior(BehaviorError::SymbolNotFound { symbol: query })
+            | Self::Context(ContextError::SymbolNotFound { query })
+            | Self::Impact(ImpactError::SymbolNotFound { query }) => (
                 StatusCode::NOT_FOUND,
                 "symbol_not_found",
-                format!("symbol not found: {symbol}"),
+                format!("symbol not found: {query}"),
             ),
             Self::Behavior(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -97,11 +100,6 @@ impl IntoResponse for AppError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "manifest",
                 "file manifest failed".to_owned(),
-            ),
-            Self::Impact(ImpactError::SymbolNotFound { query }) => (
-                StatusCode::NOT_FOUND,
-                "symbol_not_found",
-                format!("symbol not found: {query}"),
             ),
             Self::Impact(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,

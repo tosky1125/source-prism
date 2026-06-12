@@ -7,6 +7,8 @@
     reason = "Tree-sitter and SQLx-adjacent workspace dependencies pull duplicate transitive crates outside this crate's control."
 )]
 
+mod references;
+
 use ri_core::{CommitSha, FilePath, Language, RepoId, SymbolId};
 use ri_git::{LocalManifest, discover_worktree, resolve_commit_sha};
 use ri_impact::{ImpactCallEdge, ImpactReport, analyze_symbol_impact_with_calls};
@@ -18,9 +20,16 @@ use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 use thiserror::Error;
 
+pub use references::{
+    ReferenceDirection, ReferenceEndpoints, ReferenceEvidence, ReferenceReport, SymbolReference,
+    find_symbol_references, reference_report, symbol_for_query,
+};
+
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum ContextError {
+    #[error("symbol not found: {query}")]
+    SymbolNotFound { query: String },
     #[error(transparent)]
     Core(#[from] ri_core::CoreError),
     #[error(transparent)]
@@ -72,6 +81,24 @@ pub struct ResolvedCallReference {
     pub file_path: FilePath,
     pub target_name: String,
     pub range: SymbolRange,
+}
+
+impl ResolvedCallReference {
+    pub const fn new(
+        source_symbol_id: SymbolId,
+        target_symbol_id: SymbolId,
+        file_path: FilePath,
+        target_name: String,
+        range: SymbolRange,
+    ) -> Self {
+        Self {
+            source_symbol_id,
+            target_symbol_id,
+            file_path,
+            target_name,
+            range,
+        }
+    }
 }
 
 pub fn build_context_pack(symbols: &[SymbolRecord], query: &str, limit: usize) -> ContextPack {
@@ -198,11 +225,11 @@ fn resolve_call(symbols: &[SymbolRecord], call: &CallReference) -> Option<Resolv
                 symbol.fqn.clone(),
             )
         })?;
-    Some(ResolvedCallReference {
-        source_symbol_id: source.versioned_symbol_id.clone(),
-        target_symbol_id: target.versioned_symbol_id.clone(),
-        file_path: call.file_path.clone(),
-        target_name: call.target_name.clone(),
-        range: call.range.clone(),
-    })
+    Some(ResolvedCallReference::new(
+        source.versioned_symbol_id.clone(),
+        target.versioned_symbol_id.clone(),
+        call.file_path.clone(),
+        call.target_name.clone(),
+        call.range.clone(),
+    ))
 }

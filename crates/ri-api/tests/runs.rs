@@ -99,6 +99,7 @@ fn run_evidence_fixture_is_indexed() {
     assert_count_at_least(&run, "/run/evidence/graph_nodes", 1)?;
     assert_count_at_least(&run, "/run/evidence/graph_edges", 1)?;
     assert_count_at_least(&run, "/run/evidence/search_chunks", 1)?;
+    assert_count_at_least(&run, "/run/evidence/search_sync_jobs", 1)?;
     assert_count_at_least(&run, "/run/evidence/test_cases", 1)?;
     cleanup(&pool, &repo_id).await?;
     repo.cleanup()?;

@@ -155,6 +155,7 @@ grep -q '"file_manifests":' /tmp/source-prism-api-run.json
 grep -q '"symbols":' /tmp/source-prism-api-run.json
 grep -q '"graph_edges":' /tmp/source-prism-api-run.json
 grep -q '"search_chunks":' /tmp/source-prism-api-run.json
+grep -q '"search_sync_jobs":1' /tmp/source-prism-api-run.json
 
 delete_search_index
 cargo run -p ri-worker -- --queue "$search_sync_queue" --once \

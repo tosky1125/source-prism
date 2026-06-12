@@ -36,6 +36,7 @@ pub(crate) struct RunEvidence {
     graph_nodes: i64,
     graph_edges: i64,
     search_chunks: i64,
+    search_sync_jobs: i64,
     test_cases: i64,
     test_runs: i64,
     coverage_segments: i64,
@@ -94,6 +95,11 @@ async fn find_run(pool: &PgPool, run_id: &str) -> Result<RunSummary, AppError> {
                 WHERE item.generation_id = g.generation_id
             ) AS search_chunk_count,
             (
+                SELECT count(*)::bigint FROM jobs AS item
+                WHERE item.generation_id = g.generation_id
+                  AND item.kind = 'search.sync_once'
+            ) AS search_sync_job_count,
+            (
                 SELECT count(*)::bigint FROM test_cases AS item
                 WHERE item.generation_id = g.generation_id
             ) AS test_case_count,
@@ -136,6 +142,7 @@ async fn find_run(pool: &PgPool, run_id: &str) -> Result<RunSummary, AppError> {
             graph_nodes: row.try_get("graph_node_count")?,
             graph_edges: row.try_get("graph_edge_count")?,
             search_chunks: row.try_get("search_chunk_count")?,
+            search_sync_jobs: row.try_get("search_sync_job_count")?,
             test_cases: row.try_get("test_case_count")?,
             test_runs: row.try_get("test_run_count")?,
             coverage_segments: row.try_get("coverage_segment_count")?,

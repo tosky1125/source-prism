@@ -81,10 +81,7 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
             expect_subcommand(&mut args, "plan")?;
             refactor::plan_command(args).map(|()| ExitCode::SUCCESS)
         }
-        "review" => {
-            expect_subcommand(&mut args, "verify")?;
-            review::verify_command(args).map(|()| ExitCode::SUCCESS)
-        }
+        "review" => review::command(args).map(|()| ExitCode::SUCCESS),
         "embeddings" => embeddings::command(args).await.map(|()| ExitCode::SUCCESS),
         "mcp" => mcp::command(args).map(|()| ExitCode::SUCCESS),
         "architecture" => architecture::architecture_command(args).map(|()| ExitCode::SUCCESS),

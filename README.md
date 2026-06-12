@@ -31,6 +31,7 @@ This repository is currently past the bare foundation phase. The runnable base n
 - Provider-neutral embedding cache backed by Postgres `embedding_cache`
 - MCP tool contracts for symbol/reference/impact/context queries
 - Evidence-backed review finding verification
+- GitHub dry-run review annotations and SARIF from verified findings
 - Planner-only refactor slicing from impact evidence
 - Evidence-based QA conventions
 
@@ -51,6 +52,7 @@ cargo run -p ri-cli -- refactor plan --symbol search
 cargo run -p ri-cli -- search-context search
 cargo run -p ri-cli -- test-context --symbol extracts_rust_functions_methods_and_tests
 cargo run -p ri-cli -- review verify --input /path/to/findings.json
+cargo run -p ri-cli -- review github-dry-run --input /path/to/findings.json
 cargo run -p ri-cli -- mcp tools
 cargo run -p ri-cli -- mcp call --repo . --tool repo.get_symbol --symbol search_context_command
 cargo run -p ri-api

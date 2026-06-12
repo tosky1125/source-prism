@@ -1,0 +1,21 @@
+[package]
+name = "ri-github"
+version = "0.1.0"
+description = "GitHub dry-run review payloads for Source Prism."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+ri-review = { path = "../ri-review" }
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints]
+workspace = true

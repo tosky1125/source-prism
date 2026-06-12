@@ -103,6 +103,37 @@ jobs:
           cargo run -p ri-cli -- test-context --symbol "$test_symbol" > /tmp/source-prism-test-context.json
           grep '"kind": "test_context"' /tmp/source-prism-test-context.json
           grep '"code_execution_allowed": false' /tmp/source-prism-test-context.json
+          cat > /tmp/source-prism-review-findings.json <<'JSON'
+          [
+            {
+              "title": "Tax rounding can skip fractional cents",
+              "severity": "medium",
+              "file_path": "src/invoice.rs",
+              "start_line": 12,
+              "end_line": 16,
+              "evidence": [
+                {
+                  "file_path": "src/invoice.rs",
+                  "start_line": 12,
+                  "end_line": 16,
+                  "summary": "rounding happens before line item aggregation"
+                }
+              ],
+              "impact_path": [
+                {
+                  "source": "InvoiceService::applyTax",
+                  "relation": "calls",
+                  "target": "Money::round"
+                }
+              ],
+              "recommendation": "Round only after summing line item tax amounts."
+            }
+          ]
+          JSON
+          cargo run -p ri-cli -- review github-dry-run --input /tmp/source-prism-review-findings.json > /tmp/source-prism-github-review.json
+          grep '"kind": "github_review_dry_run"' /tmp/source-prism-github-review.json
+          grep '"annotation_level": "warning"' /tmp/source-prism-github-review.json
+          grep '"version": "2.1.0"' /tmp/source-prism-github-review.json
           printf '%s\n' '<coverage><packages><package><classes><class filename="src/lib.rs"><lines><line number="1" hits="1"/></lines></class></classes></package></packages></coverage>' > /tmp/source-prism-cobertura.xml
           cargo run -p ri-cli -- tests import-cobertura --repo . --sha HEAD --cobertura /tmp/source-prism-cobertura.xml > /tmp/source-prism-cobertura.json
           grep '"kind": "coverage"' /tmp/source-prism-cobertura.json

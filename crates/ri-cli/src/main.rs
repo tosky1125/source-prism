@@ -106,7 +106,9 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
             .map(|()| ExitCode::SUCCESS),
         "embeddings" => embeddings::command(args).await.map(|()| ExitCode::SUCCESS),
         "mcp" => mcp::command(args).map(|()| ExitCode::SUCCESS),
-        "architecture" => architecture::architecture_command(args).map(|()| ExitCode::SUCCESS),
+        "architecture" => architecture::architecture_command(args)
+            .await
+            .map(|()| ExitCode::SUCCESS),
         "impact" => impact::impact_command(args)
             .await
             .map(|()| ExitCode::SUCCESS),

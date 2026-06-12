@@ -1,5 +1,15 @@
 # Source Prism Foundation Plan
 
+## Status
+
+Superseded by `.omo/plans/source-prism-full-platform.md`.
+
+This foundation plan is retained as historical execution context. Its unchecked
+todo boxes are no longer the active tracker: the foundation milestone has been
+implemented and then expanded into the full-platform tracker. Current
+completion status, remaining work, and verification evidence are recorded in
+the full-platform plan and `.omo/evidence/full-platform-completion-audit.md`.
+
 ## TL;DR
 > Summary:      Bootstrap Source Prism from an empty seed repo into a runnable Rust workspace for a Repo Intelligence Platform. Keep milestone 1 focused on foundation: git/workspace, typed core contracts, config, Postgres schema, job model, Git manifest/overlay contracts, CLI/API/worker smoke surfaces, local infra, CI, and evidence policy.
 > Deliverables:

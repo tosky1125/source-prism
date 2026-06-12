@@ -14,7 +14,7 @@ moved beyond foundation-only scope.
 
 ## Current Status
 
-Overall progress: 99.9%.
+Overall progress: 99.95%.
 
 Completed and verified slices:
 
@@ -49,6 +49,9 @@ Completed and verified slices:
   addresses until auth/tenancy is implemented.
 - API requests now pass through a process-level fixed-window rate limit with
   env/config validation for the request count and window.
+- Full-platform completion audit reconciled the historical foundation plan,
+  verified current surface coverage, checked tracked evidence hygiene, and
+  passed the current-cycle full cargo/SQLx/API-smoke gates.
 
 Previous verified checkpoint:
 
@@ -149,7 +152,7 @@ Evidence required:
 
 ### R2. Full-Platform Completion Audit
 
-Status: pending.
+Status: completed.
 
 Tasks:
 
@@ -160,6 +163,7 @@ Tasks:
 - Confirm evidence files do not contain stale process IDs, stale server logs,
   or misleading failed artifacts marked as final proof.
 - Confirm generated `.sqlx` state matches current live queries.
+- Audit artifact: `.omo/evidence/full-platform-completion-audit.md`.
 
 Evidence commands:
 

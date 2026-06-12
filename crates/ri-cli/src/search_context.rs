@@ -17,21 +17,53 @@ const DEFAULT_LIMIT: usize = 8;
 pub(crate) fn search_context_command(
     mut args: impl Iterator<Item = String>,
 ) -> Result<(), CliError> {
-    let Some(query) = args.next() else {
-        return Err(CliError::Usage);
-    };
-    if args.next().is_some() {
-        return Err(CliError::Usage);
-    }
-    let evidence = ri_context::extract_repo_index(&PathBuf::from("."))?;
+    let request = SearchContextArgs::parse(&mut args)?;
+    let evidence = ri_context::extract_repo_index(&request.repo)?;
     let calls = impact_call_edges(&evidence.calls);
-    let pack =
-        build_context_pack_with_calls(&evidence.symbols, calls.as_slice(), &query, DEFAULT_LIMIT);
+    let pack = build_context_pack_with_calls(
+        &evidence.symbols,
+        calls.as_slice(),
+        &request.query,
+        DEFAULT_LIMIT,
+    );
     print_json(&json!({
         "status": "ok",
         "kind": "search_context",
         "context_pack": pack,
     }))
+}
+
+#[derive(Debug)]
+struct SearchContextArgs {
+    repo: PathBuf,
+    query: String,
+}
+
+impl SearchContextArgs {
+    fn parse(args: &mut impl Iterator<Item = String>) -> Result<Self, CliError> {
+        let mut repo = PathBuf::from(".");
+        let mut query = None::<String>;
+
+        while let Some(arg) = args.next() {
+            match arg.as_str() {
+                "--repo" => {
+                    let Some(path) = args.next() else {
+                        return Err(CliError::Usage);
+                    };
+                    repo = PathBuf::from(path);
+                }
+                _ if query.is_none() => {
+                    query = Some(arg);
+                }
+                _ => return Err(CliError::Usage),
+            }
+        }
+
+        Ok(Self {
+            repo,
+            query: query.ok_or(CliError::Usage)?,
+        })
+    }
 }
 
 fn impact_call_edges(calls: &[ResolvedCallReference]) -> Vec<ImpactCallEdge> {

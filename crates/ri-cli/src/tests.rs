@@ -9,7 +9,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ri_behavior::{CoverageReport, parse_cobertura_xml, parse_lcov};
+use ri_behavior::{CoverageReport, parse_cobertura_xml, parse_jacoco_xml, parse_lcov};
 use ri_core::CommitSha;
 use ri_git::{discover_worktree, resolve_commit_sha};
 use ri_indexer::{PgCoverageStore, PgGenerationStore};
@@ -26,6 +26,7 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
         "import-junit" => crate::test_junit::import(args, database_pool().await?).await,
         "import-lcov" => import_lcov(args).await,
         "import-cobertura" => import_cobertura(args).await,
+        "import-jacoco" => import_jacoco(args).await,
         _ => Err(CliError::Usage),
     }
 }
@@ -36,6 +37,10 @@ async fn import_lcov(args: impl Iterator<Item = String>) -> Result<(), CliError>
 
 async fn import_cobertura(args: impl Iterator<Item = String>) -> Result<(), CliError> {
     import_coverage(args, CoverageImport::Cobertura).await
+}
+
+async fn import_jacoco(args: impl Iterator<Item = String>) -> Result<(), CliError> {
+    import_coverage(args, CoverageImport::Jacoco).await
 }
 
 async fn import_coverage(
@@ -76,6 +81,15 @@ async fn import_coverage(
                 )
                 .await?
         }
+        CoverageImport::Jacoco => {
+            store
+                .replace_jacoco_for_generation(
+                    &generation.generation_id,
+                    parsed.coverage_path.to_string_lossy().as_ref(),
+                    &report,
+                )
+                .await?
+        }
     };
     generation_store
         .finish_generation(&generation.generation_id)
@@ -95,6 +109,7 @@ async fn import_coverage(
 enum CoverageImport {
     Lcov,
     Cobertura,
+    Jacoco,
 }
 
 impl CoverageImport {
@@ -102,6 +117,7 @@ impl CoverageImport {
         match self {
             Self::Lcov => "--lcov",
             Self::Cobertura => "--cobertura",
+            Self::Jacoco => "--jacoco",
         }
     }
 
@@ -109,6 +125,7 @@ impl CoverageImport {
         match self {
             Self::Lcov => "lcov",
             Self::Cobertura => "cobertura",
+            Self::Jacoco => "jacoco",
         }
     }
 
@@ -116,6 +133,7 @@ impl CoverageImport {
         match self {
             Self::Lcov => "ri-cli-lcov-v1",
             Self::Cobertura => "ri-cli-cobertura-v1",
+            Self::Jacoco => "ri-cli-jacoco-v1",
         }
     }
 
@@ -123,6 +141,7 @@ impl CoverageImport {
         Ok(match self {
             Self::Lcov => parse_lcov(body)?,
             Self::Cobertura => parse_cobertura_xml(body)?,
+            Self::Jacoco => parse_jacoco_xml(body)?,
         })
     }
 }

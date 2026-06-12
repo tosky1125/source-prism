@@ -4,6 +4,7 @@
 )]
 
 mod cobertura;
+mod jacoco;
 mod junit;
 mod lcov;
 
@@ -14,6 +15,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use thiserror::Error;
 
 pub use cobertura::parse_cobertura_xml;
+pub use jacoco::parse_jacoco_xml;
 pub use junit::{JunitReport, TestCaseResult, TestResultStatus, TestSuiteResult, parse_junit_xml};
 pub use lcov::{CoverageFile, CoverageReport, CoverageSegment, parse_lcov};
 
@@ -57,6 +59,8 @@ pub enum BehaviorError {
     Lcov { message: String },
     #[error("failed to parse cobertura xml: {message}")]
     CoberturaXml { message: String },
+    #[error("failed to parse jacoco xml: {message}")]
+    JacocoXml { message: String },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

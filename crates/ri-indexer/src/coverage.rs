@@ -64,6 +64,16 @@ impl PgCoverageStore {
             .await
     }
 
+    pub async fn replace_jacoco_for_generation(
+        &self,
+        generation_id: &GenerationId,
+        source_path: &str,
+        report: &CoverageReport,
+    ) -> Result<CoverageIngestOutcome, CoverageStoreError> {
+        self.replace_for_generation(generation_id, source_path, "jacoco", report)
+            .await
+    }
+
     async fn replace_for_generation(
         &self,
         generation_id: &GenerationId,

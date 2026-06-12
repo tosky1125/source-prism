@@ -96,6 +96,11 @@ jobs:
           grep '"kind": "coverage"' /tmp/source-prism-cobertura.json
           grep '"format": "cobertura"' /tmp/source-prism-cobertura.json
           grep '"imported_segments": 1' /tmp/source-prism-cobertura.json
+          printf '%s\n' '<report><package name="src"><sourcefile name="lib.rs"><line nr="1" mi="0" ci="1" mb="0" cb="0"/></sourcefile></package></report>' > /tmp/source-prism-jacoco.xml
+          cargo run -p ri-cli -- tests import-jacoco --repo . --sha HEAD --jacoco /tmp/source-prism-jacoco.xml > /tmp/source-prism-jacoco.json
+          grep '"kind": "coverage"' /tmp/source-prism-jacoco.json
+          grep '"format": "jacoco"' /tmp/source-prism-jacoco.json
+          grep '"imported_segments": 1' /tmp/source-prism-jacoco.json
 
       - name: Check formatting
         run: cargo fmt --all -- --check

@@ -155,6 +155,7 @@
     }
     .row:nth-child(3n) { border-color: var(--amber); background: rgba(180,83,9,.06); }
     .row:nth-child(4n) { border-color: var(--rose); background: rgba(159,18,57,.06); }
+    .row[data-source="bm25"] { border-color: var(--amber); background: rgba(180,83,9,.08); }
     .meta { color: var(--muted); font-size: 13px; }
     .empty { color: var(--muted); padding: 12px 0; }
     .status {
@@ -247,9 +248,10 @@
       return response.json();
     };
 
-    const row = (title, meta) => {
+    const row = (title, meta, source) => {
       const item = document.createElement("div");
       item.className = "row";
+      if (source) item.dataset.source = source;
       const strong = document.createElement("strong");
       strong.textContent = title;
       const small = document.createElement("span");
@@ -321,12 +323,7 @@
       }
     };
 
-    document.querySelectorAll("nav a").forEach((link) => {
-      link.addEventListener("click", () => setView(link.dataset.view));
-    });
-    document.querySelector("#searchForm").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const query = document.querySelector("#query").value.trim();
+    const runSearch = async (query) => {
       if (!query) return;
       setView("search");
       const result = await fetch("/v1/context/search", {
@@ -335,9 +332,28 @@
         body: JSON.stringify({ repo_id: repoId, query })
       }).then((response) => response.json());
       const hits = result.context_pack?.hits ?? [];
-      renderList(document.querySelector("#searchResults"), hits.map((hit) => row(hit.symbol.fqn, `score ${hit.score} ${hit.symbol.file_path}`)), "No matches");
+      const bm25 = result.bm25_hits ?? [];
+      const symbolRows = hits.map((hit) => row(hit.symbol.fqn, `symbol score ${hit.score} ${hit.symbol.file_path}`));
+      const bm25Rows = bm25.map((hit) => row(hit.symbol?.fqn ?? hit.chunk_id, `BM25 score ${hit.score.toFixed(2)} ${hit.symbol?.file_path ?? hit.chunk_id}`, "bm25"));
+      renderList(document.querySelector("#searchResults"), symbolRows.concat(bm25Rows), "No matches");
+    };
+
+    const runInitialSearch = () => {
+      const query = new URLSearchParams(window.location.search).get("q")?.trim();
+      if (!query) return;
+      document.querySelector("#query").value = query;
+      runSearch(query);
+    };
+
+    document.querySelectorAll("nav a").forEach((link) => {
+      link.addEventListener("click", () => setView(link.dataset.view));
     });
-    load();
+    document.querySelector("#searchForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const query = document.querySelector("#query").value.trim();
+      await runSearch(query);
+    });
+    load().then(runInitialSearch);
   </script>
 </body>
 </html>

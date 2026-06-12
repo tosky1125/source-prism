@@ -20,13 +20,19 @@ async fn index_command_persists_symbols_graph_and_test_evidence()
     repo.write_file(
         "src/lib.rs",
         r"
-pub fn apply_tax(value: i32) -> i32 {
-    value + 1
-}
+mod invoice;
 
 #[test]
 fn apply_tax_adds_rate() {
-    assert_eq!(apply_tax(1), 2);
+    assert_eq!(invoice::apply_tax(1), 2);
+}
+",
+    )?;
+    repo.write_file(
+        "src/invoice.rs",
+        r"
+pub fn apply_tax(value: i32) -> i32 {
+    value + 1
 }
 ",
     )?;
@@ -55,11 +61,13 @@ fn apply_tax_adds_rate() {
     assert_positive(&body, "/inserted_file_manifests")?;
     assert_positive(&body, "/indexed_symbols")?;
     assert_positive(&body, "/indexed_graph_edges")?;
+    assert_positive(&body, "/indexed_import_edges")?;
     assert_positive(&body, "/indexed_test_cases")?;
     assert_positive(&body, "/indexed_test_cover_edges")?;
     assert_positive(&body, "/indexed_search_chunks")?;
-    assert_eq!(active_count(&pool, repo_id, "symbols").await?, 2);
+    assert_eq!(active_count(&pool, repo_id, "symbols").await?, 3);
     assert_eq!(active_count(&pool, repo_id, "test_cases").await?, 1);
+    assert_eq!(edge_count(&pool, repo_id, "imports").await?, 1);
     assert_eq!(edge_count(&pool, repo_id, "test_covers").await?, 1);
     cleanup(&pool, repo_id).await?;
     repo.cleanup()?;

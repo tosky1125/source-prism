@@ -90,6 +90,9 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
     let indexed_test_cover_edges = graph_store
         .replace_test_covers_graph(&generation.generation_id)
         .await?;
+    let indexed_import_edges = graph_store
+        .replace_import_graph(&generation.generation_id)
+        .await?;
     let indexed_search_chunks = PgSearchSyncStore::new(pool)
         .enqueue_symbol_chunks(
             &repo_id,
@@ -106,7 +109,11 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
         inserted_file_manifests: inserted,
         indexed_symbols,
         indexed_graph_nodes: graph.nodes,
-        indexed_graph_edges: graph.edges.saturating_add(indexed_test_cover_edges),
+        indexed_graph_edges: graph
+            .edges
+            .saturating_add(indexed_test_cover_edges)
+            .saturating_add(indexed_import_edges),
+        indexed_import_edges,
         indexed_test_cover_edges,
         indexed_search_chunks,
         indexed_test_cases,
@@ -202,6 +209,7 @@ struct IndexResult {
     indexed_symbols: u64,
     indexed_graph_nodes: u64,
     indexed_graph_edges: u64,
+    indexed_import_edges: u64,
     indexed_test_cover_edges: u64,
     indexed_search_chunks: u64,
     indexed_test_cases: u64,
@@ -222,6 +230,7 @@ fn print_index_result(result: &IndexResult) -> Result<(), CliError> {
             "indexed_symbols": result.indexed_symbols,
             "indexed_graph_nodes": result.indexed_graph_nodes,
             "indexed_graph_edges": result.indexed_graph_edges,
+            "indexed_import_edges": result.indexed_import_edges,
             "indexed_test_cover_edges": result.indexed_test_cover_edges,
             "indexed_search_chunks": result.indexed_search_chunks,
             "indexed_test_cases": result.indexed_test_cases,

@@ -8,7 +8,7 @@
 )]
 
 use ri_core::{CommitSha, FilePath, Language, RepoId, SymbolKind};
-use ri_indexer::{PgGenerationStore, PgGraphStore, PgSymbolStore};
+use ri_indexer::{FileManifestInput, PgGenerationStore, PgGraphStore, PgSymbolStore};
 use ri_symbols::{SymbolRange, SymbolRecord, SymbolSpec};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -101,6 +101,55 @@ async fn active_graph_includes_static_test_covers_edges() -> Result<(), Box<dyn 
     Ok(())
 }
 
+#[tokio::test]
+async fn active_graph_includes_rust_module_import_edges() -> Result<(), Box<dyn std::error::Error>>
+{
+    let Some(pool) = test_pool().await? else {
+        return Ok(());
+    };
+    let fixture = Fixture::create(&pool).await?;
+    let generation_store = PgGenerationStore::new(pool.clone());
+    let generation = generation_store
+        .begin_generation(&fixture.repo_id, &fixture.commit_sha, "graph", Some("test"))
+        .await?;
+    generation_store
+        .replace_file_manifest_generation(
+            &generation.generation_id,
+            &[manifest("src/lib.rs"), manifest("src/invoice.rs")],
+        )
+        .await?;
+    let symbols = vec![
+        symbol_with_kind(&fixture, SymbolKind::Module, "src/lib.rs", "invoice")?,
+        symbol_with_kind(
+            &fixture,
+            SymbolKind::Function,
+            "src/invoice.rs",
+            "apply_tax",
+        )?,
+    ];
+    PgSymbolStore::new(pool.clone())
+        .replace_symbol_generation(&generation.generation_id, &symbols)
+        .await?;
+    let store = PgGraphStore::new(pool.clone());
+    store
+        .replace_contains_graph(&generation.generation_id, &symbols)
+        .await?;
+    let imports = store
+        .replace_import_graph(&generation.generation_id)
+        .await?;
+
+    let graph = store.active_graph_for_repo(&fixture.repo_id).await?;
+
+    assert_eq!(imports, 1);
+    assert!(graph.edges.iter().any(|edge| {
+        edge.edge_type == "imports"
+            && edge.resolution_method == "rust_mod_file"
+            && edge.evidence_file_path.as_deref() == Some("src/lib.rs")
+    }));
+    fixture.cleanup(&pool).await?;
+    Ok(())
+}
+
 #[derive(Debug)]
 struct Fixture {
     repo_id: String,
@@ -139,6 +188,10 @@ impl Fixture {
             .bind(&self.repo_id)
             .execute(pool)
             .await?;
+        sqlx::query("DELETE FROM file_manifests WHERE repo_id = $1")
+            .bind(&self.repo_id)
+            .execute(pool)
+            .await?;
         sqlx::query("DELETE FROM index_generations WHERE repo_id = $1")
             .bind(&self.repo_id)
             .execute(pool)
@@ -153,6 +206,12 @@ impl Fixture {
             .await?;
         Ok(())
     }
+}
+
+fn manifest(path: &str) -> FileManifestInput {
+    let mut input = FileManifestInput::new(path, "hash", 10);
+    "rust".clone_into(&mut input.language);
+    input
 }
 
 async fn test_pool() -> Result<Option<PgPool>, sqlx::Error> {

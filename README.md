@@ -27,7 +27,7 @@ This repository is currently past the bare foundation phase. The runnable base n
 - CLI, API, and worker smoke surfaces
 - Tree-sitter symbol extraction for Rust, TypeScript/JavaScript, Python, and Go
 - Postgres-backed file manifest, symbol, graph, test-case, run, and search outbox indexing
-- Static test-context and `test_covers` graph evidence from extracted test symbols
+- Static imports, test-context, and `test_covers` graph evidence from extracted symbols
 - Evidence-based QA conventions
 
 MCP tools, GitHub/GitLab publishing, PR review generation, and refactor execution are still roadmap work. Source execution remains forbidden until sandbox design lands.

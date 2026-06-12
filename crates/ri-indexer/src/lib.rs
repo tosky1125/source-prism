@@ -7,6 +7,8 @@
 mod generation;
 mod graph;
 pub mod graph_ids;
+mod graph_import_paths;
+mod graph_imports;
 mod graph_query;
 mod graph_test_covers;
 mod overlay;

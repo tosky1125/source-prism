@@ -1,6 +1,8 @@
 use axum::{Json, extract::State};
-use ri_behavior::{TestContext, build_test_context, build_test_context_with_coverage};
-use ri_indexer::{PgGraphStore, PgSymbolStore};
+use ri_behavior::{
+    CoverageEvidenceSegment, TestContext, build_test_context, build_test_context_with_evidence,
+};
+use ri_indexer::{CoverageSegmentRecord, PgCoverageStore, PgGraphStore, PgSymbolStore};
 use serde::{Deserialize, Serialize};
 
 use crate::{AppError, graph_test_edges::graph_test_coverage_edges, state::AppState};
@@ -59,9 +61,28 @@ async fn test_context_for_symbol(
         .active_graph_for_repo(repo_id)
         .await?;
     let coverage_edges = graph_test_coverage_edges(&graph)?;
-    Ok(build_test_context_with_coverage(
+    let coverage_segments = PgCoverageStore::new(pool.clone())
+        .active_coverage_segments_for_repo(repo_id)
+        .await?;
+    let coverage_evidence = coverage_segments
+        .iter()
+        .filter_map(coverage_segment_evidence)
+        .collect::<Vec<_>>();
+    Ok(build_test_context_with_evidence(
         symbols.as_slice(),
         coverage_edges.as_slice(),
+        coverage_evidence.as_slice(),
         symbol,
     )?)
+}
+
+fn coverage_segment_evidence(record: &CoverageSegmentRecord) -> Option<CoverageEvidenceSegment> {
+    Some(CoverageEvidenceSegment::new(
+        record.file_path.clone(),
+        u32::try_from(record.start_line).ok()?,
+        u32::try_from(record.end_line).ok()?,
+        u32::try_from(record.hit_count).ok()?,
+        record.format.clone(),
+        record.source_path.clone(),
+    ))
 }

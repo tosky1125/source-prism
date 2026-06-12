@@ -1,6 +1,9 @@
 #![allow(missing_docs, reason = "Integration test names document behavior.")]
 
-use ri_behavior::{TestCoverageEdge, build_test_context, build_test_context_with_coverage};
+use ri_behavior::{
+    CoverageEvidenceSegment, TestCoverageEdge, build_test_context,
+    build_test_context_with_coverage, build_test_context_with_evidence,
+};
 use ri_core::{CommitSha, Confidence, FilePath, Language, RepoId, SymbolKind};
 use ri_symbols::{SymbolRange, SymbolRecord, SymbolSpec};
 
@@ -74,6 +77,40 @@ fn test_context_uses_graph_test_covers_edges() -> Result<(), Box<dyn std::error:
         .ok_or_else(|| std::io::Error::other("expected graph-related test"))?;
     assert_eq!(related.fqn, "charges_are_correct");
     assert_eq!(related.evidence, "graph edge: test_covers");
+    Ok(())
+}
+
+#[test]
+fn test_context_includes_overlapping_coverage_segments() -> Result<(), Box<dyn std::error::Error>> {
+    let repo = RepoId::new("repo")?;
+    let commit = CommitSha::new("commit")?;
+    let target = symbol(
+        &repo,
+        &commit,
+        SymbolKind::Function,
+        "apply_tax",
+        "src/invoice.rs",
+    )?;
+    let coverage = vec![CoverageEvidenceSegment::new(
+        "src/invoice.rs",
+        2,
+        3,
+        7,
+        "lcov",
+        "lcov.info",
+    )];
+
+    let context =
+        build_test_context_with_evidence(&[target], &[], coverage.as_slice(), "apply_tax")?;
+
+    assert!(context.coverage_available);
+    let segment = context
+        .coverage_segments
+        .first()
+        .ok_or_else(|| std::io::Error::other("missing coverage segment"))?;
+    assert_eq!(segment.file_path, "src/invoice.rs");
+    assert_eq!(segment.hit_count, 7);
+    assert_eq!(segment.evidence, "coverage range overlaps target symbol");
     Ok(())
 }
 

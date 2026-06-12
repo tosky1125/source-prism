@@ -3,7 +3,7 @@
     reason = "GitHub payload contracts are serialized fixtures at this milestone."
 )]
 
-use ri_review::{FindingSeverity, VerifiedFinding};
+use ri_review::{FindingSeverity, VerifiedFinding, redact_review_text};
 use serde::Serialize;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -138,8 +138,8 @@ fn check_annotation(finding: &VerifiedFinding) -> GitHubCheckAnnotation {
         start_line: finding.start_line,
         end_line: finding.end_line,
         annotation_level: annotation_level(finding.severity),
-        title: finding.title.clone(),
-        message: finding.recommendation.clone(),
+        title: redact_review_text(finding.title.as_str()),
+        message: redact_review_text(finding.recommendation.as_str()),
         raw_details: evidence_details(finding),
     }
 }
@@ -168,7 +168,7 @@ fn sarif_result(finding: &VerifiedFinding) -> SarifResult {
         rule_id: "source-prism.review_finding",
         level: sarif_level(finding.severity),
         message: SarifMessage {
-            text: finding.title.clone(),
+            text: redact_review_text(finding.title.as_str()),
         },
         locations: vec![SarifLocation {
             physical_location: SarifPhysicalLocation {
@@ -207,7 +207,10 @@ fn evidence_details(finding: &VerifiedFinding) -> String {
         .map(|evidence| {
             format!(
                 "{}:{}-{} {}",
-                evidence.file_path, evidence.start_line, evidence.end_line, evidence.summary
+                evidence.file_path,
+                evidence.start_line,
+                evidence.end_line,
+                redact_review_text(evidence.summary.as_str())
             )
         })
         .collect::<Vec<_>>()

@@ -28,6 +28,20 @@ fn dry_run_maps_verified_findings_to_discussions_and_code_quality()
     Ok(())
 }
 
+#[test]
+fn dry_run_redacts_secret_like_review_text() -> Result<(), Box<dyn std::error::Error>> {
+    let findings = serde_json::from_str::<Vec<ProposedFinding>>(SECRET_FINDINGS)?;
+    let verified = verify_findings(findings.as_slice())?;
+
+    let dry_run = build_review_dry_run(verified.as_slice());
+
+    let serialized = serde_json::to_string(&dry_run)?;
+    assert!(!serialized.contains("glpat-live-secret"));
+    assert!(!serialized.contains("hunter2"));
+    assert!(serialized.contains("[redacted]"));
+    Ok(())
+}
+
 const VALID_FINDINGS: &str = r#"[
   {
     "title": "Tax rounding can skip fractional cents",
@@ -51,5 +65,31 @@ const VALID_FINDINGS: &str = r#"[
       }
     ],
     "recommendation": "Round only after summing line item tax amounts."
+  }
+]"#;
+
+const SECRET_FINDINGS: &str = r#"[
+  {
+    "title": "Do not print token=glpat-live-secret",
+    "severity": "high",
+    "file_path": "src/invoice.rs",
+    "start_line": 12,
+    "end_line": 16,
+    "evidence": [
+      {
+        "file_path": "src/invoice.rs",
+        "start_line": 12,
+        "end_line": 16,
+        "summary": "log output includes password=hunter2"
+      }
+    ],
+    "impact_path": [
+      {
+        "source": "InvoiceService::applyTax",
+        "relation": "calls",
+        "target": "Logger::info"
+      }
+    ],
+    "recommendation": "Remove Authorization: Bearer glpat-live-secret before publishing."
   }
 ]"#;

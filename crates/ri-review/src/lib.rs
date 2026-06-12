@@ -7,6 +7,10 @@ use ri_core::{CoreError, FilePath};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+mod redaction;
+
+pub use redaction::redact_review_text;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]

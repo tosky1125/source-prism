@@ -3,7 +3,7 @@
     reason = "GitLab payload contracts are serialized fixtures at this milestone."
 )]
 
-use ri_review::{FindingSeverity, VerifiedFinding};
+use ri_review::{FindingSeverity, VerifiedFinding, redact_review_text};
 use serde::Serialize;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -82,7 +82,7 @@ fn discussion(finding: &VerifiedFinding) -> GitLabDiscussion {
 
 fn code_quality_finding(finding: &VerifiedFinding) -> GitLabCodeQualityFinding {
     GitLabCodeQualityFinding {
-        description: finding.title.clone(),
+        description: redact_review_text(finding.title.as_str()),
         check_name: "source-prism.review_finding",
         fingerprint: fingerprint(finding),
         severity: code_quality_severity(finding.severity),
@@ -99,8 +99,8 @@ fn code_quality_finding(finding: &VerifiedFinding) -> GitLabCodeQualityFinding {
 fn discussion_body(finding: &VerifiedFinding) -> String {
     format!(
         "{}\n\nRecommendation: {}\n\nEvidence:\n{}",
-        finding.title,
-        finding.recommendation,
+        redact_review_text(finding.title.as_str()),
+        redact_review_text(finding.recommendation.as_str()),
         evidence_details(finding)
     )
 }
@@ -119,7 +119,7 @@ fn fingerprint(finding: &VerifiedFinding) -> String {
         "source-prism:{}:{}:{}",
         finding.file_path,
         finding.start_line,
-        normalize_token(finding.title.as_str())
+        normalize_token(redact_review_text(finding.title.as_str()).as_str())
     )
 }
 
@@ -143,7 +143,10 @@ fn evidence_details(finding: &VerifiedFinding) -> String {
         .map(|evidence| {
             format!(
                 "- {}:{}-{} {}",
-                evidence.file_path, evidence.start_line, evidence.end_line, evidence.summary
+                evidence.file_path,
+                evidence.start_line,
+                evidence.end_line,
+                redact_review_text(evidence.summary.as_str())
             )
         })
         .collect::<Vec<_>>()

@@ -14,7 +14,7 @@ moved beyond foundation-only scope.
 
 ## Current Status
 
-Overall progress: 99.5%.
+Overall progress: 99.6%.
 
 Completed and verified slices:
 
@@ -36,6 +36,8 @@ Completed and verified slices:
   contracts, generation-wide sync, and dead-letter inspection.
 - Evidence-bound review verification and dry-run publisher payloads for
   GitHub annotations/SARIF and GitLab discussions/code-quality reports.
+- GitHub/GitLab review dry-run publisher payloads redact secret-like review
+  text before JSON/SARIF/code-quality artifacts are emitted.
 - Refactor planner only; execution remains disabled until sandbox,
   branch-safety, and test/typecheck gates are designed.
 - Local no-DB explorer mode for read-only repo structure routes.
@@ -230,14 +232,20 @@ Tasks:
   and `ri-cli dead-letters --repo-id <repo_id>`.
 - API JSON request bodies are capped at 256 KiB and oversized requests are
   rejected with HTTP 413 before route logic runs.
-- Generation-scoped search drift checks now refresh OpenSearch and count only
-  documents for that generation's repo/generation pair.
+- Generation-scoped search drift checks now refresh OpenSearch, count only
+  documents for that generation's repo/generation pair, and compare distinct
+  document IDs so duplicate outbox upserts do not create false drift.
+- Review dry-run payloads now redact secret-like `token=...`, `password=...`,
+  GitHub/GitLab token prefixes, and `Authorization: Bearer ...` text before
+  publishing artifacts are serialized.
 
 Evidence:
 
 - Security review notes.
 - API tests for oversized/invalid requests.
 - Worker tests for dead-letter visibility.
+- `ri-indexer` drift regression for duplicate upserts.
+- `ri-review`, `ri-github`, and `ri-gitlab` redaction regressions.
 
 ## Completion Criteria
 

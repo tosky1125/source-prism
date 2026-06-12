@@ -1,8 +1,9 @@
 use axum::{Json, extract::State};
-use ri_behavior::{TestContext, build_test_context};
+use ri_behavior::{TestContext, build_test_context, build_test_context_with_coverage};
+use ri_indexer::{PgGraphStore, PgSymbolStore};
 use serde::{Deserialize, Serialize};
 
-use crate::{AppError, state::AppState};
+use crate::{AppError, graph_test_edges::graph_test_coverage_edges, state::AppState};
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct TestContextRequest {
@@ -25,12 +26,42 @@ pub(crate) async fn get(
     if symbol.is_empty() {
         return Err(AppError::Validation("symbol must not be empty".to_owned()));
     }
-    let symbols = state
-        .symbols_for_optional_repo(request.repo_id.as_deref())
-        .await?;
+    let test_context = test_context_for_symbol(&state, request.repo_id.as_deref(), symbol).await?;
     Ok(Json(TestContextResponse {
         status: "ok",
         kind: "test_context",
-        test_context: build_test_context(symbols.as_slice(), symbol)?,
+        test_context,
     }))
+}
+
+async fn test_context_for_symbol(
+    state: &AppState,
+    repo_id: Option<&str>,
+    symbol: &str,
+) -> Result<TestContext, AppError> {
+    let Some(repo_id) = repo_id else {
+        let symbols = state.context_symbols()?.into_owned();
+        return Ok(build_test_context(symbols.as_slice(), symbol)?);
+    };
+    let repo_id = repo_id.trim();
+    if repo_id.is_empty() {
+        return Err(AppError::Validation("repo_id must not be empty".to_owned()));
+    }
+    let pool = state
+        .database
+        .pool
+        .as_ref()
+        .ok_or(AppError::DatabaseNotConfigured)?;
+    let symbols = PgSymbolStore::new(pool.clone())
+        .active_symbols_for_repo(repo_id)
+        .await?;
+    let graph = PgGraphStore::new(pool.clone())
+        .active_graph_for_repo(repo_id)
+        .await?;
+    let coverage_edges = graph_test_coverage_edges(&graph)?;
+    Ok(build_test_context_with_coverage(
+        symbols.as_slice(),
+        coverage_edges.as_slice(),
+        symbol,
+    )?)
 }

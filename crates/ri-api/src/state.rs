@@ -1,11 +1,10 @@
 use ri_context::{RepoIndexEvidence, extract_repo_index, extract_repo_symbols};
 use ri_git::LocalManifest;
-use ri_indexer::PgSymbolStore;
 use ri_symbols::SymbolRecord;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use std::{borrow::Cow, env, path::PathBuf, sync::Arc, time::Duration};
 
-use crate::{ApiError, AppError, RepoFile};
+use crate::{ApiError, RepoFile};
 
 #[derive(Debug, Clone)]
 pub struct AppState {
@@ -91,26 +90,6 @@ impl AppState {
             return Ok(RepoIndexEvidence::new(symbols.to_vec(), Vec::new()));
         }
         extract_repo_index(&self.context_repo_path)
-    }
-
-    pub(crate) async fn symbols_for_optional_repo(
-        &self,
-        repo_id: Option<&str>,
-    ) -> Result<Vec<SymbolRecord>, AppError> {
-        let Some(repo_id) = repo_id else {
-            return Ok(self.context_symbols()?.into_owned());
-        };
-        let repo_id = repo_id.trim();
-        if repo_id.is_empty() {
-            return Err(AppError::Validation("repo_id must not be empty".to_owned()));
-        }
-        let Some(pool) = self.database.pool.as_ref() else {
-            return Err(AppError::DatabaseNotConfigured);
-        };
-        PgSymbolStore::new(pool.clone())
-            .active_symbols_for_repo(repo_id)
-            .await
-            .map_err(AppError::from)
     }
 }
 

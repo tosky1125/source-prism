@@ -15,6 +15,17 @@ fn local_only_api_bind_is_default() {
 }
 
 #[test]
+fn public_api_bind_is_rejected_without_auth_tenancy() {
+    let mut env = required_env();
+    env.insert(String::from("API_BIND_ADDR"), String::from("0.0.0.0:3000"));
+
+    let error = RuntimeConfig::from_env_map(&env).expect_err("public bind rejected");
+
+    assert!(matches!(error, ConfigError::PublicApiBindAddress { .. }));
+    assert!(error.to_string().contains("auth/tenancy"));
+}
+
+#[test]
 fn missing_required_env_is_rejected() {
     let error = RuntimeConfig::from_env_map(&BTreeMap::new()).expect_err("missing env");
 

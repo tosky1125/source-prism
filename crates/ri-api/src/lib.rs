@@ -124,7 +124,21 @@ pub fn state_from_env() -> Result<AppState, ApiError> {
 
 pub fn bind_addr() -> Result<SocketAddr, ApiError> {
     let value = env::var("API_BIND_ADDR").unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_owned());
+    parse_bind_addr(&value)
+}
+
+pub fn parse_bind_addr(value: &str) -> Result<SocketAddr, ApiError> {
     value
         .parse()
-        .map_err(|source| ApiError::InvalidBindAddress { value, source })
+        .map_err(|source| ApiError::InvalidBindAddress {
+            value: value.to_owned(),
+            source,
+        })
+        .and_then(|bind_addr: SocketAddr| {
+            if bind_addr.ip().is_loopback() {
+                Ok(bind_addr)
+            } else {
+                Err(ApiError::PublicBindAddress { bind_addr })
+            }
+        })
 }

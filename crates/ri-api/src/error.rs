@@ -25,6 +25,8 @@ pub enum ApiError {
         value: String,
         source: std::net::AddrParseError,
     },
+    #[error("public API bind address requires auth/tenancy first: {bind_addr}")]
+    PublicBindAddress { bind_addr: std::net::SocketAddr },
     #[error(transparent)]
     Http(#[from] reqwest::Error),
     #[error(transparent)]

@@ -34,6 +34,13 @@ impl RuntimeConfig {
         let opensearch_url = required(env, OPENSEARCH_URL)?;
         let bind_addr = optional(env, API_BIND_ADDR).unwrap_or(DEFAULT_API_BIND_ADDR);
 
+        let bind_addr: SocketAddr = bind_addr
+            .parse()
+            .map_err(|_| ConfigError::InvalidBindAddress)?;
+        if !bind_addr.ip().is_loopback() {
+            return Err(ConfigError::PublicApiBindAddress { bind_addr });
+        }
+
         Ok(Self {
             database: DatabaseConfig {
                 url: parse_url(DATABASE_URL, database_url)?,
@@ -41,11 +48,7 @@ impl RuntimeConfig {
             opensearch: OpenSearchConfig {
                 url: parse_url(OPENSEARCH_URL, opensearch_url)?,
             },
-            api: ApiConfig {
-                bind_addr: bind_addr
-                    .parse()
-                    .map_err(|_| ConfigError::InvalidBindAddress)?,
-            },
+            api: ApiConfig { bind_addr },
             worker: WorkerConfig { concurrency: 1 },
             evidence_dir: PathBuf::from(".omo/evidence"),
         })
@@ -85,6 +88,8 @@ pub enum ConfigError {
     InvalidUrl { key: &'static str },
     #[error("invalid API bind address")]
     InvalidBindAddress,
+    #[error("public API bind address requires auth/tenancy first: {bind_addr}")]
+    PublicApiBindAddress { bind_addr: SocketAddr },
     #[error("failed to read config env file: {}", path.display())]
     EnvFileRead {
         path: PathBuf,

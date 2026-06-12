@@ -14,7 +14,7 @@ moved beyond foundation-only scope.
 
 ## Current Status
 
-Overall progress: 99.7%.
+Overall progress: 99.8%.
 
 Completed and verified slices:
 
@@ -45,10 +45,12 @@ Completed and verified slices:
   `changed-symbols` without creating a new full-repo index generation; base
   `file_manifest` generations remain canonical and head overlay evidence is
   stored separately in `file_overlays`.
+- API startup and `ri-cli config check` now reject non-loopback API bind
+  addresses until auth/tenancy is implemented.
 
-Latest pushed checkpoint:
+Previous verified checkpoint:
 
-- `952fe7d feat(api): add search drift remediation`
+- `5210800 feat(symbols): persist changed-file overlays`
 - Verified by `bash scripts/ci/smoke-api.sh`, `cargo fmt --all -- --check`,
   `cargo clippy --workspace --all-targets -- -D warnings`,
   `cargo test --workspace`, and
@@ -241,6 +243,9 @@ Tasks:
 - Add rate limits and request size limits for API.
 - Add explicit secrets redaction for logs and review payloads.
 - Add durable job observability endpoints and dead-letter inspection.
+- API startup and config validation now refuse public/non-loopback
+  `API_BIND_ADDR` values, keeping the current build local-only until
+  auth/tenancy exists.
 - Dead-letter inspection now exists through `GET /v1/repos/{repo_id}/dead-letters`
   and `ri-cli dead-letters --repo-id <repo_id>`.
 - API JSON request bodies are capped at 256 KiB and oversized requests are
@@ -255,6 +260,8 @@ Tasks:
 Evidence:
 
 - Security review notes.
+- Config/API bind tests for public address rejection.
+- Real CLI config-check and API startup smoke for public bind rejection.
 - API tests for oversized/invalid requests.
 - Worker tests for dead-letter visibility.
 - `ri-indexer` drift regression for duplicate upserts.

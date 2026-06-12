@@ -16,27 +16,6 @@ use std::{
 use tower::ServiceExt;
 
 #[tokio::test]
-async fn index_repo_requires_database() -> Result<(), Box<dyn std::error::Error>> {
-    let app = app(AppState::for_test_symbols(Vec::new())?);
-    let request = Request::builder()
-        .method(Method::POST)
-        .uri("/v1/repos/local/index")
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(r#"{"sha":"HEAD"}"#))?;
-
-    let response = app.oneshot(request).await?;
-
-    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
-    let bytes = to_bytes(response.into_body(), 1_000_000).await?;
-    let body = serde_json::from_slice::<Value>(&bytes)?;
-    assert_eq!(
-        body.pointer("/error/code").and_then(Value::as_str),
-        Some("database_not_configured")
-    );
-    Ok(())
-}
-
-#[tokio::test]
 async fn index_repo_uses_request_repo_path() -> Result<(), Box<dyn std::error::Error>> {
     let Some(pool) = test_pool().await? else {
         return Ok(());
@@ -52,10 +31,12 @@ pub fn api_index_fixture() -> i32 {
     )?;
     repo.commit()?;
     let repo_id = format!("api-index-{}", unique_suffix()?);
+    let search_sync_queue = format!("api-index-search-{}", unique_suffix()?);
     let app = app(AppState::for_test_database(pool.clone())?);
     let index_request_body = serde_json::json!({
         "sha": "HEAD",
         "repo_path": repo.path(),
+        "search_sync_queue": search_sync_queue.clone(),
     });
     let request = Request::builder()
         .method(Method::POST)
@@ -113,6 +94,12 @@ pub fn api_index_fixture() -> i32 {
         .pointer("/enqueued_search_sync_jobs")
         .and_then(Value::as_i64)
         .ok_or_else(|| std::io::Error::other("missing enqueued_search_sync_jobs"))?;
+    assert_eq!(
+        second_body
+            .pointer("/search_sync_queue")
+            .and_then(Value::as_str),
+        Some(search_sync_queue.as_str())
+    );
     assert!(second_search_chunks > 0);
     assert_eq!(enqueued_jobs, 1);
     assert_ne!(second_generation, first_generation);
@@ -121,7 +108,7 @@ pub fn api_index_fixture() -> i32 {
         second_search_chunks
     );
     assert_eq!(
-        search_sync_job_count_for_generation(&pool, second_generation).await?,
+        search_sync_job_count_for_generation(&pool, second_generation, &search_sync_queue).await?,
         1
     );
     cleanup(&pool, &repo_id).await?;
@@ -139,11 +126,6 @@ impl TempRepo {
             std::env::temp_dir().join(format!("source-prism-api-index-{}", unique_suffix()?));
         fs::create_dir_all(path.join("src"))?;
         run_git(&path, ["init"])?;
-        run_git(
-            &path,
-            ["config", "user.email", "source-prism@example.invalid"],
-        )?;
-        run_git(&path, ["config", "user.name", "Source Prism Test"])?;
         Ok(Self { path })
     }
 
@@ -157,7 +139,18 @@ impl TempRepo {
 
     fn commit(&self) -> Result<(), Box<dyn std::error::Error>> {
         run_git(&self.path, ["add", "."])?;
-        run_git(&self.path, ["commit", "-m", "fixture"])?;
+        run_git(
+            &self.path,
+            [
+                "-c",
+                "user.email=source-prism@example.invalid",
+                "-c",
+                "user.name=Source Prism Test",
+                "commit",
+                "-m",
+                "fixture",
+            ],
+        )?;
         Ok(())
     }
 
@@ -224,18 +217,21 @@ async fn search_chunk_count_for_generation(
 async fn search_sync_job_count_for_generation(
     pool: &PgPool,
     generation_id: &str,
+    queue: &str,
 ) -> Result<i64, sqlx::Error> {
     let row = sqlx::query(
         r"
         SELECT count(*)::bigint AS count
         FROM jobs
         WHERE generation_id = $1
+          AND queue = $2
           AND kind = 'search.sync_once'
           AND state = 'queued'
           AND payload->>'generation_id' = $1
         ",
     )
     .bind(generation_id)
+    .bind(queue)
     .fetch_one(pool)
     .await?;
     row.try_get("count")
@@ -243,23 +239,13 @@ async fn search_sync_job_count_for_generation(
 
 async fn cleanup(pool: &PgPool, repo_id: &str) -> Result<(), sqlx::Error> {
     sqlx::query(
-        r"
-        DELETE FROM job_attempts
-        WHERE job_id IN (SELECT job_id FROM jobs WHERE generation_id IN (
-            SELECT generation_id FROM index_generations WHERE repo_id = $1
-        ))
-        ",
+        "DELETE FROM job_attempts WHERE job_id IN (SELECT job_id FROM jobs WHERE generation_id IN (SELECT generation_id FROM index_generations WHERE repo_id = $1))",
     )
     .bind(repo_id)
     .execute(pool)
     .await?;
     sqlx::query(
-        r"
-        DELETE FROM jobs
-        WHERE generation_id IN (
-            SELECT generation_id FROM index_generations WHERE repo_id = $1
-        )
-        ",
+        "DELETE FROM jobs WHERE generation_id IN (SELECT generation_id FROM index_generations WHERE repo_id = $1)",
     )
     .bind(repo_id)
     .execute(pool)

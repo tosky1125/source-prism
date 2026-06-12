@@ -178,6 +178,28 @@ fn assert_count_at_least(
 }
 
 async fn cleanup(pool: &PgPool, repo_id: &str) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r"
+        DELETE FROM job_attempts
+        WHERE job_id IN (SELECT job_id FROM jobs WHERE generation_id IN (
+            SELECT generation_id FROM index_generations WHERE repo_id = $1
+        ))
+        ",
+    )
+    .bind(repo_id)
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        r"
+        DELETE FROM jobs
+        WHERE generation_id IN (
+            SELECT generation_id FROM index_generations WHERE repo_id = $1
+        )
+        ",
+    )
+    .bind(repo_id)
+    .execute(pool)
+    .await?;
     for table in [
         "search_sync_outbox",
         "architecture_entities",

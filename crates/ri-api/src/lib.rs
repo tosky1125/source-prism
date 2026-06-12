@@ -22,6 +22,7 @@ pub(crate) mod repo_coverage;
 pub(crate) mod repo_files;
 pub(crate) mod repo_graph;
 pub(crate) mod repo_index;
+pub(crate) mod repo_index_jobs;
 pub(crate) mod repo_references;
 pub(crate) mod repo_symbols;
 pub(crate) mod repo_test_runs;

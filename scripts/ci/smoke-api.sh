@@ -25,6 +25,8 @@ export API_BIND_ADDR="$api_bind_addr"
 api_base_url="${API_BASE_URL:-http://${api_bind_addr}}"
 api_log="${API_LOG:-/tmp/source-prism-api.log}"
 repo_id="${SOURCE_PRISM_CI_REPO_ID:-source-prism-ci}"
+search_sync_queue="${SOURCE_PRISM_CI_SEARCH_SYNC_QUEUE:-source-prism-api-${GITHUB_RUN_ID:-$$}}"
+search_index="${SOURCE_PRISM_SEARCH_INDEX:-source-prism-dev}"
 
 api_pid=""
 rm -f /tmp/source-prism-api-health.json /tmp/source-prism-api-last-response.txt
@@ -102,6 +104,24 @@ request() {
   esac
 }
 
+delete_search_index() {
+  local status
+  status=$(curl -sS --max-time 30 -o /tmp/source-prism-api-delete-index.txt \
+    -w '%{http_code}' -X DELETE "${OPENSEARCH_URL%/}/${search_index}") || {
+    cat /tmp/source-prism-api-delete-index.txt 2>/dev/null || true
+    return 1
+  }
+  case "$status" in
+    200 | 404)
+      return 0
+      ;;
+    *)
+      cat /tmp/source-prism-api-delete-index.txt 2>/dev/null || true
+      return 1
+      ;;
+  esac
+}
+
 wait_for_health
 
 request POST "${api_base_url}/v1/repos" /tmp/source-prism-api-repo.json \
@@ -112,7 +132,7 @@ grep -q '"persisted":true' /tmp/source-prism-api-repo.json
 
 request POST "${api_base_url}/v1/repos/${repo_id}/index" /tmp/source-prism-api-index.json \
   -H 'content-type: application/json' \
-  --data '{"sha":"HEAD","repo_path":"."}'
+  --data "{\"sha\":\"HEAD\",\"repo_path\":\".\",\"search_sync_queue\":\"${search_sync_queue}\"}"
 grep -q '"kind":"index"' /tmp/source-prism-api-index.json
 grep -q '"status":"succeeded"' /tmp/source-prism-api-index.json
 grep -q '"inserted_file_manifests":' /tmp/source-prism-api-index.json
@@ -122,6 +142,8 @@ grep -q '"indexed_import_edges":' /tmp/source-prism-api-index.json
 grep -q '"indexed_call_edges":' /tmp/source-prism-api-index.json
 grep -q '"indexed_test_cover_edges":' /tmp/source-prism-api-index.json
 grep -q '"indexed_search_chunks":' /tmp/source-prism-api-index.json
+grep -q "\"search_sync_queue\":\"${search_sync_queue}\"" /tmp/source-prism-api-index.json
+grep -q '"enqueued_search_sync_jobs":1' /tmp/source-prism-api-index.json
 grep -q '"indexed_test_cases":' /tmp/source-prism-api-index.json
 
 run_id=$(python3 -c 'import json; print(json.load(open("/tmp/source-prism-api-index.json"))["run_id"])')
@@ -134,17 +156,10 @@ grep -q '"symbols":' /tmp/source-prism-api-run.json
 grep -q '"graph_edges":' /tmp/source-prism-api-run.json
 grep -q '"search_chunks":' /tmp/source-prism-api-run.json
 
-cargo run -p ri-cli -- search rebuild --from-postgres --generation "$run_id" \
-  > /tmp/source-prism-api-search-rebuild.txt
-python3 - <<'PY'
-from pathlib import Path
-
-line = Path("/tmp/source-prism-api-search-rebuild.txt").read_text(encoding="utf-8").strip()
-prefix = "search rebuild indexed="
-assert line.startswith(prefix), line
-indexed = int(line.removeprefix(prefix).split()[0])
-assert indexed > 0, line
-PY
+delete_search_index
+cargo run -p ri-worker -- --queue "$search_sync_queue" --once \
+  > /tmp/source-prism-api-worker.txt
+grep -q 'ri-worker once processed=1' /tmp/source-prism-api-worker.txt
 cargo run -p ri-cli -- search drift-check --generation "$run_id" \
   > /tmp/source-prism-api-search-drift.txt
 grep -q 'search drift ok expected=' /tmp/source-prism-api-search-drift.txt

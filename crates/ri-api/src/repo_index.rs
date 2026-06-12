@@ -11,11 +11,14 @@ use ri_indexer::{
     PgGraphStore, PgSearchSyncStore, PgSymbolStore, PgTestCaseStore,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Row as _};
+use sqlx::PgPool;
 use std::path::PathBuf;
-use uuid::Uuid;
 
-use crate::{AppError, state::AppState};
+use crate::{
+    AppError,
+    repo_index_jobs::{enqueue_search_sync_job, search_sync_queue},
+    state::AppState,
+};
 
 const DEFAULT_SHA: &str = "HEAD";
 const INDEX_KIND: &str = "file_manifest";
@@ -25,6 +28,7 @@ const EXTRACTOR_VERSION: &str = "ri-api-index-v1";
 pub(crate) struct IndexRepoRequest {
     sha: Option<String>,
     repo_path: Option<String>,
+    search_sync_queue: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -43,6 +47,7 @@ pub(crate) struct IndexRepoResponse {
     indexed_call_edges: u64,
     indexed_test_cover_edges: u64,
     indexed_search_chunks: u64,
+    search_sync_queue: String,
     enqueued_search_sync_jobs: u64,
     indexed_test_cases: u64,
     indexed_architecture_entities: u64,
@@ -63,6 +68,7 @@ pub(crate) async fn index(
     if sha.is_empty() {
         return Err(AppError::Validation("sha must not be empty".to_owned()));
     }
+    let search_sync_queue = search_sync_queue(request.search_sync_queue.as_deref())?;
     let commit_sha = resolve_commit_sha(&repo_path, sha)?;
     let repo = RepoId::new(&repo_id).map_err(|error| AppError::Validation(error.to_string()))?;
     let commit =
@@ -112,7 +118,8 @@ pub(crate) async fn index(
         )
         .await?;
     let generation_id = generation.generation_id.to_string();
-    let enqueued_search_sync_jobs = enqueue_search_sync_job(pool, &repo_id, &generation_id).await?;
+    let enqueued_search_sync_jobs =
+        enqueue_search_sync_job(pool, &repo_id, &generation_id, &search_sync_queue).await?;
     Ok(Json(IndexRepoResponse {
         status: "succeeded",
         kind: "index",
@@ -132,6 +139,7 @@ pub(crate) async fn index(
         indexed_call_edges,
         indexed_test_cover_edges,
         indexed_search_chunks,
+        search_sync_queue,
         enqueued_search_sync_jobs,
         indexed_test_cases,
         indexed_architecture_entities,
@@ -193,43 +201,6 @@ async fn upsert_repo_commit(
     .execute(pool)
     .await?;
     Ok(())
-}
-
-async fn enqueue_search_sync_job(
-    pool: &PgPool,
-    repo_id: &str,
-    generation_id: &str,
-) -> Result<u64, sqlx::Error> {
-    let job_id = Uuid::now_v7().to_string();
-    let payload = serde_json::json!({
-        "source": "ri-api-index",
-        "repo_id": repo_id,
-        "generation_id": generation_id,
-    });
-    let row = sqlx::query(
-        r"
-        INSERT INTO jobs (
-            job_id, queue, kind, state, idempotency_key, generation_id, payload,
-            priority, run_after, attempt_count, max_attempts, metadata
-        )
-        VALUES (
-            $1, 'default', 'search.sync_once', 'queued', $2, $3, $4,
-            0, now(), 0, 3, jsonb_build_object('backoff_seconds', 30::bigint)
-        )
-        ON CONFLICT (queue, kind, idempotency_key)
-            WHERE idempotency_key IS NOT NULL
-        DO UPDATE SET updated_at = jobs.updated_at
-        RETURNING job_id
-        ",
-    )
-    .bind(job_id)
-    .bind(format!("search-sync:{generation_id}"))
-    .bind(generation_id)
-    .bind(payload)
-    .fetch_one(pool)
-    .await?;
-    let _: String = row.try_get("job_id")?;
-    Ok(1)
 }
 
 fn manifest_inputs(manifest: &LocalManifest) -> Result<Vec<FileManifestInput>, AppError> {

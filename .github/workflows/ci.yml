@@ -198,6 +198,10 @@ jobs:
 
       - name: Smoke worker
         run: |
-          cargo run -p ri-worker -- --enqueue-noop --once | grep 'ri-worker once processed=1'
-          cargo run -p ri-worker -- --enqueue-noop --max-polls 1 --poll-interval-ms 1 | grep 'ri-worker daemon polls=1 processed=1'
-          cargo run -p ri-worker -- --enqueue-search-sync --once | grep 'ri-worker once processed=1'
+          noop_queue="worker-noop-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
+          daemon_queue="worker-daemon-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
+          search_queue="worker-search-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
+          cargo run -p ri-worker -- --queue "$noop_queue" --enqueue-noop --once | grep 'ri-worker once processed=1'
+          cargo run -p ri-worker -- --queue "$daemon_queue" --enqueue-noop --max-polls 1 --poll-interval-ms 1 | grep 'ri-worker daemon polls=1 processed=1'
+          cargo run -p ri-cli -- index --repo . --sha HEAD > /tmp/source-prism-worker-index.json
+          cargo run -p ri-worker -- --queue "$search_queue" --enqueue-search-sync --once | grep 'ri-worker once processed=1'

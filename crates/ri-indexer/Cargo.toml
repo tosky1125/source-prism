@@ -11,6 +11,7 @@ categories.workspace = true
 description = "Incremental indexing boundary for Source Prism."
 
 [dependencies]
+ri-architecture = { path = "../ri-architecture" }
 ri-core = { path = "../ri-core" }
 ri-symbols = { path = "../ri-symbols" }
 hex = "0.4"

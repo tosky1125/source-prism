@@ -2225,6 +2225,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "reqwest",
+ "ri-architecture",
  "ri-behavior",
  "ri-context",
  "ri-core",
@@ -2238,6 +2239,18 @@ dependencies = [
  "thiserror",
  "tokio",
  "tower",
+ "uuid",
+]
+
+[[package]]
+name = "ri-architecture"
+version = "0.1.0"
+dependencies = [
+ "ri-core",
+ "ri-git",
+ "serde",
+ "tempfile",
+ "thiserror",
 ]
 
 [[package]]
@@ -2254,6 +2267,7 @@ dependencies = [
 name = "ri-cli"
 version = "0.1.0"
 dependencies = [
+ "ri-architecture",
  "ri-behavior",
  "ri-config",
  "ri-context",
@@ -2343,6 +2357,7 @@ version = "0.1.0"
 dependencies = [
  "hex",
  "reqwest",
+ "ri-architecture",
  "ri-core",
  "ri-symbols",
  "serde",

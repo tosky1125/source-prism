@@ -16,6 +16,7 @@ use ri_git::LocalManifest;
 use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
 
+pub(crate) mod architecture;
 pub(crate) mod error;
 pub(crate) mod impact;
 pub(crate) mod index;
@@ -67,6 +68,7 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
         "symbols" => symbols::symbols_command(args).map(|()| ExitCode::SUCCESS),
         "changed-symbols" => symbols::changed_symbols_command(args).map(|()| ExitCode::SUCCESS),
         "references" => references::references_command(args).map(|()| ExitCode::SUCCESS),
+        "architecture" => architecture::architecture_command(args).map(|()| ExitCode::SUCCESS),
         "impact" => impact::impact_command(args).map(|()| ExitCode::SUCCESS),
         "search-context" => {
             search_context::search_context_command(args).map(|()| ExitCode::SUCCESS)

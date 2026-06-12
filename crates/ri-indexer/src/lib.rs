@@ -4,6 +4,7 @@
     reason = "SQLx TLS dependencies currently pull duplicate platform crates outside this crate's control."
 )]
 
+mod architecture;
 mod generation;
 mod generation_files;
 mod graph;
@@ -23,6 +24,7 @@ mod test_cases;
 
 pub const DEFAULT_SEARCH_INDEX: &str = "source-prism-dev";
 
+pub use architecture::{ArchitectureEntityRecord, ArchitectureStoreError, PgArchitectureStore};
 pub use generation::{
     FileManifestInput, GenerationError, GenerationRecord, GenerationStatus, PgGenerationStore,
 };

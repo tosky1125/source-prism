@@ -76,6 +76,36 @@ impl SymbolId {
     }
 }
 
+impl EntityId {
+    pub fn stable(repo: &RepoId, file: &FilePath, kind: &str, name: &str) -> Self {
+        Self(prefixed_digest(
+            "ent",
+            &[repo.as_str(), file.as_str(), kind, name],
+        ))
+    }
+
+    pub fn versioned(
+        repo: &RepoId,
+        commit: &CommitSha,
+        file: &FilePath,
+        kind: &str,
+        name: &str,
+        content_hash: &str,
+    ) -> Self {
+        Self(prefixed_digest(
+            "entv",
+            &[
+                repo.as_str(),
+                commit.as_str(),
+                file.as_str(),
+                kind,
+                name,
+                content_hash,
+            ],
+        ))
+    }
+}
+
 impl EdgeId {
     pub fn deterministic(
         repo: &RepoId,

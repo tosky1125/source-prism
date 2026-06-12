@@ -8,12 +8,13 @@ use std::{
     io::{self, Write},
 };
 
+use ri_architecture::extract_architecture_entities_for;
 use ri_context::{ResolvedCallReference, extract_repo_index_for};
 use ri_core::{CommitSha, Language, RepoId};
 use ri_git::{LocalManifest, discover_worktree, resolve_commit_sha};
 use ri_indexer::{
-    CallEdgeInput, DEFAULT_SEARCH_INDEX, FileManifestInput, PgGenerationStore, PgGraphStore,
-    PgSearchSyncStore, PgSymbolStore, PgTestCaseStore,
+    CallEdgeInput, DEFAULT_SEARCH_INDEX, FileManifestInput, PgArchitectureStore, PgGenerationStore,
+    PgGraphStore, PgSearchSyncStore, PgSymbolStore, PgTestCaseStore,
 };
 use serde_json::json;
 use sqlx::{PgPool, postgres::PgPoolOptions};
@@ -62,6 +63,10 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
     let indexed_test_cases = PgTestCaseStore::new(pool.clone())
         .replace_test_cases_for_generation(&generation.generation_id, &symbols)
         .await?;
+    let architecture = extract_architecture_entities_for(&repo_path, &repo, &commit, &manifest)?;
+    let indexed_architecture_entities = PgArchitectureStore::new(pool.clone())
+        .replace_architecture_entities_for_generation(&generation.generation_id, &architecture)
+        .await?;
     let graph_store = PgGraphStore::new(pool.clone());
     let graph = graph_store
         .replace_contains_graph(&generation.generation_id, &symbols)
@@ -101,6 +106,7 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
         indexed_test_cover_edges,
         indexed_search_chunks,
         indexed_test_cases,
+        indexed_architecture_entities,
     })
 }
 
@@ -198,6 +204,7 @@ struct IndexResult {
     indexed_test_cover_edges: u64,
     indexed_search_chunks: u64,
     indexed_test_cases: u64,
+    indexed_architecture_entities: u64,
 }
 
 fn print_index_result(result: &IndexResult) -> Result<(), CliError> {
@@ -220,6 +227,7 @@ fn print_index_result(result: &IndexResult) -> Result<(), CliError> {
             "indexed_test_cover_edges": result.indexed_test_cover_edges,
             "indexed_search_chunks": result.indexed_search_chunks,
             "indexed_test_cases": result.indexed_test_cases,
+            "indexed_architecture_entities": result.indexed_architecture_entities,
         }),
     )?;
     writeln!(lock)?;

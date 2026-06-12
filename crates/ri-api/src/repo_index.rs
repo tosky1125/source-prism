@@ -2,12 +2,13 @@ use axum::{
     Json,
     extract::{Path, State},
 };
+use ri_architecture::extract_architecture_entities_for;
 use ri_context::{ResolvedCallReference, extract_repo_index_for};
 use ri_core::{CommitSha, Language, RepoId};
 use ri_git::{LocalManifest, resolve_commit_sha};
 use ri_indexer::{
-    CallEdgeInput, DEFAULT_SEARCH_INDEX, FileManifestInput, PgGenerationStore, PgGraphStore,
-    PgSearchSyncStore, PgSymbolStore, PgTestCaseStore,
+    CallEdgeInput, DEFAULT_SEARCH_INDEX, FileManifestInput, PgArchitectureStore, PgGenerationStore,
+    PgGraphStore, PgSearchSyncStore, PgSymbolStore, PgTestCaseStore,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -40,6 +41,7 @@ pub(crate) struct IndexRepoResponse {
     indexed_test_cover_edges: u64,
     indexed_search_chunks: u64,
     indexed_test_cases: u64,
+    indexed_architecture_entities: u64,
 }
 
 pub(crate) async fn index(
@@ -79,6 +81,10 @@ pub(crate) async fn index(
         .await?;
     let indexed_test_cases = PgTestCaseStore::new(pool.clone())
         .replace_test_cases_for_generation(&generation.generation_id, &symbols)
+        .await?;
+    let architecture = extract_architecture_entities_for(repo_path, &repo, &commit, &manifest)?;
+    let indexed_architecture_entities = PgArchitectureStore::new(pool.clone())
+        .replace_architecture_entities_for_generation(&generation.generation_id, &architecture)
         .await?;
     let graph_store = PgGraphStore::new(pool.clone());
     let graph = graph_store
@@ -122,6 +128,7 @@ pub(crate) async fn index(
         indexed_test_cover_edges,
         indexed_search_chunks,
         indexed_test_cases,
+        indexed_architecture_entities,
     }))
 }
 

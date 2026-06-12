@@ -11,6 +11,7 @@ categories.workspace = true
 description = "Local HTTP API entry point for Source Prism."
 
 [dependencies]
+ri-architecture = { path = "../ri-architecture" }
 ri-behavior = { path = "../ri-behavior" }
 ri-context = { path = "../ri-context" }
 ri-core = { path = "../ri-core" }
@@ -28,6 +29,7 @@ tokio = { version = "1", features = ["macros", "net", "rt-multi-thread"] }
 
 [dev-dependencies]
 tower = "0.5"
+uuid = { version = "1", features = ["v7"] }
 
 [lints]
 workspace = true

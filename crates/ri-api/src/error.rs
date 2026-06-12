@@ -9,7 +9,8 @@ use ri_behavior::BehaviorError;
 use ri_context::ContextError;
 use ri_impact::ImpactError;
 use ri_indexer::{
-    GenerationError, GraphStoreError, SearchSyncError, SymbolStoreError, TestCaseStoreError,
+    ArchitectureStoreError, GenerationError, GraphStoreError, SearchSyncError, SymbolStoreError,
+    TestCaseStoreError,
 };
 use serde::Serialize;
 
@@ -38,6 +39,10 @@ pub enum AppError {
     FileTooLarge { path: String, size_bytes: u64 },
     #[error("run not found: {run_id}")]
     RunNotFound { run_id: String },
+    #[error(transparent)]
+    Architecture(#[from] ri_architecture::ArchitectureError),
+    #[error(transparent)]
+    ArchitectureStore(#[from] ArchitectureStoreError),
     #[error(transparent)]
     Behavior(#[from] BehaviorError),
     #[error(transparent)]
@@ -85,6 +90,16 @@ impl IntoResponse for AppError {
                 StatusCode::NOT_FOUND,
                 "symbol_not_found",
                 format!("symbol not found: {query}"),
+            ),
+            Self::Architecture(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "architecture",
+                "architecture extraction failed".to_owned(),
+            ),
+            Self::ArchitectureStore(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "architecture_store",
+                "architecture store failed".to_owned(),
             ),
             Self::Behavior(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,

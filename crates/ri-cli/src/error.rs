@@ -10,13 +10,15 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub(crate) enum CliError {
     #[error(
-        "usage: ri-cli config check --env-file <path> | db migrate | repo manifest --repo <path> | index --repo <path> --sha <sha> | symbols --repo <path> | changed-symbols --diff <diff> | references --symbol <symbol> | impact --symbol <symbol> | search-context <query> | test-context --symbol <symbol> | search sync --once | search drift-check [--expect-mismatch fixture] | search rebuild --from-postgres"
+        "usage: ri-cli config check --env-file <path> | db migrate | repo manifest --repo <path> | index --repo <path> --sha <sha> | symbols --repo <path> | changed-symbols --diff <diff> | references --symbol <symbol> | architecture --repo <path> | impact --symbol <symbol> | search-context <query> | test-context --symbol <symbol> | search sync --once | search drift-check [--expect-mismatch fixture] | search rebuild --from-postgres"
     )]
     Usage,
     #[error("missing required env: {key}")]
     MissingEnv { key: &'static str },
     #[error(transparent)]
     Behavior(#[from] ri_behavior::BehaviorError),
+    #[error(transparent)]
+    Architecture(#[from] ri_architecture::ArchitectureError),
     #[error("{0}")]
     Config(#[from] ri_config::ConfigError),
     #[error(transparent)]
@@ -35,6 +37,8 @@ pub(crate) enum CliError {
     Generation(#[from] ri_indexer::GenerationError),
     #[error(transparent)]
     Graph(#[from] ri_indexer::GraphStoreError),
+    #[error(transparent)]
+    ArchitectureStore(#[from] ri_indexer::ArchitectureStoreError),
     #[error(transparent)]
     Parser(#[from] ri_parser::ParserError),
     #[error(transparent)]
@@ -61,6 +65,7 @@ impl CliError {
             Self::Usage
             | Self::MissingEnv { .. }
             | Self::Behavior(_)
+            | Self::Architecture(_)
             | Self::Config(_)
             | Self::Context(_)
             | Self::Core(_)
@@ -70,6 +75,7 @@ impl CliError {
             | Self::FileTooLarge { .. }
             | Self::Generation(_)
             | Self::Graph(_)
+            | Self::ArchitectureStore(_)
             | Self::Parser(_)
             | Self::Json(_)
             | Self::Migrate(_)

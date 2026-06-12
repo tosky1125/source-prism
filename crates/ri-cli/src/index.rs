@@ -9,9 +9,13 @@ use std::{
     path::PathBuf,
 };
 
-use ri_core::Language;
+use ri_context::extract_repo_symbols_for;
+use ri_core::{CommitSha, Language, RepoId};
 use ri_git::{LocalManifest, discover_worktree, resolve_commit_sha};
-use ri_indexer::{FileManifestInput, PgGenerationStore};
+use ri_indexer::{
+    DEFAULT_SEARCH_INDEX, FileManifestInput, PgGenerationStore, PgGraphStore, PgSearchSyncStore,
+    PgSymbolStore, PgTestCaseStore,
+};
 use serde_json::json;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
@@ -45,11 +49,13 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
     let worktree = discover_worktree(&repo_path)?;
     let repo_id = repo_id_for_worktree(&worktree)?;
     let commit_sha = resolve_commit_sha(&repo_path, &sha_arg)?;
+    let repo = RepoId::new(&repo_id)?;
+    let commit = CommitSha::new(&commit_sha)?;
     upsert_repo_commit(&pool, &repo_id, &worktree, &commit_sha).await?;
 
     let manifest = LocalManifest::extract(&repo_path)?;
     let inputs = manifest_inputs(&manifest)?;
-    let store = PgGenerationStore::new(pool);
+    let store = PgGenerationStore::new(pool.clone());
     let generation = store
         .begin_generation(
             &repo_id,
@@ -70,13 +76,41 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
             return Err(error.into());
         }
     };
+    let symbols = extract_repo_symbols_for(&repo_path, &repo, &commit)?;
+    let indexed_symbols = PgSymbolStore::new(pool.clone())
+        .replace_symbol_generation(&generation.generation_id, &symbols)
+        .await?;
+    let indexed_test_cases = PgTestCaseStore::new(pool.clone())
+        .replace_test_cases_for_generation(&generation.generation_id, &symbols)
+        .await?;
+    let graph_store = PgGraphStore::new(pool.clone());
+    let graph = graph_store
+        .replace_contains_graph(&generation.generation_id, &symbols)
+        .await?;
+    let indexed_test_cover_edges = graph_store
+        .replace_test_covers_graph(&generation.generation_id)
+        .await?;
+    let indexed_search_chunks = PgSearchSyncStore::new(pool)
+        .enqueue_symbol_chunks(
+            &repo_id,
+            &generation.generation_id,
+            &symbols,
+            DEFAULT_SEARCH_INDEX,
+        )
+        .await?;
 
-    print_index_result(
-        &repo_id,
-        &commit_sha,
-        &generation.generation_id.to_string(),
-        inserted,
-    )
+    print_index_result(&IndexResult {
+        repo_id,
+        commit_sha,
+        generation_id: generation.generation_id.to_string(),
+        inserted_file_manifests: inserted,
+        indexed_symbols,
+        indexed_graph_nodes: graph.nodes,
+        indexed_graph_edges: graph.edges.saturating_add(indexed_test_cover_edges),
+        indexed_test_cover_edges,
+        indexed_search_chunks,
+        indexed_test_cases,
+    })
 }
 
 async fn database_pool() -> Result<PgPool, CliError> {
@@ -160,12 +194,20 @@ const fn language_id(language: Language) -> &'static str {
     }
 }
 
-fn print_index_result(
-    repo_id: &str,
-    commit_sha: &str,
-    generation_id: &str,
+struct IndexResult {
+    repo_id: String,
+    commit_sha: String,
+    generation_id: String,
     inserted_file_manifests: u64,
-) -> Result<(), CliError> {
+    indexed_symbols: u64,
+    indexed_graph_nodes: u64,
+    indexed_graph_edges: u64,
+    indexed_test_cover_edges: u64,
+    indexed_search_chunks: u64,
+    indexed_test_cases: u64,
+}
+
+fn print_index_result(result: &IndexResult) -> Result<(), CliError> {
     let stdout = io::stdout();
     let mut lock = stdout.lock();
     serde_json::to_writer_pretty(
@@ -173,10 +215,16 @@ fn print_index_result(
         &json!({
             "status": "ok",
             "kind": "index",
-            "repo_id": repo_id,
-            "commit_sha": commit_sha,
-            "generation_id": generation_id,
-            "inserted_file_manifests": inserted_file_manifests,
+            "repo_id": result.repo_id,
+            "commit_sha": result.commit_sha,
+            "generation_id": result.generation_id,
+            "inserted_file_manifests": result.inserted_file_manifests,
+            "indexed_symbols": result.indexed_symbols,
+            "indexed_graph_nodes": result.indexed_graph_nodes,
+            "indexed_graph_edges": result.indexed_graph_edges,
+            "indexed_test_cover_edges": result.indexed_test_cover_edges,
+            "indexed_search_chunks": result.indexed_search_chunks,
+            "indexed_test_cases": result.indexed_test_cases,
         }),
     )?;
     writeln!(lock)?;

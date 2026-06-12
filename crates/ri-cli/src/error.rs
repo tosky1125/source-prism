@@ -20,6 +20,8 @@ pub(crate) enum CliError {
     #[error("{0}")]
     Config(#[from] ri_config::ConfigError),
     #[error(transparent)]
+    Context(#[from] ri_context::ContextError),
+    #[error(transparent)]
     Core(#[from] ri_core::CoreError),
     #[error(transparent)]
     Git(#[from] ri_git::GitError),
@@ -32,6 +34,8 @@ pub(crate) enum CliError {
     #[error(transparent)]
     Generation(#[from] ri_indexer::GenerationError),
     #[error(transparent)]
+    Graph(#[from] ri_indexer::GraphStoreError),
+    #[error(transparent)]
     Parser(#[from] ri_parser::ParserError),
     #[error(transparent)]
     Json(#[from] serde_json::Error),
@@ -41,6 +45,10 @@ pub(crate) enum CliError {
     OpenSearch(#[from] ri_indexer::OpenSearchError),
     #[error(transparent)]
     SearchSync(#[from] ri_indexer::SearchSyncError),
+    #[error(transparent)]
+    SymbolStore(#[from] ri_indexer::SymbolStoreError),
+    #[error(transparent)]
+    TestCaseStore(#[from] ri_indexer::TestCaseStoreError),
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
     #[error(transparent)]
@@ -54,17 +62,21 @@ impl CliError {
             | Self::MissingEnv { .. }
             | Self::Behavior(_)
             | Self::Config(_)
+            | Self::Context(_)
             | Self::Core(_)
             | Self::Git(_)
             | Self::Impact(_)
             | Self::Drift { .. }
             | Self::FileTooLarge { .. }
             | Self::Generation(_)
+            | Self::Graph(_)
             | Self::Parser(_)
             | Self::Json(_)
             | Self::Migrate(_)
             | Self::OpenSearch(_)
             | Self::SearchSync(_)
+            | Self::SymbolStore(_)
+            | Self::TestCaseStore(_)
             | Self::Sqlx(_)
             | Self::Io(_) => ExitCode::FAILURE,
         }

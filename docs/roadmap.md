@@ -32,9 +32,8 @@ Roadmap-only crates may appear in documentation and command placeholders. They s
 
 Foundation CLI commands may expose placeholders for future behavior. Those commands must return machine-readable `not_implemented` status and a non-zero exit code until the roadmap entry condition is met.
 
-Current placeholder surfaces:
+Current placeholder surfaces that still run in-memory over the local worktree:
 
-- `ri-cli index`
 - `ri-cli symbols`
 - `ri-cli impact`
 

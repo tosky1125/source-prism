@@ -54,6 +54,7 @@ pub fn app(state: AppState) -> Router {
         .route("/repo/{repo_id}", get(web::repo))
         .route("/repo/{repo_id}/{view}", get(web::repo_view))
         .route("/v1/repos", post(repos::create))
+        .route("/v1/repos/{repo_id}", get(repos::get))
         .route(
             "/v1/repos/{repo_id}/architecture",
             get(repo_architecture::list),

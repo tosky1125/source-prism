@@ -39,6 +39,8 @@ pub enum AppError {
     FileTooLarge { path: String, size_bytes: u64 },
     #[error("run not found: {run_id}")]
     RunNotFound { run_id: String },
+    #[error("repo not found: {repo_id}")]
+    RepoNotFound { repo_id: String },
     #[error(transparent)]
     Architecture(#[from] ri_architecture::ArchitectureError),
     #[error(transparent)]
@@ -72,102 +74,67 @@ pub enum AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, code, message) = match self {
-            Self::Validation(message) => (StatusCode::UNPROCESSABLE_ENTITY, "validation", message),
-            Self::DatabaseNotConfigured => (
+            Self::Validation(message) => {
+                parts(StatusCode::UNPROCESSABLE_ENTITY, "validation", message)
+            }
+            Self::DatabaseNotConfigured => parts(
                 StatusCode::SERVICE_UNAVAILABLE,
                 "database_not_configured",
-                "database is not configured".to_owned(),
+                "database is not configured",
             ),
-            Self::FileTooLarge { path, size_bytes } => (
+            Self::FileTooLarge { path, size_bytes } => parts(
                 StatusCode::PAYLOAD_TOO_LARGE,
                 "file_too_large",
                 format!("file is too large to index: {path} size_bytes={size_bytes}"),
             ),
-            Self::RunNotFound { run_id } => (
+            Self::RunNotFound { run_id } => parts(
                 StatusCode::NOT_FOUND,
                 "run_not_found",
                 format!("run not found: {run_id}"),
             ),
+            Self::RepoNotFound { repo_id } => parts(
+                StatusCode::NOT_FOUND,
+                "repo_not_found",
+                format!("repo not found: {repo_id}"),
+            ),
             Self::Behavior(BehaviorError::SymbolNotFound { symbol: query })
             | Self::Context(ContextError::SymbolNotFound { query })
-            | Self::Impact(ImpactError::SymbolNotFound { query }) => (
+            | Self::Impact(ImpactError::SymbolNotFound { query }) => parts(
                 StatusCode::NOT_FOUND,
                 "symbol_not_found",
                 format!("symbol not found: {query}"),
             ),
-            Self::Architecture(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "architecture",
-                "architecture extraction failed".to_owned(),
-            ),
-            Self::ArchitectureStore(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "architecture_store",
-                "architecture store failed".to_owned(),
-            ),
-            Self::Behavior(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "behavior",
-                "behavior context failed".to_owned(),
-            ),
-            Self::Context(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "context",
-                "context search failed".to_owned(),
-            ),
-            Self::Git(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "manifest",
-                "file manifest failed".to_owned(),
-            ),
-            Self::Impact(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "impact",
-                "impact analysis failed".to_owned(),
-            ),
-            Self::Generation(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "index_generation",
-                "index generation failed".to_owned(),
-            ),
-            Self::GraphStore(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "graph_store",
-                "graph store failed".to_owned(),
-            ),
-            Self::SearchSync(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "search_sync",
-                "search sync failed".to_owned(),
-            ),
-            Self::SymbolStore(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "symbol_store",
-                "symbol store failed".to_owned(),
-            ),
-            Self::TestCaseStore(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "test_case_store",
-                "test case store failed".to_owned(),
-            ),
-            Self::TestRunStore(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "test_run_store",
-                "test run store failed".to_owned(),
-            ),
-            Self::CoverageStore(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "coverage_store",
-                "coverage store failed".to_owned(),
-            ),
-            Self::Sqlx(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "database",
-                "database query failed".to_owned(),
-            ),
+            Self::Architecture(_) => internal("architecture", "architecture extraction failed"),
+            Self::ArchitectureStore(_) => {
+                internal("architecture_store", "architecture store failed")
+            }
+            Self::Behavior(_) => internal("behavior", "behavior context failed"),
+            Self::Context(_) => internal("context", "context search failed"),
+            Self::Git(_) => internal("manifest", "file manifest failed"),
+            Self::Impact(_) => internal("impact", "impact analysis failed"),
+            Self::Generation(_) => internal("index_generation", "index generation failed"),
+            Self::GraphStore(_) => internal("graph_store", "graph store failed"),
+            Self::SearchSync(_) => internal("search_sync", "search sync failed"),
+            Self::SymbolStore(_) => internal("symbol_store", "symbol store failed"),
+            Self::TestCaseStore(_) => internal("test_case_store", "test case store failed"),
+            Self::TestRunStore(_) => internal("test_run_store", "test run store failed"),
+            Self::CoverageStore(_) => internal("coverage_store", "coverage store failed"),
+            Self::Sqlx(_) => internal("database", "database query failed"),
         };
         (status, Json(ErrorResponse::new(code, message))).into_response()
     }
+}
+
+fn internal(code: &'static str, message: &'static str) -> (StatusCode, &'static str, String) {
+    parts(StatusCode::INTERNAL_SERVER_ERROR, code, message)
+}
+
+fn parts(
+    status: StatusCode,
+    code: &'static str,
+    message: impl Into<String>,
+) -> (StatusCode, &'static str, String) {
+    (status, code, message.into())
 }
 
 #[derive(Debug, Serialize)]

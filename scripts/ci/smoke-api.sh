@@ -157,6 +157,12 @@ grep -q '"graph_edges":' /tmp/source-prism-api-run.json
 grep -q '"search_chunks":' /tmp/source-prism-api-run.json
 grep -q '"search_sync_jobs":1' /tmp/source-prism-api-run.json
 
+request GET "${api_base_url}/v1/repos/${repo_id}" /tmp/source-prism-api-repo-overview.json
+grep -q '"kind":"repo"' /tmp/source-prism-api-repo-overview.json
+grep -q '"latest_run":' /tmp/source-prism-api-repo-overview.json
+grep -q '"file_manifests":' /tmp/source-prism-api-repo-overview.json
+grep -q '"test_cases":' /tmp/source-prism-api-repo-overview.json
+
 delete_search_index
 cargo run -p ri-worker -- --queue "$search_sync_queue" --once \
   > /tmp/source-prism-api-worker.txt

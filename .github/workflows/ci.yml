@@ -101,6 +101,11 @@ jobs:
           grep '"kind": "coverage"' /tmp/source-prism-jacoco.json
           grep '"format": "jacoco"' /tmp/source-prism-jacoco.json
           grep '"imported_segments": 1' /tmp/source-prism-jacoco.json
+          printf '%s\n' '{"tests":[{"nodeid":"tests/test_invoice.py::test_adds_rate","outcome":"passed"}]}' > /tmp/source-prism-pytest.json
+          cargo run -p ri-cli -- tests import-pytest-json --repo . --sha HEAD --pytest-json /tmp/source-prism-pytest.json > /tmp/source-prism-pytest.json.out
+          grep '"kind": "test_runs"' /tmp/source-prism-pytest.json.out
+          grep '"framework": "pytest"' /tmp/source-prism-pytest.json.out
+          grep '"imported_results": 1' /tmp/source-prism-pytest.json.out
 
       - name: Check formatting
         run: cargo fmt --all -- --check

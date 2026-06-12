@@ -7,6 +7,7 @@ mod cobertura;
 mod jacoco;
 mod junit;
 mod lcov;
+mod pytest_json;
 
 use ri_core::{Confidence, Language, SymbolId, SymbolKind};
 use ri_symbols::{SymbolRange, SymbolRecord};
@@ -18,6 +19,7 @@ pub use cobertura::parse_cobertura_xml;
 pub use jacoco::parse_jacoco_xml;
 pub use junit::{JunitReport, TestCaseResult, TestResultStatus, TestSuiteResult, parse_junit_xml};
 pub use lcov::{CoverageFile, CoverageReport, CoverageSegment, parse_lcov};
+pub use pytest_json::parse_pytest_json;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -61,6 +63,8 @@ pub enum BehaviorError {
     CoberturaXml { message: String },
     #[error("failed to parse jacoco xml: {message}")]
     JacocoXml { message: String },
+    #[error("failed to parse pytest json: {message}")]
+    PytestJson { message: String },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

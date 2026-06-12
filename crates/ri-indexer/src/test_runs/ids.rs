@@ -8,6 +8,7 @@ pub(super) fn test_run_id(
     generation: &StoredGeneration,
     generation_id: &GenerationId,
     source_path: &str,
+    framework: &str,
 ) -> String {
     digest(
         "trun",
@@ -16,6 +17,7 @@ pub(super) fn test_run_id(
             generation.commit_sha.as_str(),
             generation_id.as_str(),
             source_path,
+            framework,
         ],
     )
 }

@@ -27,6 +27,7 @@ pub(crate) mod search_context;
 pub(crate) mod symbols;
 pub(crate) mod test_context;
 pub(crate) mod test_junit;
+pub(crate) mod test_pytest;
 pub(crate) mod tests;
 
 use error::CliError;

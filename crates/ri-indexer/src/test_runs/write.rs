@@ -13,6 +13,7 @@ pub(super) async fn stale_previous_test_run(
     generation: &StoredGeneration,
     generation_id: &GenerationId,
     source_path: &str,
+    framework: &str,
 ) -> Result<(), TestRunStoreError> {
     sqlx::query(
         r"
@@ -21,7 +22,8 @@ pub(super) async fn stale_previous_test_run(
         WHERE repo_id = $1 AND commit_sha = $2 AND generation_id <> $3
           AND test_run_id IN (
               SELECT test_run_id FROM test_runs
-              WHERE repo_id = $1 AND commit_sha = $2 AND source_path = $4 AND stale_at IS NULL
+              WHERE repo_id = $1 AND commit_sha = $2 AND source_path = $4
+                AND framework = $5 AND stale_at IS NULL
           )
         ",
     )
@@ -29,6 +31,7 @@ pub(super) async fn stale_previous_test_run(
     .bind(&generation.commit_sha)
     .bind(generation_id.to_string())
     .bind(source_path)
+    .bind(framework)
     .execute(&mut **transaction)
     .await?;
     sqlx::query(
@@ -36,12 +39,13 @@ pub(super) async fn stale_previous_test_run(
         UPDATE test_runs
         SET stale_at = now()
         WHERE repo_id = $1 AND commit_sha = $2 AND source_path = $3
-          AND generation_id <> $4 AND stale_at IS NULL
+          AND framework = $4 AND generation_id <> $5 AND stale_at IS NULL
         ",
     )
     .bind(&generation.repo_id)
     .bind(&generation.commit_sha)
     .bind(source_path)
+    .bind(framework)
     .bind(generation_id.to_string())
     .execute(&mut **transaction)
     .await?;
@@ -53,6 +57,7 @@ pub(super) async fn upsert_test_run(
     generation: &StoredGeneration,
     generation_id: &GenerationId,
     source_path: &str,
+    framework: &str,
     report: &JunitReport,
 ) -> Result<(), TestRunStoreError> {
     sqlx::query(
@@ -62,9 +67,10 @@ pub(super) async fn upsert_test_run(
             total_count, passed_count, failed_count, error_count, skipped_count, duration_ms,
             stale_at
         )
-        VALUES ($1, $2, $3, $4, $5, 'junit', $6, $7, $8, $9, $10, $11, NULL, NULL)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULL, NULL)
         ON CONFLICT (test_run_id) DO UPDATE
         SET generation_id = EXCLUDED.generation_id,
+            framework = EXCLUDED.framework,
             status = EXCLUDED.status,
             total_count = EXCLUDED.total_count,
             passed_count = EXCLUDED.passed_count,
@@ -74,11 +80,17 @@ pub(super) async fn upsert_test_run(
             stale_at = NULL
         ",
     )
-    .bind(test_run_id(generation, generation_id, source_path))
+    .bind(test_run_id(
+        generation,
+        generation_id,
+        source_path,
+        framework,
+    ))
     .bind(&generation.repo_id)
     .bind(&generation.commit_sha)
     .bind(generation_id.to_string())
     .bind(source_path)
+    .bind(framework)
     .bind(result_status(run_status(report)))
     .bind(count_value(report.total_count(), "total_count")?)
     .bind(count_value(report.passed_count(), "passed_count")?)

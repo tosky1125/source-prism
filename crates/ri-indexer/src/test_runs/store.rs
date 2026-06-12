@@ -27,15 +27,44 @@ impl PgTestRunStore {
         source_path: &str,
         report: &JunitReport,
     ) -> Result<TestRunIngestOutcome, TestRunStoreError> {
+        self.replace_run_for_generation(generation_id, source_path, "junit", report)
+            .await
+    }
+
+    pub async fn replace_pytest_run_for_generation(
+        &self,
+        generation_id: &GenerationId,
+        source_path: &str,
+        report: &JunitReport,
+    ) -> Result<TestRunIngestOutcome, TestRunStoreError> {
+        self.replace_run_for_generation(generation_id, source_path, "pytest", report)
+            .await
+    }
+
+    async fn replace_run_for_generation(
+        &self,
+        generation_id: &GenerationId,
+        source_path: &str,
+        framework: &str,
+        report: &JunitReport,
+    ) -> Result<TestRunIngestOutcome, TestRunStoreError> {
         let generation = self.generation(generation_id).await?;
         let mut transaction = self.pool.begin().await?;
-        stale_previous_test_run(&mut transaction, &generation, generation_id, source_path).await?;
-        let test_run_id = test_run_id(&generation, generation_id, source_path);
+        stale_previous_test_run(
+            &mut transaction,
+            &generation,
+            generation_id,
+            source_path,
+            framework,
+        )
+        .await?;
+        let test_run_id = test_run_id(&generation, generation_id, source_path, framework);
         upsert_test_run(
             &mut transaction,
             &generation,
             generation_id,
             source_path,
+            framework,
             report,
         )
         .await?;

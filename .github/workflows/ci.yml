@@ -133,6 +133,9 @@ jobs:
           grep '"kind": "impact"' /tmp/source-prism-impact.json
           grep '"status": "ok"' /tmp/source-prism-impact.json
           grep '"impact_score"' /tmp/source-prism-impact.json
+          cargo run -p ri-cli -- impact --repo-id "$cli_repo_id" --symbol "$impact_symbol" > /tmp/source-prism-persisted-impact.json
+          grep '"kind": "impact"' /tmp/source-prism-persisted-impact.json
+          grep '"repo_id":' /tmp/source-prism-persisted-impact.json
           cargo run -p ri-cli -- references --repo-id "$cli_repo_id" --symbol "$impact_symbol" > /tmp/source-prism-persisted-references.json
           grep '"kind": "references"' /tmp/source-prism-persisted-references.json
           grep '"repo_id":' /tmp/source-prism-persisted-references.json

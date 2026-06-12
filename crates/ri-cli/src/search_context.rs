@@ -101,7 +101,7 @@ async fn database_pool() -> Result<PgPool, CliError> {
         .map_err(CliError::from)
 }
 
-fn graph_call_edges(graph: &GraphProjection) -> Result<Vec<ImpactCallEdge>, CliError> {
+pub(crate) fn graph_call_edges(graph: &GraphProjection) -> Result<Vec<ImpactCallEdge>, CliError> {
     let subject_by_node = graph
         .nodes
         .iter()

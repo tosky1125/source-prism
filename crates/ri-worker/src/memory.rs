@@ -63,6 +63,7 @@ struct MemoryJob {
     job_id: JobId,
     queue: JobQueue,
     kind: JobKind,
+    payload: serde_json::Value,
     state: JobState,
     idempotency_key: Option<String>,
     priority: i32,
@@ -96,6 +97,7 @@ impl JobStore for MemoryJobStore {
                 job_id: JobId::new(),
                 queue: request.queue,
                 kind: request.kind,
+                payload: request.payload,
                 state: JobState::Queued,
                 idempotency_key: request.idempotency_key,
                 priority: request.priority,
@@ -142,6 +144,7 @@ impl JobStore for MemoryJobStore {
                 attempt_no: job.attempt_count,
             },
             kind: job.kind.clone(),
+            payload: job.payload.clone(),
         };
         drop(state);
         Ok(Some(leased))

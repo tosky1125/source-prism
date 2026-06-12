@@ -8,7 +8,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct PgSearchSyncStore {
-    pool: PgPool,
+    pub(crate) pool: PgPool,
 }
 
 impl PgSearchSyncStore {
@@ -225,7 +225,7 @@ impl PgSearchSyncStore {
         row.as_ref().map(record_from_row).transpose()
     }
 
-    async fn mark_succeeded(&self, outbox_id: &str) -> Result<(), SearchSyncError> {
+    pub(crate) async fn mark_succeeded(&self, outbox_id: &str) -> Result<(), SearchSyncError> {
         sqlx::query(
             r"
             UPDATE search_sync_outbox
@@ -239,7 +239,11 @@ impl PgSearchSyncStore {
         Ok(())
     }
 
-    async fn mark_failed(&self, outbox_id: &str, error: &str) -> Result<(), SearchSyncError> {
+    pub(crate) async fn mark_failed(
+        &self,
+        outbox_id: &str,
+        error: &str,
+    ) -> Result<(), SearchSyncError> {
         sqlx::query(
             r"
             UPDATE search_sync_outbox

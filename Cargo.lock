@@ -2501,6 +2501,7 @@ dependencies = [
  "async-trait",
  "clap",
  "ri-core",
+ "ri-indexer",
  "serde_json",
  "sqlx",
  "thiserror",

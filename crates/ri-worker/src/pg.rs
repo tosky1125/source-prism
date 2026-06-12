@@ -79,7 +79,7 @@ impl JobStore for PgJobStore {
                 updated_at = now()
             FROM candidate
             WHERE j.job_id = candidate.job_id
-            RETURNING j.job_id, j.kind, j.attempt_count
+            RETURNING j.job_id, j.kind, j.payload, j.attempt_count
             ",
         )
         .bind(self.queue.to_string())
@@ -109,6 +109,7 @@ impl JobStore for PgJobStore {
         Ok(Some(LeasedJob {
             lease: JobLease { job_id, attempt_no },
             kind: JobKind::parse(row.try_get::<String, _>("kind")?.as_str())?,
+            payload: row.try_get("payload")?,
         }))
     }
 

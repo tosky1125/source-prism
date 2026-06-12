@@ -64,6 +64,10 @@ impl JobKind {
     pub fn is_noop(&self) -> bool {
         self.0 == "noop"
     }
+
+    pub fn is_search_sync_once(&self) -> bool {
+        self.0 == "search.sync_once"
+    }
 }
 
 impl Display for JobKind {
@@ -229,6 +233,7 @@ pub struct JobLease {
 pub struct LeasedJob {
     pub lease: JobLease,
     pub kind: JobKind,
+    pub payload: Value,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

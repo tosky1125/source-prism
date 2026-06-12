@@ -20,6 +20,7 @@ mod overlay;
 mod search_chunks;
 mod search_http;
 mod search_sync;
+mod search_sync_one;
 mod search_sync_types;
 mod symbols;
 mod test_cases;

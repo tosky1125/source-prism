@@ -29,9 +29,17 @@ async fn repo_web_shell_returns_structure_explorer() -> Result<(), Box<dyn std::
     assert!(body.contains("Symbols"));
     assert!(body.contains("References"));
     assert!(body.contains("Impact"));
+    assert!(body.contains("Latest Index"));
     assert!(body.contains("Coverage"));
     assert!(body.contains("Docs"));
     assert!(body.contains("Search Results"));
+    assert!(body.contains("data-panel=\"overview\""));
+    assert!(body.contains("id=\"latestRun\""));
+    assert!(body.contains("id=\"evidence\""));
+    assert!(body.contains("const repoApi"));
+    assert!(body.contains("json(repoApi)"));
+    assert!(body.contains("latest_run"));
+    assert!(body.contains("architecture_entities"));
     assert!(body.contains("id=\"searchResults\""));
     assert!(body.contains("api(\"references\")"));
     assert!(body.contains("api(\"coverage\")"));

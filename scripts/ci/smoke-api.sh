@@ -207,6 +207,12 @@ grep -q '"impact_score":' /tmp/source-prism-api-impact.json
 request GET "${api_base_url}/repo/${repo_id}" /tmp/source-prism-api-web.html
 grep -q 'Repo Structure Explorer' /tmp/source-prism-api-web.html
 grep -q "data-repo-id=\"${repo_id}\"" /tmp/source-prism-api-web.html
+grep -q 'Latest Index' /tmp/source-prism-api-web.html
+grep -q 'data-panel="overview"' /tmp/source-prism-api-web.html
+grep -q 'id="latestRun"' /tmp/source-prism-api-web.html
+grep -q 'id="evidence"' /tmp/source-prism-api-web.html
+grep -q 'const repoApi' /tmp/source-prism-api-web.html
+grep -q 'json(repoApi)' /tmp/source-prism-api-web.html
 grep -q 'References' /tmp/source-prism-api-web.html
 grep -q 'api("references")' /tmp/source-prism-api-web.html
 grep -q 'Coverage Evidence' /tmp/source-prism-api-web.html

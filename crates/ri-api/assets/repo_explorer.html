@@ -212,6 +212,7 @@
         <div class="metric"><strong id="coverageCount">0</strong><span>Coverage</span></div>
       </section>
       <section class="grid">
+        <article class="panel wide" data-panel="overview"><h2>Latest Index</h2><div class="list" id="latestRun"></div><div class="list" id="evidence"></div></article>
         <article class="panel wide" data-panel="files"><h2>Files</h2><div class="list" id="files"></div></article>
         <article class="panel" data-panel="symbols"><h2>Symbols</h2><div class="list" id="symbols"></div></article>
         <article class="panel" data-panel="references"><h2>References</h2><div class="list" id="references"></div></article>
@@ -228,6 +229,7 @@
     const repoId = document.body.dataset.repoId;
     const initialView = document.body.dataset.initialView || "overview";
     const repoPath = encodeURIComponent(repoId);
+    const repoApi = `/v1/repos/${repoPath}`;
     const api = (path) => `/v1/repos/${repoPath}/${path}`;
     const status = document.querySelector("#status");
     document.querySelector("#repoLabel").textContent = repoId;
@@ -276,7 +278,8 @@
     const load = async () => {
       setView(initialView);
       try {
-        const [files, symbols, graph, tests, coverage, docs] = await Promise.allSettled([
+        const [overview, files, symbols, graph, tests, coverage, docs] = await Promise.allSettled([
+          json(repoApi),
           json(api("files")),
           json(api("symbols")),
           json(api("graph")),
@@ -286,6 +289,8 @@
         ]);
         const fileRows = files.value?.files ?? [];
         const symbolRows = symbols.value?.symbols ?? [];
+        const latestRun = overview.value?.latest_run ?? null;
+        const evidence = latestRun?.evidence ?? {};
         const referenceRows = await referencesFor(symbolRows);
         const testContext = await testContextFor(symbolRows);
         const graphNodes = graph.value?.graph?.nodes ?? [];
@@ -295,12 +300,14 @@
         const relatedTests = testContext?.related_tests ?? [];
         const coverageRows = coverage.value?.segments ?? [];
         const docRows = docs.value?.entities ?? [];
-        document.querySelector("#fileCount").textContent = fileRows.length;
-        document.querySelector("#symbolCount").textContent = symbolRows.length;
+        document.querySelector("#fileCount").textContent = evidence.file_manifests ?? fileRows.length;
+        document.querySelector("#symbolCount").textContent = evidence.symbols ?? symbolRows.length;
         document.querySelector("#referenceCount").textContent = referenceRows.length;
-        document.querySelector("#edgeCount").textContent = edgeRows.length;
-        document.querySelector("#testCount").textContent = testRows.length;
+        document.querySelector("#edgeCount").textContent = evidence.graph_edges ?? edgeRows.length;
+        document.querySelector("#testCount").textContent = evidence.test_cases ?? testRows.length;
         document.querySelector("#coverageCount").textContent = coverageRows.length;
+        renderLatestRun(latestRun);
+        renderEvidence(evidence);
         renderList(document.querySelector("#files"), fileRows.slice(0, 24).map((file) => row(file.path, `${file.language} ${file.size_bytes ?? 0} bytes`)), "No files indexed");
         renderList(document.querySelector("#symbols"), symbolRows.slice(0, 24).map((symbol) => row(symbol.fqn, `${symbol.kind} ${symbol.file_path}`)), "No symbols indexed");
         renderList(document.querySelector("#references"), referenceRows.slice(0, 24).map((ref) => row(`${ref.source_fqn} -> ${ref.target_fqn}`, `${ref.direction} ${ref.relation}`)), "No references indexed");
@@ -312,6 +319,33 @@
       } catch (error) {
         status.textContent = error.message;
       }
+    };
+
+    const renderLatestRun = (latestRun) => {
+      if (!latestRun) {
+        renderList(document.querySelector("#latestRun"), [], "No index run recorded");
+        return;
+      }
+      const rows = [
+        row(`Run ${latestRun.run_id}`, `${latestRun.status} ${latestRun.index_kind}`),
+        row(latestRun.commit_sha, `commit ${latestRun.started_at}`)
+      ];
+      if (latestRun.finished_at) rows.push(row("Finished", latestRun.finished_at));
+      renderList(document.querySelector("#latestRun"), rows, "No index run recorded");
+    };
+
+    const renderEvidence = (evidence) => {
+      const labels = [
+        ["file_manifests", "File manifests"],
+        ["symbols", "Symbols"],
+        ["graph_nodes", "Graph nodes"],
+        ["graph_edges", "Graph edges"],
+        ["search_chunks", "Search chunks"],
+        ["test_cases", "Test cases"],
+        ["architecture_entities", "Architecture entities"]
+      ];
+      const rows = labels.map(([key, label]) => row(label, String(evidence[key] ?? 0)));
+      renderList(document.querySelector("#evidence"), rows, "No evidence counts");
     };
 
     const referencesFor = async (symbols) => {

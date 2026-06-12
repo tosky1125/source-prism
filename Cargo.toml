@@ -9,6 +9,7 @@ members = [
     "crates/ri-embedding",
     "crates/ri-git",
     "crates/ri-github",
+    "crates/ri-gitlab",
     "crates/ri-graph",
     "crates/ri-impact",
     "crates/ri-indexer",

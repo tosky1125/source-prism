@@ -2287,6 +2287,7 @@ dependencies = [
  "ri-embedding",
  "ri-git",
  "ri-github",
+ "ri-gitlab",
  "ri-impact",
  "ri-indexer",
  "ri-mcp",
@@ -2364,6 +2365,15 @@ dependencies = [
 
 [[package]]
 name = "ri-github"
+version = "0.1.0"
+dependencies = [
+ "ri-review",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "ri-gitlab"
 version = "0.1.0"
 dependencies = [
  "ri-review",

@@ -93,6 +93,45 @@ fn review_github_dry_run_returns_annotations_and_sarif() -> Result<(), Box<dyn s
     Ok(())
 }
 
+#[test]
+fn review_gitlab_dry_run_returns_discussions_and_codequality()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = TempJson::write(valid_findings())?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_ri-cli"))
+        .args(["review", "gitlab-dry-run", "--input"])
+        .arg(fixture.path())
+        .output()?;
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let body = serde_json::from_slice::<Value>(&output.stdout)?;
+    assert_eq!(
+        body.pointer("/kind").and_then(Value::as_str),
+        Some("gitlab_review_dry_run")
+    );
+    assert_eq!(
+        body.pointer("/discussions/0/position/new_path")
+            .and_then(Value::as_str),
+        Some("src/invoice.rs")
+    );
+    assert_eq!(
+        body.pointer("/code_quality/0/location/path")
+            .and_then(Value::as_str),
+        Some("src/invoice.rs")
+    );
+    assert_eq!(
+        body.pointer("/code_quality/0/severity")
+            .and_then(Value::as_str),
+        Some("major")
+    );
+    fixture.cleanup()?;
+    Ok(())
+}
+
 struct TempJson {
     path: PathBuf,
 }

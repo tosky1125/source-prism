@@ -19,6 +19,7 @@ ri-core = { path = "../ri-core" }
 ri-embedding = { path = "../ri-embedding" }
 ri-git = { path = "../ri-git" }
 ri-github = { path = "../ri-github" }
+ri-gitlab = { path = "../ri-gitlab" }
 ri-impact = { path = "../ri-impact" }
 ri-indexer = { path = "../ri-indexer" }
 ri-mcp = { path = "../ri-mcp" }

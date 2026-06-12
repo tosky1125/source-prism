@@ -10,6 +10,7 @@ use std::{
 };
 
 use ri_github::build_review_dry_run;
+use ri_gitlab::build_review_dry_run as build_gitlab_review_dry_run;
 use ri_review::{ProposedFinding, verify_findings};
 use serde_json::json;
 
@@ -22,6 +23,7 @@ pub(crate) fn command(mut args: impl Iterator<Item = String>) -> Result<(), CliE
     match subcommand.as_str() {
         "verify" => verify_command(args),
         "github-dry-run" => github_dry_run_command(args),
+        "gitlab-dry-run" => gitlab_dry_run_command(args),
         _ => Err(CliError::Usage),
     }
 }
@@ -47,6 +49,19 @@ fn github_dry_run_command(args: impl Iterator<Item = String>) -> Result<(), CliE
         "verified_count": verified.len(),
         "annotations": dry_run.annotations,
         "sarif": dry_run.sarif,
+    }))
+}
+
+fn gitlab_dry_run_command(args: impl Iterator<Item = String>) -> Result<(), CliError> {
+    let findings = read_findings(args)?;
+    let verified = verify_findings(findings.as_slice())?;
+    let dry_run = build_gitlab_review_dry_run(verified.as_slice());
+    print_json(&json!({
+        "status": "ok",
+        "kind": "gitlab_review_dry_run",
+        "verified_count": verified.len(),
+        "discussions": dry_run.discussions,
+        "code_quality": dry_run.code_quality,
     }))
 }
 

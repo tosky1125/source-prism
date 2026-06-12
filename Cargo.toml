@@ -14,6 +14,7 @@ members = [
     "crates/ri-parser",
     "crates/ri-context",
     "crates/ri-review",
+    "crates/ri-refactor",
     "crates/ri-search",
     "crates/ri-symbols",
     "crates/ri-tree-sitter",

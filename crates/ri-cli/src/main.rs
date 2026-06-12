@@ -21,6 +21,7 @@ pub(crate) mod error;
 pub(crate) mod impact;
 pub(crate) mod index;
 pub(crate) mod index_args;
+pub(crate) mod refactor;
 pub(crate) mod references;
 pub(crate) mod review;
 pub(crate) mod search;
@@ -74,6 +75,10 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
         "symbols" => symbols::symbols_command(args).map(|()| ExitCode::SUCCESS),
         "changed-symbols" => symbols::changed_symbols_command(args).map(|()| ExitCode::SUCCESS),
         "references" => references::references_command(args).map(|()| ExitCode::SUCCESS),
+        "refactor" => {
+            expect_subcommand(&mut args, "plan")?;
+            refactor::plan_command(args).map(|()| ExitCode::SUCCESS)
+        }
         "review" => {
             expect_subcommand(&mut args, "verify")?;
             review::verify_command(args).map(|()| ExitCode::SUCCESS)

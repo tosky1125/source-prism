@@ -21,6 +21,7 @@ ri-impact = { path = "../ri-impact" }
 ri-indexer = { path = "../ri-indexer" }
 ri-parser = { path = "../ri-parser" }
 ri-review = { path = "../ri-review" }
+ri-refactor = { path = "../ri-refactor" }
 ri-symbols = { path = "../ri-symbols" }
 ri-tree-sitter = { path = "../ri-tree-sitter" }
 serde_json = "1"

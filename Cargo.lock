@@ -2288,6 +2288,7 @@ dependencies = [
  "ri-impact",
  "ri-indexer",
  "ri-parser",
+ "ri-refactor",
  "ri-review",
  "ri-symbols",
  "ri-tree-sitter",
@@ -2403,6 +2404,16 @@ dependencies = [
  "ri-core",
  "ri-symbols",
  "thiserror",
+]
+
+[[package]]
+name = "ri-refactor"
+version = "0.1.0"
+dependencies = [
+ "ri-core",
+ "ri-impact",
+ "ri-symbols",
+ "serde",
 ]
 
 [[package]]

@@ -30,6 +30,7 @@ This repository is currently past the bare foundation phase. The runnable base n
 - Static imports, calls, test-context, and `test_covers` graph evidence from extracted symbols
 - MCP tool contracts for symbol/reference/impact/context queries
 - Evidence-backed review finding verification
+- Planner-only refactor slicing from impact evidence
 - Evidence-based QA conventions
 
 MCP transport/runtime, GitHub/GitLab publishing, PR review generation, and refactor execution are still roadmap work. Source execution remains forbidden until sandbox design lands.
@@ -44,6 +45,7 @@ cargo run -p ri-cli -- index --repo . --sha HEAD
 cargo run -p ri-cli -- symbols --repo .
 curl -fsS http://127.0.0.1:3000/v1/repos/source-prism-ci/tests
 cargo run -p ri-cli -- impact --symbol search
+cargo run -p ri-cli -- refactor plan --symbol search
 cargo run -p ri-cli -- search-context search
 cargo run -p ri-cli -- test-context --symbol extracts_rust_functions_methods_and_tests
 cargo run -p ri-cli -- review verify --input /path/to/findings.json

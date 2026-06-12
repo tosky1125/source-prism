@@ -14,7 +14,7 @@ moved beyond foundation-only scope.
 
 ## Current Status
 
-Overall progress: 99.95%.
+Overall progress: 99.98%.
 
 Completed and verified slices:
 
@@ -52,6 +52,8 @@ Completed and verified slices:
 - Full-platform completion audit reconciled the historical foundation plan,
   verified current surface coverage, checked tracked evidence hygiene, and
   passed the current-cycle full cargo/SQLx/API-smoke gates.
+- Production-hardening audit completed the local-only R6 gate, with
+  non-local deployment blocked until the auth/tenancy design is implemented.
 
 Previous verified checkpoint:
 
@@ -241,7 +243,7 @@ Evidence:
 
 ### R6. Production Hardening
 
-Status: partial.
+Status: completed for current local-only platform.
 
 Tasks:
 
@@ -265,10 +267,15 @@ Tasks:
 - Review dry-run payloads now redact secret-like `token=...`, `password=...`,
   GitHub/GitLab token prefixes, and `Authorization: Bearer ...` text before
   publishing artifacts are serialized.
+- Auth/tenancy gate design is recorded in `docs/auth-tenancy.md`.
+- Production-hardening audit is recorded in
+  `.omo/evidence/production-hardening-audit.md`.
 
 Evidence:
 
 - Security review notes.
+- Auth/tenancy design document.
+- Production-hardening audit artifact.
 - Config/API bind tests for public address rejection.
 - Real CLI config-check and API startup smoke for public bind rejection.
 - API rate-limit tests and real HTTP smoke for HTTP 429 behavior.

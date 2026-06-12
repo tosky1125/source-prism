@@ -144,10 +144,20 @@ pub(crate) fn record_from_row(
 }
 
 pub(crate) fn payload_hash(payload: &Value) -> String {
-    let encoded = serde_json::to_vec(payload).unwrap_or_else(|_| b"null".to_vec());
+    let encoded =
+        serde_json::to_vec(&hashable_payload(payload)).unwrap_or_else(|_| b"null".to_vec());
     let mut hasher = Sha256::new();
     hasher.update(encoded);
     format!("sha256:{}", hex::encode(hasher.finalize()))
+}
+
+fn hashable_payload(payload: &Value) -> Value {
+    let Some(object) = payload.as_object() else {
+        return payload.clone();
+    };
+    let mut object = object.clone();
+    object.remove("generation_id");
+    Value::Object(object)
 }
 
 pub(crate) fn outbox_id(input: &SearchSyncInput, payload_hash: &str) -> String {

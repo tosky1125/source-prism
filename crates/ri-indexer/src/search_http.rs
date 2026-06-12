@@ -131,6 +131,37 @@ impl OpenSearchClient {
         Ok(body.get("count").and_then(Value::as_i64).unwrap_or(0))
     }
 
+    pub async fn count_documents_for_repo_generation(
+        &self,
+        index: &str,
+        repo_id: &str,
+        generation_id: &str,
+    ) -> Result<i64, OpenSearchError> {
+        let response = self
+            .http
+            .post(format!("{}/{}/_count", self.base_url, index))
+            .json(&json!({
+                "query": {
+                    "bool": {
+                        "filter": [
+                            { "term": { "repo_id.keyword": repo_id } },
+                            { "term": { "generation_id.keyword": generation_id } }
+                        ]
+                    }
+                }
+            }))
+            .send()
+            .await?;
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(0);
+        }
+        if !response.status().is_success() {
+            return Err(status_error(response).await);
+        }
+        let body = response.json::<Value>().await?;
+        Ok(body.get("count").and_then(Value::as_i64).unwrap_or(0))
+    }
+
     pub async fn search_text(
         &self,
         index: &str,

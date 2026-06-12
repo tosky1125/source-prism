@@ -25,7 +25,7 @@ impl PgSearchSyncStore {
                 SYMBOL_CHUNK_ENTITY_TYPE,
                 &entity_id,
                 target_index,
-                symbol_chunk_payload(repo_id, &entity_id, symbol),
+                symbol_chunk_payload(repo_id, &generation_id, &entity_id, symbol),
             );
             self.enqueue(&input).await?;
             enqueued = enqueued.saturating_add(1);
@@ -66,12 +66,18 @@ fn symbol_chunk_id(symbol: &SymbolRecord) -> String {
     format!("chunk:symbol:{}", symbol.versioned_symbol_id)
 }
 
-fn symbol_chunk_payload(repo_id: &str, chunk_id: &str, symbol: &SymbolRecord) -> Value {
+fn symbol_chunk_payload(
+    repo_id: &str,
+    generation_id: &str,
+    chunk_id: &str,
+    symbol: &SymbolRecord,
+) -> Value {
     let language = json!(symbol.language);
     let kind = json!(symbol.kind);
     json!({
         "chunk_id": chunk_id,
         "repo_id": repo_id,
+        "generation_id": generation_id,
         "text": symbol_chunk_text(symbol, &language, &kind),
         "symbol": {
             "stable_symbol_id": symbol.stable_symbol_id,

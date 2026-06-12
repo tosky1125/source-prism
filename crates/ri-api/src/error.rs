@@ -36,6 +36,8 @@ pub enum AppError {
     Validation(String),
     #[error("database is not configured")]
     DatabaseNotConfigured,
+    #[error("opensearch is not configured")]
+    OpenSearchNotConfigured,
     #[error("file is too large to index: {path} size_bytes={size_bytes}")]
     FileTooLarge { path: String, size_bytes: u64 },
     #[error("run not found: {run_id}")]
@@ -84,6 +86,11 @@ impl IntoResponse for AppError {
                 StatusCode::SERVICE_UNAVAILABLE,
                 "database_not_configured",
                 "database is not configured",
+            ),
+            Self::OpenSearchNotConfigured => parts(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "opensearch_not_configured",
+                "opensearch is not configured",
             ),
             Self::FileTooLarge { path, size_bytes } => parts(
                 StatusCode::PAYLOAD_TOO_LARGE,

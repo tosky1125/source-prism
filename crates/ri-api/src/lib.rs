@@ -26,6 +26,7 @@ pub(crate) mod repo_index;
 pub(crate) mod repo_index_jobs;
 pub(crate) mod repo_references;
 pub(crate) mod repo_runs;
+pub(crate) mod repo_search_drift;
 pub(crate) mod repo_search_sync;
 pub(crate) mod repo_symbols;
 pub(crate) mod repo_test_runs;
@@ -84,6 +85,10 @@ pub fn app(state: AppState) -> Router {
             post(refactor::plan_for_repo),
         )
         .route("/v1/repos/{repo_id}/runs", get(repo_runs::list))
+        .route(
+            "/v1/repos/{repo_id}/search-drift",
+            get(repo_search_drift::get),
+        )
         .route(
             "/v1/repos/{repo_id}/search-sync",
             get(repo_search_sync::get),

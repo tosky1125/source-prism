@@ -78,6 +78,12 @@ async fn symbol_chunks_are_enqueued_for_generation() -> Result<(), Box<dyn std::
         Some("InvoiceService::apply_tax")
     );
     assert_eq!(
+        payload
+            .pointer("/generation_id")
+            .and_then(serde_json::Value::as_str),
+        Some(generation.generation_id.as_str())
+    );
+    assert_eq!(
         payload.pointer("/text").and_then(serde_json::Value::as_str),
         Some("InvoiceService::apply_tax function rust src/invoice.rs")
     );

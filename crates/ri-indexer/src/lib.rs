@@ -18,6 +18,7 @@ mod graph_query;
 mod graph_test_covers;
 mod overlay;
 mod search_chunks;
+mod search_drift;
 mod search_http;
 mod search_sync;
 mod search_sync_one;

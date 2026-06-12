@@ -1999,6 +1999,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-xml"
+version = "0.38.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b66c2058c55a409d601666cffe35f04333cf1013010882cec174a7467cd4e21c"
+dependencies = [
+ "memchr",
+ "serde",
+]
+
+[[package]]
 name = "quinn"
 version = "0.11.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2257,6 +2267,7 @@ dependencies = [
 name = "ri-behavior"
 version = "0.1.0"
 dependencies = [
+ "quick-xml",
  "ri-core",
  "ri-symbols",
  "serde",
@@ -2358,6 +2369,7 @@ dependencies = [
  "hex",
  "reqwest",
  "ri-architecture",
+ "ri-behavior",
  "ri-core",
  "ri-symbols",
  "serde",

@@ -10,7 +10,7 @@ use ri_context::ContextError;
 use ri_impact::ImpactError;
 use ri_indexer::{
     ArchitectureStoreError, GenerationError, GraphStoreError, SearchSyncError, SymbolStoreError,
-    TestCaseStoreError,
+    TestCaseStoreError, TestRunStoreError,
 };
 use serde::Serialize;
 
@@ -61,6 +61,8 @@ pub enum AppError {
     SymbolStore(#[from] SymbolStoreError),
     #[error(transparent)]
     TestCaseStore(#[from] TestCaseStoreError),
+    #[error(transparent)]
+    TestRunStore(#[from] TestRunStoreError),
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
 }
@@ -145,6 +147,11 @@ impl IntoResponse for AppError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "test_case_store",
                 "test case store failed".to_owned(),
+            ),
+            Self::TestRunStore(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "test_run_store",
+                "test run store failed".to_owned(),
             ),
             Self::Sqlx(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,

@@ -26,6 +26,7 @@ pub(crate) mod search;
 pub(crate) mod search_context;
 pub(crate) mod symbols;
 pub(crate) mod test_context;
+pub(crate) mod tests;
 
 use error::CliError;
 
@@ -74,6 +75,7 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
             search_context::search_context_command(args).map(|()| ExitCode::SUCCESS)
         }
         "test-context" => test_context::test_context_command(args).map(|()| ExitCode::SUCCESS),
+        "tests" => tests::command(args).await.map(|()| ExitCode::SUCCESS),
         "search" => search::command(args).await.map(|()| ExitCode::SUCCESS),
         _ => Err(CliError::Usage),
     }

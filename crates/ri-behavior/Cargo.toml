@@ -13,6 +13,7 @@ description = "Static test and behavior evidence for Source Prism."
 [dependencies]
 ri-core = { path = "../ri-core" }
 ri-symbols = { path = "../ri-symbols" }
+quick-xml = { version = "0.38", features = ["serialize"] }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 

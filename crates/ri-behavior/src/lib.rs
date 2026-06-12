@@ -3,11 +3,15 @@
     reason = "Behavior evidence contracts are self-describing at this milestone."
 )]
 
+mod junit;
+
 use ri_core::{Confidence, Language, SymbolId, SymbolKind};
 use ri_symbols::{SymbolRange, SymbolRecord};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use thiserror::Error;
+
+pub use junit::{JunitReport, TestCaseResult, TestResultStatus, TestSuiteResult, parse_junit_xml};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -43,6 +47,8 @@ pub struct RelatedTest {
 pub enum BehaviorError {
     #[error("symbol not found: {symbol}")]
     SymbolNotFound { symbol: String },
+    #[error("failed to parse junit xml: {message}")]
+    JunitXml { message: String },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

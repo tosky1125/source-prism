@@ -173,7 +173,7 @@ fn manifest_inputs(manifest: &LocalManifest) -> Result<Vec<FileManifestInput>, C
     Ok(inputs)
 }
 
-fn repo_id_for_worktree(worktree: &std::path::Path) -> Result<String, CliError> {
+pub(crate) fn repo_id_for_worktree(worktree: &std::path::Path) -> Result<String, CliError> {
     let canonical = worktree.canonicalize()?;
     Ok(format!("local:{}", canonical.display()))
 }

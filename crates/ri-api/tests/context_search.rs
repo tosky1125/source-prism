@@ -59,8 +59,12 @@ async fn context_search_returns_context_pack_for_matching_symbol()
 }
 
 #[tokio::test]
-async fn context_search_with_repo_id_requires_database() -> Result<(), Box<dyn std::error::Error>> {
-    let app = app(AppState::for_test_symbols(Vec::new())?);
+async fn context_search_with_repo_id_uses_local_evidence_without_database()
+-> Result<(), Box<dyn std::error::Error>> {
+    let app = app(AppState::for_test_symbols(vec![
+        symbol("src/invoice.rs", "InvoiceService::apply_tax")?,
+        symbol("src/invoice.rs", "InvoiceService::helper")?,
+    ])?);
     let request = Request::builder()
         .method(Method::POST)
         .uri("/v1/context/search")
@@ -69,12 +73,47 @@ async fn context_search_with_repo_id_requires_database() -> Result<(), Box<dyn s
 
     let response = app.oneshot(request).await?;
 
-    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(response.status(), StatusCode::OK);
     let bytes = to_bytes(response.into_body(), 1_000_000).await?;
     let body = serde_json::from_slice::<Value>(&bytes)?;
     assert_eq!(
-        body.pointer("/error/code").and_then(Value::as_str),
-        Some("database_not_configured")
+        body.pointer("/context_pack/hits/0/symbol/fqn")
+            .and_then(Value::as_str),
+        Some("InvoiceService::apply_tax")
+    );
+    assert_eq!(
+        body.pointer("/search_chunk_count").and_then(Value::as_u64),
+        Some(0)
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn repo_context_search_uses_local_evidence_without_database()
+-> Result<(), Box<dyn std::error::Error>> {
+    let app = app(AppState::for_test_symbols(vec![
+        symbol("src/invoice.rs", "InvoiceService::apply_tax")?,
+        symbol("src/invoice.rs", "InvoiceService::helper")?,
+    ])?);
+    let request = Request::builder()
+        .method(Method::POST)
+        .uri("/v1/repos/local/context/search")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(r#"{"query":"apply_tax"}"#))?;
+
+    let response = app.oneshot(request).await?;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = to_bytes(response.into_body(), 1_000_000).await?;
+    let body = serde_json::from_slice::<Value>(&bytes)?;
+    assert_eq!(
+        body.pointer("/context_pack/hits/0/symbol/fqn")
+            .and_then(Value::as_str),
+        Some("InvoiceService::apply_tax")
+    );
+    assert_eq!(
+        body.pointer("/bm25_hit_count").and_then(Value::as_u64),
+        Some(0)
     );
     Ok(())
 }

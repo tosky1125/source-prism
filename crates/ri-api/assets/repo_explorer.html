@@ -107,7 +107,7 @@
     }
     .metrics {
       display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
       gap: 12px;
       margin-bottom: 16px;
     }
@@ -192,6 +192,8 @@
         <a href="#tests" data-view="tests">Tests</a>
         <a href="#coverage" data-view="coverage">Coverage</a>
         <a href="#docs" data-view="docs">Docs</a>
+        <a href="#runs" data-view="runs">Runs</a>
+        <a href="#sync" data-view="sync">Sync</a>
         <a href="#search" data-view="search">Search</a>
       </nav>
     </aside>
@@ -210,6 +212,7 @@
         <div class="metric"><strong id="edgeCount">0</strong><span>Edges</span></div>
         <div class="metric"><strong id="testCount">0</strong><span>Tests</span></div>
         <div class="metric"><strong id="coverageCount">0</strong><span>Coverage</span></div>
+        <div class="metric"><strong id="syncJobCount">0</strong><span>Sync Jobs</span></div>
       </section>
       <section class="grid">
         <article class="panel wide" data-panel="overview"><h2>Latest Index</h2><div class="list" id="latestRun"></div><div class="list" id="evidence"></div></article>
@@ -220,6 +223,8 @@
         <article class="panel" data-panel="tests"><h2>Related Tests</h2><div class="list" id="tests"></div></article>
         <article class="panel" data-panel="coverage"><h2>Coverage Evidence</h2><div class="list" id="coverage"></div></article>
         <article class="panel" data-panel="docs"><h2>Docs / Contracts</h2><div class="list" id="docs"></div></article>
+        <article class="panel wide" data-panel="runs"><h2>Index Runs</h2><div class="list" id="runs"></div></article>
+        <article class="panel" data-panel="sync"><h2>Search Sync</h2><div class="list" id="sync"></div></article>
         <article class="panel wide" data-panel="search"><h2>Search Results</h2><div class="list" id="searchResults"></div></article>
       </section>
       <div class="status" id="status"></div>
@@ -278,19 +283,23 @@
     const load = async () => {
       setView(initialView);
       try {
-        const [overview, files, symbols, graph, tests, coverage, docs] = await Promise.allSettled([
+        const [overview, files, symbols, graph, tests, coverage, docs, runs, sync] = await Promise.allSettled([
           json(repoApi),
           json(api("files")),
           json(api("symbols")),
           json(api("graph")),
           json(api("tests")),
           json(api("coverage")),
-          json(api("architecture"))
+          json(api("architecture")),
+          json(api("runs")),
+          json(api("search-sync"))
         ]);
         const fileRows = files.value?.files ?? [];
         const symbolRows = symbols.value?.symbols ?? [];
         const latestRun = overview.value?.latest_run ?? null;
         const evidence = latestRun?.evidence ?? {};
+        const runRows = runs.value?.runs ?? [];
+        const syncStatus = sync.value ?? null;
         const referenceRows = await referencesFor(symbolRows);
         const testContext = await testContextFor(symbolRows);
         const graphNodes = graph.value?.graph?.nodes ?? [];
@@ -306,6 +315,7 @@
         document.querySelector("#edgeCount").textContent = evidence.graph_edges ?? edgeRows.length;
         document.querySelector("#testCount").textContent = evidence.test_cases ?? testRows.length;
         document.querySelector("#coverageCount").textContent = coverageRows.length;
+        document.querySelector("#syncJobCount").textContent = syncStatus?.job_state_counts?.total ?? evidence.search_sync_jobs ?? 0;
         renderLatestRun(latestRun);
         renderEvidence(evidence);
         renderList(document.querySelector("#files"), fileRows.slice(0, 24).map((file) => row(file.path, `${file.language} ${file.size_bytes ?? 0} bytes`)), "No files indexed");
@@ -315,6 +325,8 @@
         renderList(document.querySelector("#tests"), relatedTests.slice(0, 24).map((test) => row(test.fqn, `${test.confidence} ${test.file_path}`)), "No related tests found");
         renderList(document.querySelector("#coverage"), coverageRows.slice(0, 24).map((segment) => row(segment.file_path, `${segment.format} lines ${segment.start_line}-${segment.end_line} hits ${segment.hit_count}`)), "No coverage evidence indexed");
         renderList(document.querySelector("#docs"), docRows.slice(0, 24).map((entity) => row(entity.name, `${entity.entity_type} ${entity.file_path}`)), "No docs or contracts indexed");
+        renderRuns(runRows);
+        renderSync(syncStatus);
         status.textContent = "Live";
       } catch (error) {
         status.textContent = error.message;
@@ -341,11 +353,36 @@
         ["graph_nodes", "Graph nodes"],
         ["graph_edges", "Graph edges"],
         ["search_chunks", "Search chunks"],
+        ["search_sync_jobs", "Search sync jobs"],
         ["test_cases", "Test cases"],
         ["architecture_entities", "Architecture entities"]
       ];
       const rows = labels.map(([key, label]) => row(label, String(evidence[key] ?? 0)));
       renderList(document.querySelector("#evidence"), rows, "No evidence counts");
+    };
+
+    const renderRuns = (runs) => {
+      const rows = runs.slice(0, 12).map((run) => {
+        const evidence = run.evidence ?? {};
+        const meta = `${run.status} ${run.index_kind} files ${evidence.file_manifests ?? 0} symbols ${evidence.symbols ?? 0} jobs ${evidence.search_sync_jobs ?? 0}`;
+        return row(run.run_id, meta);
+      });
+      renderList(document.querySelector("#runs"), rows, "No index runs recorded");
+    };
+
+    const renderSync = (syncStatus) => {
+      if (!syncStatus) {
+        renderList(document.querySelector("#sync"), [], "No search sync status");
+        return;
+      }
+      const outbox = syncStatus.outbox_state_counts ?? {};
+      const jobs = syncStatus.job_state_counts ?? {};
+      const rows = [
+        row("Latest generation", syncStatus.latest_generation_id ?? "none"),
+        row("Outbox", `queued ${outbox.queued ?? 0} succeeded ${outbox.succeeded ?? 0} failed ${outbox.failed ?? 0} total ${outbox.total ?? 0}`),
+        row("Jobs", `queued ${jobs.queued ?? 0} succeeded ${jobs.succeeded ?? 0} failed ${jobs.failed ?? 0} total ${jobs.total ?? 0}`)
+      ];
+      renderList(document.querySelector("#sync"), rows, "No search sync status");
     };
 
     const referencesFor = async (symbols) => {

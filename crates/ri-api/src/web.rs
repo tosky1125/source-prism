@@ -24,6 +24,8 @@ enum ExplorerView {
     Coverage,
     Docs,
     Search,
+    Runs,
+    Sync,
 }
 
 impl ExplorerView {
@@ -38,6 +40,8 @@ impl ExplorerView {
             Self::Coverage => "coverage",
             Self::Docs => "docs",
             Self::Search => "search",
+            Self::Runs => "runs",
+            Self::Sync => "sync",
         }
     }
 
@@ -51,6 +55,8 @@ impl ExplorerView {
             "coverage" => Self::Coverage,
             "docs" => Self::Docs,
             "search" => Self::Search,
+            "runs" => Self::Runs,
+            "sync" => Self::Sync,
             _ => Self::Overview,
         }
     }

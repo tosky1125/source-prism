@@ -121,14 +121,16 @@ pub fn build_test_context_with_coverage(
     let symbols_by_id = symbols_by_id(symbols);
     let graph_test_ids = graph_test_ids(target, coverage_edges);
     let mut seen = BTreeSet::new();
-    let mut related_tests = coverage_edges
+    let graph_related_tests = coverage_edges
         .iter()
         .filter(|edge| edge.target_symbol_id == target.versioned_symbol_id)
         .filter_map(|edge| graph_related_test(edge, &symbols_by_id))
-        .inspect(|related| {
-            seen.insert(related.fqn.clone());
-        })
         .collect::<Vec<_>>();
+    let coverage_available = !graph_related_tests.is_empty();
+    let mut related_tests = graph_related_tests;
+    for related in &related_tests {
+        seen.insert(related.fqn.clone());
+    }
     related_tests.extend(
         symbols
             .iter()
@@ -147,7 +149,7 @@ pub fn build_test_context_with_coverage(
         symbol: target.fqn.clone(),
         code_execution_allowed: false,
         execution_policy: ExecutionPolicy::StaticOnlySandboxRequired,
-        coverage_available: false,
+        coverage_available,
         related_tests,
     })
 }

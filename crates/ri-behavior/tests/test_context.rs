@@ -66,6 +66,7 @@ fn test_context_uses_graph_test_covers_edges() -> Result<(), Box<dyn std::error:
     let context =
         build_test_context_with_coverage(&[target, test], coverage.as_slice(), "apply_tax")?;
 
+    assert!(context.coverage_available);
     assert_eq!(context.related_tests.len(), 1);
     let related = context
         .related_tests

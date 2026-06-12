@@ -3,10 +3,7 @@
     reason = "Binary crate helper modules share crate-visible command handlers."
 )]
 
-use std::{
-    env,
-    io::{self, Write},
-};
+use std::env;
 
 use ri_architecture::extract_architecture_entities_for;
 use ri_context::{ResolvedCallReference, extract_repo_index_for};
@@ -16,10 +13,14 @@ use ri_indexer::{
     CallEdgeInput, DEFAULT_SEARCH_INDEX, FileManifestInput, PgArchitectureStore, PgGenerationStore,
     PgGraphStore, PgSearchSyncStore, PgSymbolStore, PgTestCaseStore,
 };
-use serde_json::json;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
-use crate::{error::CliError, index_args::IndexArgs};
+use crate::{
+    error::CliError,
+    index_args::IndexArgs,
+    index_jobs::{DEFAULT_SEARCH_SYNC_QUEUE, enqueue_search_sync_job},
+    index_output::{IndexResult, print_index_result},
+};
 
 pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
     let parsed = IndexArgs::parse(&mut args)?;
@@ -80,7 +81,7 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
     let indexed_call_edges = graph_store
         .replace_call_graph(&generation.generation_id, &call_inputs(&evidence.calls))
         .await?;
-    let indexed_search_chunks = PgSearchSyncStore::new(pool)
+    let indexed_search_chunks = PgSearchSyncStore::new(pool.clone())
         .enqueue_symbol_chunks(
             &repo_id,
             &generation.generation_id,
@@ -88,11 +89,14 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
             DEFAULT_SEARCH_INDEX,
         )
         .await?;
+    let generation_id = generation.generation_id.to_string();
+    let enqueued_search_sync_jobs =
+        enqueue_search_sync_job(&pool, &repo_id, &generation_id).await?;
 
     print_index_result(&IndexResult {
         repo_id,
         commit_sha,
-        generation_id: generation.generation_id.to_string(),
+        generation_id,
         inserted_file_manifests: inserted,
         indexed_symbols,
         indexed_graph_nodes: graph.nodes,
@@ -105,6 +109,8 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
         indexed_call_edges,
         indexed_test_cover_edges,
         indexed_search_chunks,
+        search_sync_queue: DEFAULT_SEARCH_SYNC_QUEUE,
+        enqueued_search_sync_jobs,
         indexed_test_cases,
         indexed_architecture_entities,
     })
@@ -189,49 +195,6 @@ const fn language_id(language: Language) -> &'static str {
         Language::Rust => "rust",
         _ => "unknown",
     }
-}
-
-struct IndexResult {
-    repo_id: String,
-    commit_sha: String,
-    generation_id: String,
-    inserted_file_manifests: u64,
-    indexed_symbols: u64,
-    indexed_graph_nodes: u64,
-    indexed_graph_edges: u64,
-    indexed_import_edges: u64,
-    indexed_call_edges: u64,
-    indexed_test_cover_edges: u64,
-    indexed_search_chunks: u64,
-    indexed_test_cases: u64,
-    indexed_architecture_entities: u64,
-}
-
-fn print_index_result(result: &IndexResult) -> Result<(), CliError> {
-    let stdout = io::stdout();
-    let mut lock = stdout.lock();
-    serde_json::to_writer_pretty(
-        &mut lock,
-        &json!({
-            "status": "ok",
-            "kind": "index",
-            "repo_id": result.repo_id,
-            "commit_sha": result.commit_sha,
-            "generation_id": result.generation_id,
-            "inserted_file_manifests": result.inserted_file_manifests,
-            "indexed_symbols": result.indexed_symbols,
-            "indexed_graph_nodes": result.indexed_graph_nodes,
-            "indexed_graph_edges": result.indexed_graph_edges,
-            "indexed_import_edges": result.indexed_import_edges,
-            "indexed_call_edges": result.indexed_call_edges,
-            "indexed_test_cover_edges": result.indexed_test_cover_edges,
-            "indexed_search_chunks": result.indexed_search_chunks,
-            "indexed_test_cases": result.indexed_test_cases,
-            "indexed_architecture_entities": result.indexed_architecture_entities,
-        }),
-    )?;
-    writeln!(lock)?;
-    Ok(())
 }
 
 fn call_inputs(calls: &[ResolvedCallReference]) -> Vec<CallEdgeInput> {

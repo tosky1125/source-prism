@@ -112,6 +112,8 @@ jobs:
           grep '"indexed_call_edges":' /tmp/source-prism-cli-index.json
           grep '"indexed_test_cover_edges":' /tmp/source-prism-cli-index.json
           grep '"indexed_search_chunks":' /tmp/source-prism-cli-index.json
+          grep '"search_sync_queue": "default"' /tmp/source-prism-cli-index.json
+          grep '"enqueued_search_sync_jobs": 1' /tmp/source-prism-cli-index.json
           grep '"indexed_test_cases":' /tmp/source-prism-cli-index.json
           cli_repo_id=$(python3 -c 'import json; print(json.load(open("/tmp/source-prism-cli-index.json"))["repo_id"])')
           cli_run_id=$(python3 -c 'import json; print(json.load(open("/tmp/source-prism-cli-index.json"))["generation_id"])')

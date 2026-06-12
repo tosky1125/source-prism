@@ -22,6 +22,8 @@ pub(crate) mod error;
 pub(crate) mod impact;
 pub(crate) mod index;
 pub(crate) mod index_args;
+pub(crate) mod index_jobs;
+pub(crate) mod index_output;
 pub(crate) mod mcp;
 pub(crate) mod refactor;
 pub(crate) mod references;

@@ -56,7 +56,7 @@ fn cli_runs_fixture_is_indexed() {
         .pointer("/generation_id")
         .and_then(Value::as_str)
         .ok_or("missing generation_id")?;
-    insert_search_sync_job(&pool, &repo_id, generation_id).await?;
+    insert_search_sync_attempt(&pool, generation_id).await?;
 
     let runs_output = Command::new(env!("CARGO_BIN_EXE_ri-cli"))
         .current_dir(repo_root)
@@ -230,27 +230,17 @@ async fn cleanup(pool: &PgPool, repo_id: &str) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-async fn insert_search_sync_job(
-    pool: &PgPool,
-    repo_id: &str,
-    generation_id: &str,
-) -> Result<(), sqlx::Error> {
+async fn insert_search_sync_attempt(pool: &PgPool, generation_id: &str) -> Result<(), sqlx::Error> {
     sqlx::query(
         r"
-        WITH inserted AS (
-            INSERT INTO jobs (
-            job_id, queue, kind, state, generation_id, payload
-            )
-            VALUES ($1, $2, 'search.sync_once', 'queued', $3, '{}'::jsonb)
-            RETURNING job_id
-        )
         INSERT INTO job_attempts (job_id, attempt_no, worker_id, status)
         SELECT job_id, 1, 'cli-runs-worker', 'started'
-        FROM inserted
+        FROM jobs
+        WHERE generation_id = $1 AND kind = 'search.sync_once'
+        ORDER BY created_at ASC
+        LIMIT 1
         ",
     )
-    .bind(format!("job-{}", unique_suffix().unwrap_or_default()))
-    .bind(format!("cli-runs-{repo_id}"))
     .bind(generation_id)
     .execute(pool)
     .await?;

@@ -430,14 +430,17 @@
     };
 
     const referencesFor = async (symbols) => {
-      const symbol = symbols.find((item) => item.fqn)?.fqn;
-      if (!symbol) return [];
-      try {
-        const report = await json(`${api("references")}?symbol=${encodeURIComponent(symbol)}`);
-        return report.references ?? [];
-      } catch (error) {
-        return [];
+      const candidates = symbols.filter((item) => item.fqn && item.kind !== "test_case").slice(0, 12);
+      for (const symbol of candidates) {
+        try {
+          const report = await json(`${api("references")}?symbol=${encodeURIComponent(symbol.fqn)}`);
+          const references = report.references ?? [];
+          if (references.length) return references;
+        } catch (error) {
+          continue;
+        }
       }
+      return [];
     };
 
     const testContextFor = async (symbols) => {

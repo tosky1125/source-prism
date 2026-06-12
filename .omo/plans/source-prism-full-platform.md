@@ -14,7 +14,7 @@ moved beyond foundation-only scope.
 
 ## Current Status
 
-Overall progress: 99.3%.
+Overall progress: 99.5%.
 
 Completed and verified slices:
 
@@ -162,7 +162,7 @@ bash scripts/ci/smoke-api.sh
 
 ### R3. Web Real-Browser QA
 
-Status: pending.
+Status: completed.
 
 Tasks:
 
@@ -175,6 +175,12 @@ Evidence:
 
 - Playwright screenshot artifacts under `.omo/evidence/`.
 - Browser-driven assertions for key panels.
+- Browser QA artifact: `.omo/evidence/web-real-browser-qa.json`.
+- Desktop screenshot: `.omo/evidence/web-real-browser-desktop.png`.
+- Mobile screenshot: `.omo/evidence/web-real-browser-mobile.png`.
+- Verified indexed repo metrics, files, symbols, references, impact, tests,
+  coverage empty-state, docs/contracts, runs, sync, search, and changed-symbols
+  interactions against `/repo/source-prism-ci`.
 
 ### R4. OpenSearch Drift Repair UX
 

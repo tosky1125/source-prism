@@ -58,6 +58,8 @@ async fn repo_web_shell_returns_structure_explorer() -> Result<(), Box<dyn std::
     assert!(body.contains("api(\"changed-symbols\")"));
     assert!(body.contains("api(\"test-context\")"));
     assert!(body.contains("graph.value?.graph?.edges"));
+    assert!(body.contains("symbols.filter((item) => item.fqn && item.kind !== \"test_case\")"));
+    assert!(body.contains("if (references.length) return references"));
     assert!(body.contains("related_tests"));
     assert!(body.contains("Index Runs"));
     assert!(body.contains("Search Sync"));

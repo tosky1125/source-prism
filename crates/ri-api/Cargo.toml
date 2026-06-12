@@ -16,6 +16,8 @@ ri-behavior = { path = "../ri-behavior" }
 ri-context = { path = "../ri-context" }
 ri-core = { path = "../ri-core" }
 ri-git = { path = "../ri-git" }
+ri-github = { path = "../ri-github" }
+ri-gitlab = { path = "../ri-gitlab" }
 ri-impact = { path = "../ri-impact" }
 ri-indexer = { path = "../ri-indexer" }
 ri-refactor = { path = "../ri-refactor" }

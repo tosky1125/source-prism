@@ -66,6 +66,68 @@ async fn review_verify_rejects_findings_without_evidence() -> Result<(), Box<dyn
     Ok(())
 }
 
+#[tokio::test]
+async fn github_review_dry_run_returns_annotations_and_sarif()
+-> Result<(), Box<dyn std::error::Error>> {
+    let app = app(AppState::for_test_symbols(Vec::new())?);
+    let request = Request::builder()
+        .method(Method::POST)
+        .uri("/v1/review/github-dry-run")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(valid_findings_body()))?;
+
+    let response = app.oneshot(request).await?;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = to_bytes(response.into_body(), 1_000_000).await?;
+    let body = serde_json::from_slice::<Value>(&bytes)?;
+    assert_eq!(
+        body.pointer("/kind").and_then(Value::as_str),
+        Some("github_review_dry_run")
+    );
+    assert_eq!(
+        body.pointer("/annotations/0/path").and_then(Value::as_str),
+        Some("src/invoice.rs")
+    );
+    assert_eq!(
+        body.pointer("/sarif/version").and_then(Value::as_str),
+        Some("2.1.0")
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn gitlab_review_dry_run_returns_discussions_and_codequality()
+-> Result<(), Box<dyn std::error::Error>> {
+    let app = app(AppState::for_test_symbols(Vec::new())?);
+    let request = Request::builder()
+        .method(Method::POST)
+        .uri("/v1/review/gitlab-dry-run")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(valid_findings_body()))?;
+
+    let response = app.oneshot(request).await?;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = to_bytes(response.into_body(), 1_000_000).await?;
+    let body = serde_json::from_slice::<Value>(&bytes)?;
+    assert_eq!(
+        body.pointer("/kind").and_then(Value::as_str),
+        Some("gitlab_review_dry_run")
+    );
+    assert_eq!(
+        body.pointer("/discussions/0/position/new_path")
+            .and_then(Value::as_str),
+        Some("src/invoice.rs")
+    );
+    assert_eq!(
+        body.pointer("/code_quality/0/severity")
+            .and_then(Value::as_str),
+        Some("major")
+    );
+    Ok(())
+}
+
 const fn valid_findings_body() -> &'static str {
     r#"{
       "findings": [

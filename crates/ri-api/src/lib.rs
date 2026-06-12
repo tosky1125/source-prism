@@ -53,6 +53,8 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/context/search", post(context_search::search))
         .route("/v1/impact", post(impact::analyze))
         .route("/v1/refactor/plan", post(refactor::plan))
+        .route("/v1/review/github-dry-run", post(review::github_dry_run))
+        .route("/v1/review/gitlab-dry-run", post(review::gitlab_dry_run))
         .route("/v1/review/verify", post(review::verify))
         .route("/v1/test-context", post(test_context::get))
         .route("/repo/{repo_id}", get(web::repo))

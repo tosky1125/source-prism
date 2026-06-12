@@ -268,6 +268,22 @@ request POST "${api_base_url}/v1/review/verify" \
 grep -q '"kind":"review_verification"' /tmp/source-prism-api-review-verified.json
 grep -q '"verified_count":1' /tmp/source-prism-api-review-verified.json
 
+request POST "${api_base_url}/v1/review/github-dry-run" \
+  /tmp/source-prism-api-github-review.json \
+  -H 'content-type: application/json' \
+  --data @/tmp/source-prism-api-review.json
+grep -q '"kind":"github_review_dry_run"' /tmp/source-prism-api-github-review.json
+grep -q '"annotation_level":"warning"' /tmp/source-prism-api-github-review.json
+grep -q '"version":"2.1.0"' /tmp/source-prism-api-github-review.json
+
+request POST "${api_base_url}/v1/review/gitlab-dry-run" \
+  /tmp/source-prism-api-gitlab-review.json \
+  -H 'content-type: application/json' \
+  --data @/tmp/source-prism-api-review.json
+grep -q '"kind":"gitlab_review_dry_run"' /tmp/source-prism-api-gitlab-review.json
+grep -q '"new_path":"src/invoice.rs"' /tmp/source-prism-api-gitlab-review.json
+grep -q '"severity":"major"' /tmp/source-prism-api-gitlab-review.json
+
 cat > /tmp/source-prism-api-review-invalid.json <<'JSON'
 {
   "findings": [

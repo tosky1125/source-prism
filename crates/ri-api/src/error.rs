@@ -14,6 +14,7 @@ use ri_indexer::{
     SymbolStoreError, TestCaseStoreError, TestRunStoreError,
 };
 use ri_review::ReviewError;
+use ri_worker::JobError;
 use serde::Serialize;
 
 #[derive(Debug, thiserror::Error)]
@@ -59,6 +60,8 @@ pub enum AppError {
     Git(#[from] ri_git::GitError),
     #[error(transparent)]
     Impact(#[from] ImpactError),
+    #[error(transparent)]
+    Job(#[from] JobError),
     #[error(transparent)]
     Review(#[from] ReviewError),
     #[error(transparent)]
@@ -131,6 +134,7 @@ impl IntoResponse for AppError {
             Self::Core(_) => internal("core", "core domain validation failed"),
             Self::Git(_) => internal("manifest", "file manifest failed"),
             Self::Impact(_) => internal("impact", "impact analysis failed"),
+            Self::Job(_) => internal("jobs", "job query failed"),
             Self::Generation(_) => internal("index_generation", "index generation failed"),
             Self::GraphStore(_) => internal("graph_store", "graph store failed"),
             Self::SearchSync(_) => internal("search_sync", "search sync failed"),

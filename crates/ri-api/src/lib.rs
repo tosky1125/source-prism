@@ -22,6 +22,7 @@ pub(crate) mod refactor;
 pub(crate) mod repo_architecture;
 pub(crate) mod repo_changed_symbols;
 pub(crate) mod repo_coverage;
+pub(crate) mod repo_dead_letters;
 pub(crate) mod repo_files;
 pub(crate) mod repo_graph;
 pub(crate) mod repo_index;
@@ -82,6 +83,10 @@ pub fn app(state: AppState) -> Router {
             post(context_search::search_for_repo),
         )
         .route("/v1/repos/{repo_id}/files", get(repo_files::list))
+        .route(
+            "/v1/repos/{repo_id}/dead-letters",
+            get(repo_dead_letters::list),
+        )
         .route("/v1/repos/{repo_id}/graph", get(repo_graph::get))
         .route("/v1/repos/{repo_id}/impact", post(impact::analyze_for_repo))
         .route("/v1/repos/{repo_id}/index", post(repo_index::index))

@@ -18,6 +18,7 @@ use sqlx::postgres::PgPoolOptions;
 
 pub(crate) mod architecture;
 pub(crate) mod changed_symbols;
+pub(crate) mod dead_letters;
 pub(crate) mod embeddings;
 pub(crate) mod error;
 pub(crate) mod impact;
@@ -105,6 +106,9 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
             .await
             .map(|()| ExitCode::SUCCESS),
         "repo-search-sync" => repo_search_sync::command(args)
+            .await
+            .map(|()| ExitCode::SUCCESS),
+        "dead-letters" => dead_letters::command(args)
             .await
             .map(|()| ExitCode::SUCCESS),
         "embeddings" => embeddings::command(args).await.map(|()| ExitCode::SUCCESS),

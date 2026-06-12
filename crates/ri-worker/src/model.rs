@@ -1,3 +1,4 @@
+use serde::Serialize;
 use serde_json::Value;
 use std::fmt::{Display, Formatter};
 use std::time::Duration;
@@ -248,6 +249,33 @@ pub struct RunOnceOutcome {
 pub struct RunPollsOutcome {
     pub polls: u64,
     pub processed: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub struct DeadLetterAttempt {
+    pub attempt_no: i32,
+    pub worker_id: String,
+    pub status: String,
+    pub error: Option<String>,
+    pub started_at: String,
+    pub finished_at: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub struct DeadLetterJob {
+    pub job_id: String,
+    pub queue: String,
+    pub kind: String,
+    pub generation_id: String,
+    pub attempt_count: i32,
+    pub max_attempts: i32,
+    pub last_error: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub completed_at: Option<String>,
+    pub attempts: Vec<DeadLetterAttempt>,
 }
 
 fn parse_name(raw: &str) -> Result<String, JobError> {

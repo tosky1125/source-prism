@@ -17,6 +17,10 @@ impl PgJobStore {
     pub const fn new(pool: PgPool, queue: JobQueue) -> Self {
         Self { pool, queue }
     }
+
+    pub(crate) const fn pool(&self) -> &PgPool {
+        &self.pool
+    }
 }
 
 #[async_trait]

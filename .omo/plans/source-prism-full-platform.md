@@ -14,7 +14,7 @@ moved beyond foundation-only scope.
 
 ## Current Status
 
-Overall progress: 97%.
+Overall progress: 98.5%.
 
 Completed and verified slices:
 
@@ -33,7 +33,7 @@ Completed and verified slices:
 - Web structure explorer exposing files, symbols, references, impact,
   tests, coverage, docs/contracts, search, runs, and search sync status.
 - Worker once/daemon job runtime, no-op jobs, search sync jobs, lease/retry
-  contracts, and generation-wide sync.
+  contracts, generation-wide sync, and dead-letter inspection.
 - Evidence-bound review verification and dry-run publisher payloads for
   GitHub annotations/SARIF and GitLab discussions/code-quality reports.
 - Refactor planner only; execution remains disabled until sandbox,
@@ -42,7 +42,7 @@ Completed and verified slices:
 
 Latest pushed checkpoint:
 
-- `e643e4e fix(ci): stabilize api smoke`
+- `952fe7d feat(api): add search drift remediation`
 - Verified by `bash scripts/ci/smoke-api.sh`, `cargo fmt --all -- --check`,
   `cargo clippy --workspace --all-targets -- -D warnings`,
   `cargo test --workspace`, and
@@ -178,7 +178,7 @@ Evidence:
 
 ### R4. OpenSearch Drift Repair UX
 
-Status: pending.
+Status: completed.
 
 Tasks:
 
@@ -209,7 +209,7 @@ Evidence:
 
 ### R6. Production Hardening
 
-Status: pending.
+Status: partial.
 
 Tasks:
 
@@ -217,6 +217,8 @@ Tasks:
 - Add rate limits and request size limits for API.
 - Add explicit secrets redaction for logs and review payloads.
 - Add durable job observability endpoints and dead-letter inspection.
+- Dead-letter inspection now exists through `GET /v1/repos/{repo_id}/dead-letters`
+  and `ri-cli dead-letters --repo-id <repo_id>`.
 
 Evidence:
 

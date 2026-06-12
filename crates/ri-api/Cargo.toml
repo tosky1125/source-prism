@@ -23,6 +23,7 @@ ri-indexer = { path = "../ri-indexer" }
 ri-refactor = { path = "../ri-refactor" }
 ri-review = { path = "../ri-review" }
 ri-symbols = { path = "../ri-symbols" }
+ri-worker = { path = "../ri-worker" }
 axum = "0.8"
 reqwest = { version = "0.12", default-features = false, features = ["http2", "json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }

@@ -10,7 +10,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub(crate) enum CliError {
     #[error(
-        "usage: ri-cli config check --env-file <path> | db migrate | repo manifest --repo <path> | index --repo <path> --sha <sha> | run --run-id <run_id> | runs --repo-id <repo_id> | repo-search-drift --repo-id <repo_id> | repo-search-sync --repo-id <repo_id> | symbols [--repo <path> | --repo-id <repo_id>] | changed-symbols [--repo <path> | --repo-id <repo_id>] --diff <diff> | references [--repo <path> | --repo-id <repo_id>] --symbol <symbol> | architecture [--repo <path> | --repo-id <repo_id>] | impact [--repo <path> | --repo-id <repo_id>] --symbol <symbol> | refactor plan [--repo <path> | --repo-id <repo_id>] --symbol <symbol> | search-context [--repo <path> | --repo-id <repo_id>] <query> | test-context [--repo <path> | --repo-id <repo_id>] --symbol <symbol> | review verify --input <file> | review github-dry-run --input <file> | review gitlab-dry-run --input <file> | mcp tools | mcp call [--repo <path> | --repo-id <repo_id>] --tool <tool> [--symbol <symbol> | --query <query>] [--limit <n>] | mcp serve [--repo <path> | --repo-id <repo_id>] --once --request <file> | MCP tools: repo.get_symbol, repo.find_references, repo.get_impact, repo.get_test_context, repo.search_context | embeddings cache-put --provider <provider> --model <model> --kind <kind> --dimensions <n> --input <text> --vector <csv> | tests import-junit --repo <path> --sha <sha> --junit <file> | tests import-pytest-json --repo <path> --sha <sha> --pytest-json <file> | tests import-playwright-json --repo <path> --sha <sha> --playwright-json <file> | tests import-go-test-json --repo <path> --sha <sha> --go-test-json <file> | tests import-lcov --repo <path> --sha <sha> --lcov <file> | tests import-cobertura --repo <path> --sha <sha> --cobertura <file> | tests import-jacoco --repo <path> --sha <sha> --jacoco <file> | search sync --once | search drift-check [--generation <id> | --expect-mismatch fixture] | search rebuild --from-postgres [--generation <id>]"
+        "usage: ri-cli config check --env-file <path> | db migrate | repo manifest --repo <path> | index --repo <path> --sha <sha> | run --run-id <run_id> | runs --repo-id <repo_id> | repo-search-drift --repo-id <repo_id> | repo-search-sync --repo-id <repo_id> | dead-letters --repo-id <repo_id> | symbols [--repo <path> | --repo-id <repo_id>] | changed-symbols [--repo <path> | --repo-id <repo_id>] --diff <diff> | references [--repo <path> | --repo-id <repo_id>] --symbol <symbol> | architecture [--repo <path> | --repo-id <repo_id>] | impact [--repo <path> | --repo-id <repo_id>] --symbol <symbol> | refactor plan [--repo <path> | --repo-id <repo_id>] --symbol <symbol> | search-context [--repo <path> | --repo-id <repo_id>] <query> | test-context [--repo <path> | --repo-id <repo_id>] --symbol <symbol> | review verify --input <file> | review github-dry-run --input <file> | review gitlab-dry-run --input <file> | mcp tools | mcp call [--repo <path> | --repo-id <repo_id>] --tool <tool> [--symbol <symbol> | --query <query>] [--limit <n>] | mcp serve [--repo <path> | --repo-id <repo_id>] --once --request <file> | MCP tools: repo.get_symbol, repo.find_references, repo.get_impact, repo.get_test_context, repo.search_context | embeddings cache-put --provider <provider> --model <model> --kind <kind> --dimensions <n> --input <text> --vector <csv> | tests import-junit --repo <path> --sha <sha> --junit <file> | tests import-pytest-json --repo <path> --sha <sha> --pytest-json <file> | tests import-playwright-json --repo <path> --sha <sha> --playwright-json <file> | tests import-go-test-json --repo <path> --sha <sha> --go-test-json <file> | tests import-lcov --repo <path> --sha <sha> --lcov <file> | tests import-cobertura --repo <path> --sha <sha> --cobertura <file> | tests import-jacoco --repo <path> --sha <sha> --jacoco <file> | search sync --once | search drift-check [--generation <id> | --expect-mismatch fixture] | search rebuild --from-postgres [--generation <id>]"
     )]
     Usage,
     #[error("missing required env: {key}")]
@@ -31,6 +31,8 @@ pub(crate) enum CliError {
     Git(#[from] ri_git::GitError),
     #[error(transparent)]
     Impact(#[from] ri_impact::ImpactError),
+    #[error(transparent)]
+    Job(#[from] ri_worker::JobError),
     #[error("search drift detected: expected={expected} actual={actual}")]
     Drift { expected: i64, actual: i64 },
     #[error("file is too large to index: {path} size_bytes={size_bytes}")]
@@ -82,6 +84,7 @@ impl CliError {
             | Self::Embedding(_)
             | Self::Git(_)
             | Self::Impact(_)
+            | Self::Job(_)
             | Self::Drift { .. }
             | Self::FileTooLarge { .. }
             | Self::Generation(_)

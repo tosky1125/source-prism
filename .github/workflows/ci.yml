@@ -128,6 +128,9 @@ jobs:
           grep '"kind": "repo_runs"' /tmp/source-prism-cli-runs.json
           grep '"run_count": 1' /tmp/source-prism-cli-runs.json
           cargo run -p ri-cli -- symbols --repo . > /tmp/source-prism-symbols.json
+          cargo run -p ri-cli -- symbols --repo-id "$cli_repo_id" > /tmp/source-prism-persisted-symbols.json
+          grep '"kind": "symbols"' /tmp/source-prism-persisted-symbols.json
+          grep '"repo_id":' /tmp/source-prism-persisted-symbols.json
           impact_symbol=$(python3 -c 'import json; data=json.load(open("/tmp/source-prism-symbols.json")); print(next(symbol["fqn"] for symbol in data["symbols"] if symbol["kind"] == "function"))')
           cargo run -p ri-cli -- impact --symbol "$impact_symbol" > /tmp/source-prism-impact.json
           grep '"kind": "impact"' /tmp/source-prism-impact.json

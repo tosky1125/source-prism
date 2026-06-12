@@ -17,6 +17,7 @@ use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
 
 pub(crate) mod architecture;
+pub(crate) mod changed_symbols;
 pub(crate) mod embeddings;
 pub(crate) mod error;
 pub(crate) mod impact;
@@ -81,8 +82,12 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
             Ok(ExitCode::SUCCESS)
         }
         "index" => index::command(args).await.map(|()| ExitCode::SUCCESS),
-        "symbols" => symbols::symbols_command(args).map(|()| ExitCode::SUCCESS),
-        "changed-symbols" => symbols::changed_symbols_command(args).map(|()| ExitCode::SUCCESS),
+        "symbols" => symbols::symbols_command(args)
+            .await
+            .map(|()| ExitCode::SUCCESS),
+        "changed-symbols" => {
+            changed_symbols::changed_symbols_command(args).map(|()| ExitCode::SUCCESS)
+        }
         "references" => references::references_command(args)
             .await
             .map(|()| ExitCode::SUCCESS),

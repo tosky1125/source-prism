@@ -4,112 +4,61 @@
 )]
 
 use std::{
-    collections::BTreeMap,
-    fs,
+    env, fs,
     io::{self, Write},
     path::{Path, PathBuf},
 };
 
 use ri_core::{CommitSha, FilePath, Language, RepoId};
 use ri_git::{LocalManifest, discover_worktree, resolve_commit_sha};
+use ri_indexer::PgSymbolStore;
 use ri_parser::{SourceFile, SymbolExtractor};
-use ri_symbols::{SymbolRecord, innermost_symbol_for_line};
+use ri_symbols::SymbolRecord;
 use ri_tree_sitter::TreeSitterExtractor;
 use serde_json::json;
+use sqlx::postgres::PgPoolOptions;
 
 use crate::error::CliError;
 
-pub(crate) fn symbols_command(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
-    let repo_path = parse_repo_args(&mut args)?;
-    let symbols = extract_repo_symbols(&repo_path)?;
-    print_json(&json!({
-        "status": "ok",
-        "kind": "symbols",
-        "symbol_count": symbols.len(),
-        "symbols": symbols.iter().map(symbol_json).collect::<Vec<_>>(),
-    }))
-}
-
-pub(crate) fn changed_symbols_command(
+pub(crate) async fn symbols_command(
     mut args: impl Iterator<Item = String>,
 ) -> Result<(), CliError> {
-    let request = ChangedSymbolsArgs::parse(&mut args)?;
-    let diff = fs::read_to_string(request.diff_path)?;
-    let changed_lines = parse_changed_lines(&diff);
-    let symbols = extract_repo_symbols(&request.repo)?;
-    let by_file = symbols_by_file(&symbols);
-    let changed_symbols = changed_lines
-        .iter()
-        .filter_map(|line| {
-            let file_symbols = by_file.get(line.file_path.as_str())?;
-            let symbol = innermost_symbol_for_line(file_symbols, line.line)?;
-            Some(json!({
-                "file_path": line.file_path,
-                "line": line.line,
-                "symbol": symbol_json(symbol),
-            }))
-        })
-        .collect::<Vec<_>>();
-
-    print_json(&json!({
-        "status": "ok",
-        "kind": "changed_symbols",
-        "changed_line_count": changed_lines.len(),
-        "matched_symbol_count": changed_symbols.len(),
-        "changed_symbols": changed_symbols,
-    }))
+    match SymbolArgs::parse(&mut args)? {
+        SymbolArgs::Worktree(repo_path) => {
+            let symbols = extract_repo_symbols(&repo_path)?;
+            print_symbols(None, &symbols)
+        }
+        SymbolArgs::PersistedRepo(repo_id) => {
+            let symbols = persisted_symbols(&repo_id).await?;
+            print_symbols(Some(repo_id.as_str()), &symbols)
+        }
+    }
 }
 
 #[derive(Debug)]
-struct ChangedSymbolsArgs {
-    repo: PathBuf,
-    diff_path: PathBuf,
+enum SymbolArgs {
+    Worktree(PathBuf),
+    PersistedRepo(String),
 }
 
-impl ChangedSymbolsArgs {
+impl SymbolArgs {
     fn parse(args: &mut impl Iterator<Item = String>) -> Result<Self, CliError> {
-        let mut repo = PathBuf::from(".");
-        let mut diff_path = None::<PathBuf>;
-
-        while let Some(flag) = args.next() {
-            match flag.as_str() {
-                "--repo" => {
-                    let Some(path) = args.next() else {
-                        return Err(CliError::Usage);
-                    };
-                    repo = PathBuf::from(path);
-                }
-                "--diff" => {
-                    let Some(path) = args.next() else {
-                        return Err(CliError::Usage);
-                    };
-                    diff_path = Some(PathBuf::from(path));
-                }
-                _ => return Err(CliError::Usage),
-            }
+        let Some(flag) = args.next() else {
+            return Err(CliError::Usage);
+        };
+        let Some(value) = args.next() else {
+            return Err(CliError::Usage);
+        };
+        if args.next().is_some() {
+            return Err(CliError::Usage);
         }
 
-        Ok(Self {
-            repo,
-            diff_path: diff_path.ok_or(CliError::Usage)?,
-        })
+        match flag.as_str() {
+            "--repo" => Ok(Self::Worktree(PathBuf::from(value))),
+            "--repo-id" => Ok(Self::PersistedRepo(value)),
+            _ => Err(CliError::Usage),
+        }
     }
-}
-
-fn parse_repo_args(args: &mut impl Iterator<Item = String>) -> Result<PathBuf, CliError> {
-    let Some(flag) = args.next() else {
-        return Err(CliError::Usage);
-    };
-    if flag != "--repo" {
-        return Err(CliError::Usage);
-    }
-    let Some(path) = args.next() else {
-        return Err(CliError::Usage);
-    };
-    if args.next().is_some() {
-        return Err(CliError::Usage);
-    }
-    Ok(PathBuf::from(path))
 }
 
 pub(crate) fn extract_repo_symbols(repo_path: &Path) -> Result<Vec<SymbolRecord>, CliError> {
@@ -144,64 +93,6 @@ pub(crate) fn extract_repo_symbols(repo_path: &Path) -> Result<Vec<SymbolRecord>
     Ok(symbols)
 }
 
-fn symbols_by_file(symbols: &[SymbolRecord]) -> BTreeMap<String, Vec<SymbolRecord>> {
-    let mut by_file = BTreeMap::<String, Vec<SymbolRecord>>::new();
-    for symbol in symbols {
-        by_file
-            .entry(symbol.file_path.to_string())
-            .or_default()
-            .push(symbol.clone());
-    }
-    by_file
-}
-
-fn parse_changed_lines(diff: &str) -> Vec<ChangedLine> {
-    let mut file_path = None::<String>;
-    let mut new_line = None::<u32>;
-    let mut changed = Vec::new();
-
-    for line in diff.lines() {
-        if let Some(path) = line.strip_prefix("+++ ") {
-            file_path = parse_diff_path(path);
-            continue;
-        }
-        if let Some(header) = line.strip_prefix("@@") {
-            new_line = parse_hunk_new_start(header);
-            continue;
-        }
-        let Some(current_line) = new_line else {
-            continue;
-        };
-        if line.starts_with('+') {
-            if let Some(path) = &file_path {
-                changed.push(ChangedLine {
-                    file_path: path.clone(),
-                    line: current_line,
-                });
-            }
-            new_line = current_line.checked_add(1);
-        } else if !line.starts_with('-') && !line.starts_with('\\') {
-            new_line = current_line.checked_add(1);
-        }
-    }
-    changed
-}
-
-fn parse_diff_path(path: &str) -> Option<String> {
-    if path == "/dev/null" {
-        return None;
-    }
-    Some(path.strip_prefix("b/").unwrap_or(path).to_owned())
-}
-
-fn parse_hunk_new_start(header: &str) -> Option<u32> {
-    header
-        .split_whitespace()
-        .find_map(|part| part.strip_prefix('+'))
-        .and_then(|part| part.split(',').next())
-        .and_then(|line| line.parse::<u32>().ok())
-}
-
 const fn is_supported_language(language: Language) -> bool {
     matches!(
         language,
@@ -213,7 +104,30 @@ const fn is_supported_language(language: Language) -> bool {
     )
 }
 
-fn symbol_json(symbol: &SymbolRecord) -> serde_json::Value {
+async fn persisted_symbols(repo_id: &str) -> Result<Vec<SymbolRecord>, CliError> {
+    let database_url = env::var("DATABASE_URL").map_err(|_| CliError::MissingEnv {
+        key: "DATABASE_URL",
+    })?;
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(database_url.as_str())
+        .await?;
+    Ok(PgSymbolStore::new(pool)
+        .active_symbols_for_repo(repo_id)
+        .await?)
+}
+
+fn print_symbols(repo_id: Option<&str>, symbols: &[SymbolRecord]) -> Result<(), CliError> {
+    print_json(&json!({
+        "status": "ok",
+        "kind": "symbols",
+        "repo_id": repo_id,
+        "symbol_count": symbols.len(),
+        "symbols": symbols.iter().map(symbol_json).collect::<Vec<_>>(),
+    }))
+}
+
+pub(crate) fn symbol_json(symbol: &SymbolRecord) -> serde_json::Value {
     json!({
         "stable_symbol_id": symbol.stable_symbol_id,
         "versioned_symbol_id": symbol.versioned_symbol_id,
@@ -237,10 +151,4 @@ fn print_json(value: &serde_json::Value) -> Result<(), CliError> {
     serde_json::to_writer_pretty(&mut lock, value)?;
     writeln!(lock)?;
     Ok(())
-}
-
-#[derive(Debug)]
-struct ChangedLine {
-    file_path: String,
-    line: u32,
 }

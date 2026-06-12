@@ -28,7 +28,9 @@ async fn repo_web_shell_returns_structure_explorer() -> Result<(), Box<dyn std::
     assert!(body.contains("Files"));
     assert!(body.contains("Symbols"));
     assert!(body.contains("Impact"));
+    assert!(body.contains("Coverage"));
     assert!(body.contains("Docs"));
+    assert!(body.contains("api(\"coverage\")"));
     Ok(())
 }
 
@@ -37,14 +39,14 @@ async fn repo_web_shell_accepts_deep_repo_views() -> Result<(), Box<dyn std::err
     let app = app(AppState::for_test_symbols(Vec::new())?);
     let request = Request::builder()
         .method(Method::GET)
-        .uri("/repo/local/symbols")
+        .uri("/repo/local/coverage")
         .body(Body::empty())?;
 
     let response = app.oneshot(request).await?;
 
     assert_eq!(response.status(), StatusCode::OK);
     let body = html_body(response).await?;
-    assert!(body.contains("data-initial-view=\"symbols\""));
+    assert!(body.contains("data-initial-view=\"coverage\""));
     Ok(())
 }
 

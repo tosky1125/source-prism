@@ -19,6 +19,7 @@ enum ExplorerView {
     Files,
     Symbols,
     Impact,
+    Coverage,
     Search,
 }
 
@@ -29,6 +30,7 @@ impl ExplorerView {
             Self::Files => "files",
             Self::Symbols => "symbols",
             Self::Impact => "impact",
+            Self::Coverage => "coverage",
             Self::Search => "search",
         }
     }
@@ -38,6 +40,7 @@ impl ExplorerView {
             "files" => Self::Files,
             "symbols" => Self::Symbols,
             "impact" => Self::Impact,
+            "coverage" => Self::Coverage,
             "search" => Self::Search,
             _ => Self::Overview,
         }

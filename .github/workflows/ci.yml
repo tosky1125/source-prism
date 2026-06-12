@@ -186,9 +186,14 @@ jobs:
               curl -fsS http://127.0.0.1:4096/repo/source-prism-ci > /tmp/source-prism-api-web.html
               grep 'Repo Structure Explorer' /tmp/source-prism-api-web.html
               grep 'data-repo-id="source-prism-ci"' /tmp/source-prism-api-web.html
+              grep 'Coverage Evidence' /tmp/source-prism-api-web.html
+              grep 'api("coverage")' /tmp/source-prism-api-web.html
               curl -fsS http://127.0.0.1:4096/v1/repos/source-prism-ci/tests > /tmp/source-prism-api-tests.json
               grep '"kind":"tests"' /tmp/source-prism-api-tests.json
               grep '"test_count":' /tmp/source-prism-api-tests.json
+              curl -fsS http://127.0.0.1:4096/v1/repos/source-prism-ci/coverage > /tmp/source-prism-api-coverage.json
+              grep '"kind":"coverage"' /tmp/source-prism-api-coverage.json
+              grep '"segment_count":' /tmp/source-prism-api-coverage.json
               api_test_symbol=$(python3 -c 'import json; data=json.load(open("/tmp/source-prism-api-symbols.json")); print(next(symbol["fqn"] for symbol in data["symbols"] if symbol["kind"] == "test_case"))')
               curl -fsS -X POST http://127.0.0.1:4096/v1/test-context \
                 -H 'content-type: application/json' \

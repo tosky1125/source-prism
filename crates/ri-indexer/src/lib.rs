@@ -8,6 +8,7 @@ mod architecture;
 mod coverage;
 mod generation;
 mod generation_files;
+mod generation_manifest;
 mod graph;
 mod graph_calls;
 pub mod graph_ids;
@@ -30,10 +31,9 @@ pub use architecture::{ArchitectureEntityRecord, ArchitectureStoreError, PgArchi
 pub use coverage::{
     CoverageIngestOutcome, CoverageSegmentRecord, CoverageStoreError, PgCoverageStore,
 };
-pub use generation::{
-    FileManifestInput, GenerationError, GenerationRecord, GenerationStatus, PgGenerationStore,
-};
+pub use generation::{GenerationError, GenerationRecord, GenerationStatus, PgGenerationStore};
 pub use generation_files::FileManifestRecord;
+pub use generation_manifest::FileManifestInput;
 pub use graph::{GraphIndexOutcome, GraphStoreError, PgGraphStore};
 pub use graph_calls::CallEdgeInput;
 pub use graph_query::{GraphEdgeRecord, GraphNodeRecord, GraphProjection};

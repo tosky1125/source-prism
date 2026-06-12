@@ -94,7 +94,9 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
             .map(|()| ExitCode::SUCCESS),
         "refactor" => {
             expect_subcommand(&mut args, "plan")?;
-            refactor::plan_command(args).map(|()| ExitCode::SUCCESS)
+            refactor::plan_command(args)
+                .await
+                .map(|()| ExitCode::SUCCESS)
         }
         "review" => review::command(args).map(|()| ExitCode::SUCCESS),
         "run" => runs::run_command(args).await.map(|()| ExitCode::SUCCESS),

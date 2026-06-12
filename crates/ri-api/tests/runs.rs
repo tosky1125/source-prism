@@ -237,14 +237,11 @@ async fn cleanup(pool: &PgPool, repo_id: &str) -> Result<(), sqlx::Error> {
     .bind(repo_id)
     .fetch_all(&mut *tx)
     .await?;
-    sqlx::query(
-        r"
-        DELETE FROM jobs
-        WHERE generation_id IN (
-            SELECT generation_id FROM index_generations WHERE repo_id = $1
-        )
-        ",
-    )
+    sqlx::query("DELETE FROM job_attempts WHERE job_id IN (SELECT job_id FROM jobs WHERE generation_id IN (SELECT generation_id FROM index_generations WHERE repo_id = $1))")
+    .bind(repo_id)
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query("DELETE FROM jobs WHERE generation_id IN (SELECT generation_id FROM index_generations WHERE repo_id = $1)")
     .bind(repo_id)
     .execute(&mut *tx)
     .await?;

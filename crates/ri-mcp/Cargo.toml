@@ -1,0 +1,23 @@
+[package]
+name = "ri-mcp"
+version = "0.1.0"
+description = "MCP tool contracts for Source Prism repository intelligence"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+ri-context = { path = "../ri-context" }
+ri-core = { path = "../ri-core" }
+ri-impact = { path = "../ri-impact" }
+ri-symbols = { path = "../ri-symbols" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[lints]
+workspace = true

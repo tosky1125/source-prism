@@ -2383,6 +2383,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ri-mcp"
+version = "0.1.0"
+dependencies = [
+ "ri-context",
+ "ri-core",
+ "ri-impact",
+ "ri-symbols",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "ri-parser"
 version = "0.1.0"
 dependencies = [

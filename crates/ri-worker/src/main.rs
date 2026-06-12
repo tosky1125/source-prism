@@ -8,7 +8,7 @@
 )]
 
 use clap::Parser;
-use ri_worker::{JobQueue, JobRuntime, LeaseConfig, PgJobStore, WorkerId};
+use ri_worker::{EnqueueJob, JobKind, JobQueue, JobRuntime, LeaseConfig, PgJobStore, WorkerId};
 use sqlx::postgres::PgPoolOptions;
 use std::io::Write as _;
 use std::time::Duration;
@@ -30,6 +30,8 @@ struct Cli {
     poll_interval_ms: u64,
     #[arg(long)]
     max_polls: Option<u64>,
+    #[arg(long)]
+    enqueue_noop: bool,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -55,6 +57,9 @@ async fn main() -> Result<(), CliError> {
         WorkerId::parse(&cli.worker_id)?,
         LeaseConfig::new(Duration::from_secs(cli.lease_seconds)),
     );
+    if cli.enqueue_noop {
+        enqueue_noop(&runtime, &cli.queue).await?;
+    }
 
     if cli.once {
         return run_once(&runtime).await;
@@ -66,6 +71,17 @@ async fn main() -> Result<(), CliError> {
         Duration::from_millis(cli.poll_interval_ms),
     )
     .await
+}
+
+async fn enqueue_noop(runtime: &JobRuntime<PgJobStore>, queue: &str) -> Result<(), CliError> {
+    runtime
+        .enqueue(EnqueueJob::new(
+            JobQueue::parse(queue)?,
+            JobKind::parse("noop")?,
+            serde_json::json!({ "source": "ri-worker-cli" }),
+        ))
+        .await?;
+    Ok(())
 }
 
 async fn run_once(runtime: &JobRuntime<PgJobStore>) -> Result<(), CliError> {

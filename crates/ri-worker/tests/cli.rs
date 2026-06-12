@@ -59,6 +59,33 @@ async fn daemon_mode_processes_bounded_polls() -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
+#[tokio::test]
+async fn once_mode_can_enqueue_and_process_noop_job() -> Result<(), Box<dyn std::error::Error>> {
+    let Some(database_url) = database_url() else {
+        return Ok(());
+    };
+    let pool = PgPool::connect(database_url.as_str()).await?;
+    let queue = format!("enqueue-once-{}", unique_suffix()?);
+
+    let output = Command::new(env!("CARGO_BIN_EXE_ri-worker"))
+        .env("DATABASE_URL", database_url.as_str())
+        .env("RI_WORKER_ID", "worker-cli-test")
+        .args(["--queue", queue.as_str(), "--enqueue-noop", "--once"])
+        .output()?;
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout)?;
+    assert!(stdout.contains("ri-worker once processed=1 job_id="));
+    assert_eq!(succeeded_jobs(&pool, &queue).await?, 1);
+    assert_eq!(finished_attempts(&pool, &queue).await?, 1);
+    cleanup(&pool, &queue).await?;
+    Ok(())
+}
+
 fn database_url() -> Option<String> {
     std::env::var("DATABASE_URL").ok()
 }
@@ -78,6 +105,36 @@ async fn job_state(pool: &PgPool, job_id: &str) -> Result<JobState, Box<dyn std:
     Ok(JobState::parse(
         row.try_get::<String, _>("state")?.as_str(),
     )?)
+}
+
+async fn succeeded_jobs(pool: &PgPool, queue: &str) -> Result<i64, sqlx::Error> {
+    let row = sqlx::query(
+        r"
+        SELECT count(*)::bigint AS count
+        FROM jobs
+        WHERE queue = $1 AND state = 'succeeded'
+        ",
+    )
+    .bind(queue)
+    .fetch_one(pool)
+    .await?;
+    row.try_get("count")
+}
+
+async fn finished_attempts(pool: &PgPool, queue: &str) -> Result<i64, sqlx::Error> {
+    let row = sqlx::query(
+        r"
+        SELECT count(*)::bigint AS count
+        FROM job_attempts
+        WHERE job_id IN (SELECT job_id FROM jobs WHERE queue = $1)
+          AND status = 'succeeded'
+          AND finished_at IS NOT NULL
+        ",
+    )
+    .bind(queue)
+    .fetch_one(pool)
+    .await?;
+    row.try_get("count")
 }
 
 async fn cleanup(pool: &PgPool, queue: &str) -> Result<(), sqlx::Error> {

@@ -16,7 +16,11 @@ use url::Url;
 const DATABASE_URL: &str = "DATABASE_URL";
 const OPENSEARCH_URL: &str = "OPENSEARCH_URL";
 const API_BIND_ADDR: &str = "API_BIND_ADDR";
+const API_RATE_LIMIT_REQUESTS: &str = "API_RATE_LIMIT_REQUESTS";
+const API_RATE_LIMIT_WINDOW_SECONDS: &str = "API_RATE_LIMIT_WINDOW_SECONDS";
 const DEFAULT_API_BIND_ADDR: &str = "127.0.0.1:3000";
+const DEFAULT_API_RATE_LIMIT_REQUESTS: u32 = 600;
+const DEFAULT_API_RATE_LIMIT_WINDOW_SECONDS: u64 = 60;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -33,6 +37,16 @@ impl RuntimeConfig {
         let database_url = required(env, DATABASE_URL)?;
         let opensearch_url = required(env, OPENSEARCH_URL)?;
         let bind_addr = optional(env, API_BIND_ADDR).unwrap_or(DEFAULT_API_BIND_ADDR);
+        let rate_limit_requests = optional_positive_u32(
+            env,
+            API_RATE_LIMIT_REQUESTS,
+            DEFAULT_API_RATE_LIMIT_REQUESTS,
+        )?;
+        let rate_limit_window_seconds = optional_positive_u64(
+            env,
+            API_RATE_LIMIT_WINDOW_SECONDS,
+            DEFAULT_API_RATE_LIMIT_WINDOW_SECONDS,
+        )?;
 
         let bind_addr: SocketAddr = bind_addr
             .parse()
@@ -48,7 +62,11 @@ impl RuntimeConfig {
             opensearch: OpenSearchConfig {
                 url: parse_url(OPENSEARCH_URL, opensearch_url)?,
             },
-            api: ApiConfig { bind_addr },
+            api: ApiConfig {
+                bind_addr,
+                rate_limit_requests,
+                rate_limit_window_seconds,
+            },
             worker: WorkerConfig { concurrency: 1 },
             evidence_dir: PathBuf::from(".omo/evidence"),
         })
@@ -71,6 +89,8 @@ pub struct OpenSearchConfig {
 #[non_exhaustive]
 pub struct ApiConfig {
     pub bind_addr: SocketAddr,
+    pub rate_limit_requests: u32,
+    pub rate_limit_window_seconds: u64,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -90,6 +110,8 @@ pub enum ConfigError {
     InvalidBindAddress,
     #[error("public API bind address requires auth/tenancy first: {bind_addr}")]
     PublicApiBindAddress { bind_addr: SocketAddr },
+    #[error("invalid positive integer for config key: {key}")]
+    InvalidPositiveInteger { key: &'static str },
     #[error("failed to read config env file: {}", path.display())]
     EnvFileRead {
         path: PathBuf,
@@ -152,4 +174,32 @@ fn optional<'a>(env: &'a BTreeMap<String, String>, key: &str) -> Option<&'a str>
 
 fn parse_url(key: &'static str, value: &str) -> Result<Url, ConfigError> {
     Url::parse(value).map_err(|_| ConfigError::InvalidUrl { key })
+}
+
+fn optional_positive_u32(
+    env: &BTreeMap<String, String>,
+    key: &'static str,
+    default: u32,
+) -> Result<u32, ConfigError> {
+    optional(env, key).map_or(Ok(default), |value| {
+        value
+            .parse::<u32>()
+            .ok()
+            .filter(|parsed| *parsed > 0)
+            .ok_or(ConfigError::InvalidPositiveInteger { key })
+    })
+}
+
+fn optional_positive_u64(
+    env: &BTreeMap<String, String>,
+    key: &'static str,
+    default: u64,
+) -> Result<u64, ConfigError> {
+    optional(env, key).map_or(Ok(default), |value| {
+        value
+            .parse::<u64>()
+            .ok()
+            .filter(|parsed| *parsed > 0)
+            .ok_or(ConfigError::InvalidPositiveInteger { key })
+    })
 }

@@ -27,6 +27,10 @@ pub enum ApiError {
     },
     #[error("public API bind address requires auth/tenancy first: {bind_addr}")]
     PublicBindAddress { bind_addr: std::net::SocketAddr },
+    #[error("invalid positive integer for API rate limit config {key}: {value}")]
+    InvalidRateLimitConfig { key: &'static str, value: String },
+    #[error("invalid unicode for env: {key}")]
+    InvalidUnicodeEnv { key: &'static str },
     #[error(transparent)]
     Http(#[from] reqwest::Error),
     #[error(transparent)]

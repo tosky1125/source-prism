@@ -14,7 +14,7 @@ moved beyond foundation-only scope.
 
 ## Current Status
 
-Overall progress: 99.8%.
+Overall progress: 99.9%.
 
 Completed and verified slices:
 
@@ -47,6 +47,8 @@ Completed and verified slices:
   stored separately in `file_overlays`.
 - API startup and `ri-cli config check` now reject non-loopback API bind
   addresses until auth/tenancy is implemented.
+- API requests now pass through a process-level fixed-window rate limit with
+  env/config validation for the request count and window.
 
 Previous verified checkpoint:
 
@@ -246,6 +248,9 @@ Tasks:
 - API startup and config validation now refuse public/non-loopback
   `API_BIND_ADDR` values, keeping the current build local-only until
   auth/tenancy exists.
+- API request rate limiting now defaults to 600 requests per 60 seconds and
+  can be configured with `API_RATE_LIMIT_REQUESTS` and
+  `API_RATE_LIMIT_WINDOW_SECONDS`; exhausted windows return HTTP 429.
 - Dead-letter inspection now exists through `GET /v1/repos/{repo_id}/dead-letters`
   and `ri-cli dead-letters --repo-id <repo_id>`.
 - API JSON request bodies are capped at 256 KiB and oversized requests are
@@ -262,6 +267,7 @@ Evidence:
 - Security review notes.
 - Config/API bind tests for public address rejection.
 - Real CLI config-check and API startup smoke for public bind rejection.
+- API rate-limit tests and real HTTP smoke for HTTP 429 behavior.
 - API tests for oversized/invalid requests.
 - Worker tests for dead-letter visibility.
 - `ri-indexer` drift regression for duplicate upserts.

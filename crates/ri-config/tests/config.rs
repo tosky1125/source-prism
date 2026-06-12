@@ -12,6 +12,8 @@ fn local_only_api_bind_is_default() {
     let config = RuntimeConfig::from_env_map(&required_env()).expect("config");
 
     assert_eq!(config.api.bind_addr.to_string(), "127.0.0.1:3000");
+    assert_eq!(config.api.rate_limit_requests, 600);
+    assert_eq!(config.api.rate_limit_window_seconds, 60);
 }
 
 #[test]
@@ -51,6 +53,21 @@ fn invalid_urls_are_rejected() {
         error,
         ConfigError::InvalidUrl {
             key: "OPENSEARCH_URL"
+        }
+    ));
+}
+
+#[test]
+fn invalid_api_rate_limit_is_rejected() {
+    let mut env = required_env();
+    env.insert(String::from("API_RATE_LIMIT_REQUESTS"), String::from("0"));
+
+    let error = RuntimeConfig::from_env_map(&env).expect_err("invalid rate limit");
+
+    assert!(matches!(
+        error,
+        ConfigError::InvalidPositiveInteger {
+            key: "API_RATE_LIMIT_REQUESTS"
         }
     ));
 }

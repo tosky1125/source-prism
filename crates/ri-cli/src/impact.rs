@@ -6,10 +6,11 @@
 use std::io::{self, Write};
 use std::path::PathBuf;
 
-use ri_impact::analyze_symbol_impact;
+use ri_context::ResolvedCallReference;
+use ri_impact::{ImpactCallEdge, analyze_symbol_impact_with_calls};
 use serde_json::json;
 
-use crate::{error::CliError, symbols::extract_repo_symbols};
+use crate::error::CliError;
 
 pub(crate) fn impact_command(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
     let Some(flag) = args.next() else {
@@ -25,8 +26,10 @@ pub(crate) fn impact_command(mut args: impl Iterator<Item = String>) -> Result<(
         return Err(CliError::Usage);
     }
 
-    let symbols = extract_repo_symbols(&PathBuf::from("."))?;
-    let report = analyze_symbol_impact(symbols, &symbol_query)?;
+    let evidence = ri_context::extract_repo_index(&PathBuf::from("."))?;
+    let calls = impact_call_edges(&evidence.calls);
+    let report =
+        analyze_symbol_impact_with_calls(evidence.symbols, calls.as_slice(), &symbol_query)?;
     print_json(&json!({
         "status": "ok",
         "kind": "impact",
@@ -37,6 +40,15 @@ pub(crate) fn impact_command(mut args: impl Iterator<Item = String>) -> Result<(
         "impact_score": report.impact_score,
         "related": report.related,
     }))
+}
+
+fn impact_call_edges(calls: &[ResolvedCallReference]) -> Vec<ImpactCallEdge> {
+    calls
+        .iter()
+        .map(|call| {
+            ImpactCallEdge::new(call.source_symbol_id.clone(), call.target_symbol_id.clone())
+        })
+        .collect()
 }
 
 fn print_json(value: &serde_json::Value) -> Result<(), CliError> {

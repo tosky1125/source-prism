@@ -1,7 +1,7 @@
 #![allow(missing_docs, reason = "Integration test names document behavior.")]
 
 use ri_core::{CommitSha, FilePath, Language, RepoId, SymbolKind};
-use ri_impact::analyze_symbol_impact;
+use ri_impact::{ImpactCallEdge, analyze_symbol_impact, analyze_symbol_impact_with_calls};
 use ri_symbols::{SymbolRange, SymbolRecord, SymbolSpec};
 
 #[test]
@@ -32,6 +32,33 @@ fn impact_report_rejects_unknown_symbol() {
     let report = analyze_symbol_impact(Vec::new(), "missing");
 
     assert!(report.is_err());
+}
+
+#[test]
+fn impact_report_includes_direct_call_edges() -> Result<(), Box<dyn std::error::Error>> {
+    let repo = RepoId::new("repo")?;
+    let commit = CommitSha::new("commit")?;
+    let caller = symbol(
+        &repo,
+        &commit,
+        FilePath::new("src/api.rs")?,
+        "charge_invoice",
+        10,
+    );
+    let target = symbol(&repo, &commit, FilePath::new("src/tax.rs")?, "apply_tax", 3);
+    let calls = vec![ImpactCallEdge::new(
+        caller.versioned_symbol_id.clone(),
+        target.versioned_symbol_id.clone(),
+    )];
+
+    let report =
+        analyze_symbol_impact_with_calls(vec![caller, target], calls.as_slice(), "apply_tax")?;
+
+    assert_eq!(report.direct_callers, vec!["charge_invoice"]);
+    assert!(report.direct_callees.is_empty());
+    assert_eq!(report.affected_files, vec!["src/api.rs", "src/tax.rs"]);
+    assert_eq!(report.impact_score, 2);
+    Ok(())
 }
 
 fn symbol(

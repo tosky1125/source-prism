@@ -11,6 +11,7 @@ categories.workspace = true
 description = "Impact analysis scoring for Source Prism."
 
 [dependencies]
+ri-core = { path = "../ri-core" }
 ri-graph = { path = "../ri-graph" }
 ri-symbols = { path = "../ri-symbols" }
 serde = { version = "1", features = ["derive"] }

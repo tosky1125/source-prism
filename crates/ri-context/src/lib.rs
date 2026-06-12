@@ -58,6 +58,12 @@ pub struct RepoIndexEvidence {
     pub calls: Vec<ResolvedCallReference>,
 }
 
+impl RepoIndexEvidence {
+    pub const fn new(symbols: Vec<SymbolRecord>, calls: Vec<ResolvedCallReference>) -> Self {
+        Self { symbols, calls }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ResolvedCallReference {
@@ -90,10 +96,14 @@ pub fn build_context_pack(symbols: &[SymbolRecord], query: &str, limit: usize) -
 }
 
 pub fn extract_repo_symbols(repo_path: &Path) -> Result<Vec<SymbolRecord>, ContextError> {
+    Ok(extract_repo_index(repo_path)?.symbols)
+}
+
+pub fn extract_repo_index(repo_path: &Path) -> Result<RepoIndexEvidence, ContextError> {
     let worktree = discover_worktree(repo_path)?;
     let repo = RepoId::new(format!("local:{}", worktree.canonicalize()?.display()))?;
     let commit = CommitSha::new(resolve_commit_sha(repo_path, "HEAD")?)?;
-    extract_repo_symbols_for(repo_path, &repo, &commit)
+    extract_repo_index_for(repo_path, &repo, &commit)
 }
 
 pub fn extract_repo_symbols_for(
@@ -137,10 +147,8 @@ pub fn extract_repo_index_for(
             .cmp(&right.file_path)
             .then(left.fqn.cmp(&right.fqn))
     });
-    Ok(RepoIndexEvidence {
-        calls: resolve_calls(&symbols, &calls),
-        symbols,
-    })
+    let resolved_calls = resolve_calls(&symbols, &calls);
+    Ok(RepoIndexEvidence::new(symbols, resolved_calls))
 }
 
 const fn is_supported_language(language: Language) -> bool {

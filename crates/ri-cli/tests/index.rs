@@ -71,6 +71,17 @@ pub fn apply_tax(value: i32) -> i32 {
     assert_eq!(edge_count(&pool, repo_id, "imports").await?, 1);
     assert_eq!(edge_count(&pool, repo_id, "calls").await?, 1);
     assert_eq!(edge_count(&pool, repo_id, "test_covers").await?, 1);
+    let impact_output = Command::new(env!("CARGO_BIN_EXE_ri-cli"))
+        .current_dir(repo.path())
+        .args(["impact", "--symbol", "apply_tax"])
+        .output()?;
+    assert!(
+        impact_output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&impact_output.stderr)
+    );
+    let impact_body = serde_json::from_slice::<Value>(&impact_output.stdout)?;
+    assert_json_array_contains(&impact_body, "/direct_callers", "apply_tax_adds_rate")?;
     cleanup(&pool, repo_id).await?;
     repo.cleanup()?;
     Ok(())
@@ -130,6 +141,22 @@ fn assert_positive(body: &Value, pointer: &str) -> Result<(), Box<dyn std::error
         .and_then(Value::as_u64)
         .ok_or_else(|| std::io::Error::other(format!("missing positive {pointer}")))?;
     assert!(value > 0, "{pointer} should be positive");
+    Ok(())
+}
+
+fn assert_json_array_contains(
+    body: &Value,
+    pointer: &str,
+    expected: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let values = body
+        .pointer(pointer)
+        .and_then(Value::as_array)
+        .ok_or_else(|| std::io::Error::other(format!("missing array {pointer}")))?;
+    assert!(
+        values.iter().any(|value| value.as_str() == Some(expected)),
+        "{pointer} should contain {expected}"
+    );
     Ok(())
 }
 

@@ -1,4 +1,4 @@
-use ri_context::extract_repo_symbols;
+use ri_context::{RepoIndexEvidence, extract_repo_index, extract_repo_symbols};
 use ri_git::LocalManifest;
 use ri_indexer::PgSymbolStore;
 use ri_symbols::SymbolRecord;
@@ -82,6 +82,15 @@ impl AppState {
             return Ok(Cow::Borrowed(symbols.as_ref()));
         }
         extract_repo_symbols(&self.context_repo_path).map(Cow::Owned)
+    }
+
+    pub(crate) fn context_index_evidence(
+        &self,
+    ) -> Result<RepoIndexEvidence, ri_context::ContextError> {
+        if let Some(symbols) = self.context_symbols.as_ref() {
+            return Ok(RepoIndexEvidence::new(symbols.to_vec(), Vec::new()));
+        }
+        extract_repo_index(&self.context_repo_path)
     }
 
     pub(crate) async fn symbols_for_optional_repo(

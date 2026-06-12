@@ -12,24 +12,12 @@ use serde_json::json;
 use crate::error::CliError;
 
 pub(crate) fn references_command(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
-    let Some(flag) = args.next() else {
-        return Err(CliError::Usage);
-    };
-    if flag != "--symbol" {
-        return Err(CliError::Usage);
-    }
-    let Some(symbol_query) = args.next() else {
-        return Err(CliError::Usage);
-    };
-    if args.next().is_some() {
-        return Err(CliError::Usage);
-    }
-
-    let evidence = ri_context::extract_repo_index(&PathBuf::from("."))?;
+    let request = ReferenceArgs::parse(&mut args)?;
+    let evidence = ri_context::extract_repo_index(&request.repo)?;
     let report = find_symbol_references(
         evidence.symbols.as_slice(),
         evidence.calls.as_slice(),
-        symbol_query.trim(),
+        request.symbol.trim(),
     )?;
     print_json(&json!({
         "status": "ok",
@@ -39,6 +27,39 @@ pub(crate) fn references_command(mut args: impl Iterator<Item = String>) -> Resu
         "outgoing_count": report.outgoing_count,
         "references": report.references,
     }))
+}
+
+#[derive(Debug)]
+struct ReferenceArgs {
+    repo: PathBuf,
+    symbol: String,
+}
+
+impl ReferenceArgs {
+    fn parse(args: &mut impl Iterator<Item = String>) -> Result<Self, CliError> {
+        let mut repo = PathBuf::from(".");
+        let mut symbol = None::<String>;
+
+        while let Some(flag) = args.next() {
+            match flag.as_str() {
+                "--repo" => {
+                    let Some(path) = args.next() else {
+                        return Err(CliError::Usage);
+                    };
+                    repo = PathBuf::from(path);
+                }
+                "--symbol" => {
+                    symbol = args.next();
+                }
+                _ => return Err(CliError::Usage),
+            }
+        }
+
+        Ok(Self {
+            repo,
+            symbol: symbol.ok_or(CliError::Usage)?,
+        })
+    }
 }
 
 fn print_json(value: &serde_json::Value) -> Result<(), CliError> {

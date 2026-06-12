@@ -107,7 +107,7 @@
     }
     .metrics {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(6, minmax(0, 1fr));
       gap: 12px;
       margin-bottom: 16px;
     }
@@ -186,6 +186,7 @@
         <a href="#overview" data-view="overview">Overview</a>
         <a href="#files" data-view="files">Files</a>
         <a href="#symbols" data-view="symbols">Symbols</a>
+        <a href="#references" data-view="references">References</a>
         <a href="#impact" data-view="impact">Impact</a>
         <a href="#coverage" data-view="coverage">Coverage</a>
         <a href="#search" data-view="search">Search</a>
@@ -202,6 +203,7 @@
       <section class="metrics" aria-label="Repository metrics">
         <div class="metric"><strong id="fileCount">0</strong><span>Files</span></div>
         <div class="metric"><strong id="symbolCount">0</strong><span>Symbols</span></div>
+        <div class="metric"><strong id="referenceCount">0</strong><span>References</span></div>
         <div class="metric"><strong id="edgeCount">0</strong><span>Edges</span></div>
         <div class="metric"><strong id="testCount">0</strong><span>Tests</span></div>
         <div class="metric"><strong id="coverageCount">0</strong><span>Coverage</span></div>
@@ -209,6 +211,7 @@
       <section class="grid">
         <article class="panel wide" data-panel="files"><h2>Files</h2><div class="list" id="files"></div></article>
         <article class="panel" data-panel="symbols"><h2>Symbols</h2><div class="list" id="symbols"></div></article>
+        <article class="panel" data-panel="references"><h2>References</h2><div class="list" id="references"></div></article>
         <article class="panel" data-panel="impact"><h2>Impact Map</h2><div class="list" id="graph"></div></article>
         <article class="panel" data-panel="tests"><h2>Related Tests</h2><div class="list" id="tests"></div></article>
         <article class="panel" data-panel="coverage"><h2>Coverage Evidence</h2><div class="list" id="coverage"></div></article>
@@ -277,17 +280,20 @@
         ]);
         const fileRows = files.value?.files ?? [];
         const symbolRows = symbols.value?.symbols ?? [];
+        const referenceRows = await referencesFor(symbolRows);
         const edgeRows = graph.value?.edges ?? [];
         const testRows = tests.value?.tests ?? [];
         const coverageRows = coverage.value?.segments ?? [];
         const docRows = docs.value?.entities ?? [];
         document.querySelector("#fileCount").textContent = fileRows.length;
         document.querySelector("#symbolCount").textContent = symbolRows.length;
+        document.querySelector("#referenceCount").textContent = referenceRows.length;
         document.querySelector("#edgeCount").textContent = edgeRows.length;
         document.querySelector("#testCount").textContent = testRows.length;
         document.querySelector("#coverageCount").textContent = coverageRows.length;
         renderList(document.querySelector("#files"), fileRows.slice(0, 24).map((file) => row(file.path, `${file.language} ${file.size_bytes ?? 0} bytes`)), "No files indexed");
         renderList(document.querySelector("#symbols"), symbolRows.slice(0, 24).map((symbol) => row(symbol.fqn, `${symbol.kind} ${symbol.file_path}`)), "No symbols indexed");
+        renderList(document.querySelector("#references"), referenceRows.slice(0, 24).map((ref) => row(`${ref.source_fqn} -> ${ref.target_fqn}`, `${ref.direction} ${ref.relation}`)), "No references indexed");
         renderList(document.querySelector("#graph"), edgeRows.slice(0, 24).map((edge) => row(`${edge.source_fqn ?? edge.source_id} -> ${edge.target_fqn ?? edge.target_id}`, edge.edge_type ?? edge.relation)), "No graph edges indexed");
         renderList(document.querySelector("#tests"), testRows.slice(0, 24).map((test) => row(test.fqn, `${test.framework ?? "static"} ${test.file_path ?? ""}`)), "No tests indexed");
         renderList(document.querySelector("#coverage"), coverageRows.slice(0, 24).map((segment) => row(segment.file_path, `${segment.format} lines ${segment.start_line}-${segment.end_line} hits ${segment.hit_count}`)), "No coverage evidence indexed");
@@ -296,6 +302,13 @@
       } catch (error) {
         status.textContent = error.message;
       }
+    };
+
+    const referencesFor = async (symbols) => {
+      const symbol = symbols.find((item) => item.fqn)?.fqn;
+      if (!symbol) return [];
+      const report = await json(`${api("references")}?symbol=${encodeURIComponent(symbol)}`);
+      return report.references ?? [];
     };
 
     document.querySelectorAll("nav a").forEach((link) => {

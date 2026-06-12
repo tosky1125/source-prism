@@ -18,6 +18,7 @@ enum ExplorerView {
     Overview,
     Files,
     Symbols,
+    References,
     Impact,
     Coverage,
     Search,
@@ -29,6 +30,7 @@ impl ExplorerView {
             Self::Overview => "overview",
             Self::Files => "files",
             Self::Symbols => "symbols",
+            Self::References => "references",
             Self::Impact => "impact",
             Self::Coverage => "coverage",
             Self::Search => "search",
@@ -39,6 +41,7 @@ impl ExplorerView {
         match value {
             "files" => Self::Files,
             "symbols" => Self::Symbols,
+            "references" => Self::References,
             "impact" => Self::Impact,
             "coverage" => Self::Coverage,
             "search" => Self::Search,

@@ -83,6 +83,11 @@ fn repo_runs_fixture_is_indexed() {
             .and_then(Value::as_str),
         Some("queued")
     );
+    assert_count_at_least(
+        &body,
+        "/runs/0/evidence/search_sync_outbox_state_counts/queued",
+        1,
+    )?;
     cleanup(&pool, &repo_id).await?;
     repo.cleanup()?;
     Ok(())

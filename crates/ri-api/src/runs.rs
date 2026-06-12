@@ -8,7 +8,10 @@ use sqlx::{PgPool, Row as _};
 use crate::{
     AppError,
     run_jobs::{RunSearchSyncJob, find_search_sync_jobs},
-    run_outbox::{RunSearchSyncOutboxItem, find_search_sync_outbox},
+    run_outbox::{
+        RunSearchSyncOutboxItem, RunSearchSyncOutboxStateCounts, count_search_sync_outbox_states,
+        find_search_sync_outbox,
+    },
     state::AppState,
 };
 
@@ -42,6 +45,7 @@ pub(crate) struct RunEvidence {
     graph_edges: i64,
     search_chunks: i64,
     search_sync_outbox_details: Vec<RunSearchSyncOutboxItem>,
+    search_sync_outbox_state_counts: RunSearchSyncOutboxStateCounts,
     search_sync_jobs: i64,
     search_sync_job_details: Vec<RunSearchSyncJob>,
     test_cases: i64,
@@ -134,6 +138,7 @@ async fn find_run(pool: &PgPool, run_id: &str) -> Result<RunSummary, AppError> {
     })?;
     let search_sync_job_details = find_search_sync_jobs(pool, run_id).await?;
     let search_sync_outbox_details = find_search_sync_outbox(pool, run_id).await?;
+    let search_sync_outbox_state_counts = count_search_sync_outbox_states(pool, run_id).await?;
     Ok(RunSummary {
         run_id: row.try_get("generation_id")?,
         repo_id: row.try_get("repo_id")?,
@@ -152,6 +157,7 @@ async fn find_run(pool: &PgPool, run_id: &str) -> Result<RunSummary, AppError> {
             graph_edges: row.try_get("graph_edge_count")?,
             search_chunks: row.try_get("search_chunk_count")?,
             search_sync_outbox_details,
+            search_sync_outbox_state_counts,
             search_sync_jobs: row.try_get("search_sync_job_count")?,
             search_sync_job_details,
             test_cases: row.try_get("test_case_count")?,
@@ -166,7 +172,7 @@ async fn find_run(pool: &PgPool, run_id: &str) -> Result<RunSummary, AppError> {
 mod tests {
     use super::RunEvidence;
     use crate::run_jobs::{RunSearchSyncJob, RunSearchSyncJobAttempt};
-    use crate::run_outbox::RunSearchSyncOutboxItem;
+    use crate::run_outbox::{RunSearchSyncOutboxItem, RunSearchSyncOutboxStateCounts};
     use serde_json::Value;
 
     #[test]
@@ -188,6 +194,15 @@ mod tests {
                 processed_at: None,
                 last_error: None,
             }],
+            search_sync_outbox_state_counts: RunSearchSyncOutboxStateCounts {
+                queued: 1,
+                leased: 0,
+                succeeded: 0,
+                failed: 0,
+                dead_lettered: 0,
+                cancelled: 0,
+                total: 1,
+            },
             search_sync_jobs: 1,
             search_sync_job_details: vec![RunSearchSyncJob {
                 job_id: "job-1".to_owned(),
@@ -229,6 +244,11 @@ mod tests {
             body.pointer("/search_sync_outbox_details/0/state")
                 .and_then(Value::as_str),
             Some("queued")
+        );
+        assert_eq!(
+            body.pointer("/search_sync_outbox_state_counts/queued")
+                .and_then(Value::as_i64),
+            Some(1)
         );
         Ok(())
     }

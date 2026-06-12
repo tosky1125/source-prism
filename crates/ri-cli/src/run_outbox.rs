@@ -49,3 +49,36 @@ pub(crate) async fn search_sync_outbox(
         })
         .collect()
 }
+
+pub(crate) async fn search_sync_outbox_state_counts(
+    pool: &PgPool,
+    generation_id: &str,
+) -> Result<serde_json::Value, CliError> {
+    let row = sqlx::query(
+        r"
+        SELECT
+            count(*) FILTER (WHERE state = 'queued')::bigint AS queued,
+            count(*) FILTER (WHERE state = 'leased')::bigint AS leased,
+            count(*) FILTER (WHERE state = 'succeeded')::bigint AS succeeded,
+            count(*) FILTER (WHERE state = 'failed')::bigint AS failed,
+            count(*) FILTER (WHERE state = 'dead_lettered')::bigint AS dead_lettered,
+            count(*) FILTER (WHERE state = 'cancelled')::bigint AS cancelled,
+            count(*)::bigint AS total
+        FROM search_sync_outbox
+        WHERE generation_id = $1
+        ",
+    )
+    .bind(generation_id)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(json!({
+        "queued": row.try_get::<i64, _>("queued")?,
+        "leased": row.try_get::<i64, _>("leased")?,
+        "succeeded": row.try_get::<i64, _>("succeeded")?,
+        "failed": row.try_get::<i64, _>("failed")?,
+        "dead_lettered": row.try_get::<i64, _>("dead_lettered")?,
+        "cancelled": row.try_get::<i64, _>("cancelled")?,
+        "total": row.try_get::<i64, _>("total")?,
+    }))
+}

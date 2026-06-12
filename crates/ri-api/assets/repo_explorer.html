@@ -28,7 +28,7 @@
       background-size: 32px 32px;
       font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
     }
-    button, input { font: inherit; }
+    button, input, textarea { font: inherit; }
     .shell {
       min-height: 100vh;
       display: grid;
@@ -97,6 +97,17 @@
       background: var(--panel);
       color: var(--ink);
     }
+    textarea {
+      width: 100%;
+      min-height: 132px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px 12px;
+      background: var(--panel);
+      color: var(--ink);
+      line-height: 1.35;
+    }
     button {
       border: 1px solid var(--graphite);
       border-radius: 6px;
@@ -163,6 +174,12 @@
       min-height: 20px;
       margin-top: 14px;
     }
+    .diff-form {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .diff-form button { justify-self: start; }
     @media (max-width: 900px) {
       .shell { grid-template-columns: 1fr; }
       aside {
@@ -194,6 +211,7 @@
         <a href="#docs" data-view="docs">Docs</a>
         <a href="#runs" data-view="runs">Runs</a>
         <a href="#sync" data-view="sync">Sync</a>
+        <a href="#changes" data-view="changes">Changes</a>
         <a href="#search" data-view="search">Search</a>
       </nav>
     </aside>
@@ -225,6 +243,14 @@
         <article class="panel" data-panel="docs"><h2>Docs / Contracts</h2><div class="list" id="docs"></div></article>
         <article class="panel wide" data-panel="runs"><h2>Index Runs</h2><div class="list" id="runs"></div></article>
         <article class="panel" data-panel="sync"><h2>Search Sync</h2><div class="list" id="sync"></div></article>
+        <article class="panel wide" data-panel="changes">
+          <h2>Changed Symbols</h2>
+          <form class="diff-form" id="diffForm">
+            <textarea id="diffInput" name="diff" spellcheck="false" placeholder="diff --git a/src/lib.rs b/src/lib.rs"></textarea>
+            <button type="submit">Map Diff</button>
+          </form>
+          <div class="list" id="changedSymbols"></div>
+        </article>
         <article class="panel wide" data-panel="search"><h2>Search Results</h2><div class="list" id="searchResults"></div></article>
       </section>
       <div class="status" id="status"></div>
@@ -251,6 +277,16 @@
 
     const json = async (url) => {
       const response = await fetch(url);
+      if (!response.ok) throw new Error(`${response.status} ${url}`);
+      return response.json();
+    };
+
+    const postJson = async (url, body) => {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body)
+      });
       if (!response.ok) throw new Error(`${response.status} ${url}`);
       return response.json();
     };
@@ -410,16 +446,24 @@
     const runSearch = async (query) => {
       if (!query) return;
       setView("search");
-      const result = await fetch(`${repoApi}/context/search`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ query })
-      }).then((response) => response.json());
+      const result = await postJson(`${repoApi}/context/search`, { query });
       const hits = result.context_pack?.hits ?? [];
       const bm25 = result.bm25_hits ?? [];
       const symbolRows = hits.map((hit) => row(hit.symbol.fqn, `symbol score ${hit.score} ${hit.symbol.file_path}`));
       const bm25Rows = bm25.map((hit) => row(hit.symbol?.fqn ?? hit.chunk_id, `BM25 score ${hit.score.toFixed(2)} ${hit.symbol?.file_path ?? hit.chunk_id}`, "bm25"));
       renderList(document.querySelector("#searchResults"), symbolRows.concat(bm25Rows), "No matches");
+    };
+
+    const runChangedSymbols = async (diff) => {
+      if (!diff) return;
+      setView("changes");
+      const result = await postJson(api("changed-symbols"), { diff });
+      const rows = (result.changed_symbols ?? []).map((changed) => row(
+        changed.symbol.fqn,
+        `${changed.file_path}:${changed.line} ${changed.symbol.kind}`
+      ));
+      renderList(document.querySelector("#changedSymbols"), rows, "No changed symbols mapped");
+      status.textContent = `Mapped ${result.matched_symbol_count ?? 0} of ${result.changed_line_count ?? 0} changed lines`;
     };
 
     const runInitialSearch = () => {
@@ -436,6 +480,11 @@
       event.preventDefault();
       const query = document.querySelector("#query").value.trim();
       await runSearch(query);
+    });
+    document.querySelector("#diffForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const diff = document.querySelector("#diffInput").value.trim();
+      await runChangedSymbols(diff);
     });
     load().then(runInitialSearch);
   </script>

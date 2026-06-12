@@ -34,6 +34,7 @@ async fn repo_web_shell_returns_structure_explorer() -> Result<(), Box<dyn std::
     assert!(body.contains("Docs"));
     assert!(body.contains("Runs"));
     assert!(body.contains("Sync"));
+    assert!(body.contains("Changes"));
     assert!(body.contains("Search Results"));
     assert!(body.contains("data-panel=\"overview\""));
     assert!(body.contains("id=\"latestRun\""));
@@ -41,6 +42,8 @@ async fn repo_web_shell_returns_structure_explorer() -> Result<(), Box<dyn std::
     assert!(body.contains("id=\"runs\""));
     assert!(body.contains("id=\"sync\""));
     assert!(body.contains("id=\"syncJobCount\""));
+    assert!(body.contains("id=\"changedSymbols\""));
+    assert!(body.contains("id=\"diffInput\""));
     assert!(body.contains("const repoApi"));
     assert!(body.contains("json(repoApi)"));
     assert!(body.contains("latest_run"));
@@ -51,6 +54,7 @@ async fn repo_web_shell_returns_structure_explorer() -> Result<(), Box<dyn std::
     assert!(body.contains("api(\"coverage\")"));
     assert!(body.contains("api(\"runs\")"));
     assert!(body.contains("api(\"search-sync\")"));
+    assert!(body.contains("api(\"changed-symbols\")"));
     assert!(body.contains("api(\"test-context\")"));
     assert!(body.contains("graph.value?.graph?.edges"));
     assert!(body.contains("related_tests"));
@@ -60,6 +64,7 @@ async fn repo_web_shell_returns_structure_explorer() -> Result<(), Box<dyn std::
     assert!(body.contains("result.context_pack?.hits"));
     assert!(body.contains("`${repoApi}/context/search`"));
     assert!(body.contains("result.bm25_hits"));
+    assert!(body.contains("runChangedSymbols"));
     assert!(body.contains("BM25"));
     assert!(body.contains("URLSearchParams"));
     Ok(())
@@ -78,6 +83,7 @@ async fn repo_web_shell_accepts_deep_repo_views() -> Result<(), Box<dyn std::err
         "docs",
         "runs",
         "sync",
+        "changes",
         "search",
     ] {
         let request = Request::builder()

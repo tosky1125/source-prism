@@ -86,9 +86,9 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
         "symbols" => symbols::symbols_command(args)
             .await
             .map(|()| ExitCode::SUCCESS),
-        "changed-symbols" => {
-            changed_symbols::changed_symbols_command(args).map(|()| ExitCode::SUCCESS)
-        }
+        "changed-symbols" => changed_symbols::changed_symbols_command(args)
+            .await
+            .map(|()| ExitCode::SUCCESS),
         "references" => references::references_command(args)
             .await
             .map(|()| ExitCode::SUCCESS),

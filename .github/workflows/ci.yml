@@ -131,6 +131,18 @@ jobs:
           cargo run -p ri-cli -- symbols --repo-id "$cli_repo_id" > /tmp/source-prism-persisted-symbols.json
           grep '"kind": "symbols"' /tmp/source-prism-persisted-symbols.json
           grep '"repo_id":' /tmp/source-prism-persisted-symbols.json
+          cat > /tmp/source-prism-changed-symbols.diff <<'DIFF'
+          diff --git a/crates/ri-cli/src/search_context.rs b/crates/ri-cli/src/search_context.rs
+          index 1111111..2222222 100644
+          --- a/crates/ri-cli/src/search_context.rs
+          +++ b/crates/ri-cli/src/search_context.rs
+          @@ -25,1 +25,2 @@
+           pub(crate) async fn search_context_command(
+          +    let _source_prism_probe = true;
+          DIFF
+          cargo run -p ri-cli -- changed-symbols --repo-id "$cli_repo_id" --diff /tmp/source-prism-changed-symbols.diff > /tmp/source-prism-persisted-changed-symbols.json
+          grep '"kind": "changed_symbols"' /tmp/source-prism-persisted-changed-symbols.json
+          grep '"repo_id":' /tmp/source-prism-persisted-changed-symbols.json
           cargo run -p ri-cli -- architecture --repo-id "$cli_repo_id" > /tmp/source-prism-persisted-architecture.json
           grep '"kind": "architecture"' /tmp/source-prism-persisted-architecture.json
           grep '"repo_id":' /tmp/source-prism-persisted-architecture.json

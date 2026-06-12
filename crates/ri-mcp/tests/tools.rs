@@ -71,8 +71,11 @@ fn handler_answers_repo_tools_from_existing_evidence() -> Result<(), Box<dyn std
     assert_eq!(symbol.fqn, "apply_tax");
     assert_eq!(references.references.len(), 1);
     assert_eq!(impact.direct_callers, ["apply_tax_adds_rate"]);
-    assert!(!context.vector_only);
+    assert_eq!(context.hit_count, 2);
+    assert_eq!(context.impact_count, 2);
+    assert!(!context.context_pack.vector_only);
     let hit = context
+        .context_pack
         .hits
         .first()
         .ok_or_else(|| std::io::Error::other("missing context hit"))?;

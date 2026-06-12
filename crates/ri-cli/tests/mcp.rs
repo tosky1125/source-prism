@@ -113,12 +113,33 @@ fn mcp_call_search_context_returns_non_vector_context() -> Result<(), Box<dyn st
         body.pointer("/tool").and_then(Value::as_str),
         Some("repo.search_context")
     );
+    let hit_count = body
+        .pointer("/result/hit_count")
+        .and_then(Value::as_u64)
+        .ok_or_else(|| std::io::Error::other("missing hit_count"))?;
+    let impact_count = body
+        .pointer("/result/impact_count")
+        .and_then(Value::as_u64)
+        .ok_or_else(|| std::io::Error::other("missing impact_count"))?;
+    let hits = body
+        .pointer("/result/context_pack/hits")
+        .and_then(Value::as_array)
+        .ok_or_else(|| std::io::Error::other("missing hits"))?;
+    let impacts = body
+        .pointer("/result/context_pack/impacts")
+        .and_then(Value::as_array)
+        .ok_or_else(|| std::io::Error::other("missing impacts"))?;
+
+    assert!(hit_count > 0);
+    assert_eq!(hit_count, u64::try_from(hits.len())?);
+    assert_eq!(impact_count, u64::try_from(impacts.len())?);
     assert_eq!(
-        body.pointer("/result/vector_only").and_then(Value::as_bool),
+        body.pointer("/result/context_pack/vector_only")
+            .and_then(Value::as_bool),
         Some(false)
     );
     assert_eq!(
-        body.pointer("/result/hits/0/symbol/fqn")
+        body.pointer("/result/context_pack/hits/0/symbol/fqn")
             .and_then(Value::as_str),
         Some("mcp_tools_command_returns_repo_tool_catalog")
     );

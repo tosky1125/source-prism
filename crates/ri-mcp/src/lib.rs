@@ -117,6 +117,24 @@ impl SearchContextToolRequest {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct SearchContextToolResult {
+    pub hit_count: usize,
+    pub impact_count: usize,
+    pub context_pack: ContextPack,
+}
+
+impl SearchContextToolResult {
+    pub fn new(context_pack: ContextPack) -> Self {
+        Self {
+            hit_count: context_pack.hits.len(),
+            impact_count: context_pack.impacts.len(),
+            context_pack,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct RepositoryToolHandler {
@@ -155,13 +173,14 @@ impl RepositoryToolHandler {
     pub fn search_context(
         &self,
         request: &SearchContextToolRequest,
-    ) -> Result<ContextPack, McpToolError> {
-        Ok(build_context_pack_with_calls(
+    ) -> Result<SearchContextToolResult, McpToolError> {
+        let context_pack = build_context_pack_with_calls(
             &self.symbols,
             self.impact_call_edges().as_slice(),
             request.query.as_str(),
             request.limit,
-        ))
+        );
+        Ok(SearchContextToolResult::new(context_pack))
     }
 
     fn impact_call_edges(&self) -> Vec<ImpactCallEdge> {

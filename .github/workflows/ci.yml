@@ -69,7 +69,7 @@ jobs:
           cargo run -p ri-cli -- config check --env-file .env.example
           cargo run -p ri-cli -- db migrate
           cargo run -p ri-cli -- repo manifest --repo . | grep '"kind": "manifest"'
-          cargo run -p ri-cli -- impact --symbol 'InvoiceService::applyTax' > /tmp/source-prism-smoke-impact.json
+          cargo run -p ri-cli -- impact --repo . --symbol search_context_command > /tmp/source-prism-smoke-impact.json
           grep '"kind": "impact"' /tmp/source-prism-smoke-impact.json
           grep '"status": "ok"' /tmp/source-prism-smoke-impact.json
           cargo run -p ri-cli -- mcp tools > /tmp/source-prism-mcp-tools.json
@@ -78,6 +78,9 @@ jobs:
           cargo run -p ri-cli -- mcp call --repo . --tool repo.get_symbol --symbol search_context_command > /tmp/source-prism-mcp-call.json
           grep '"kind": "mcp_tool_result"' /tmp/source-prism-mcp-call.json
           grep '"tool": "repo.get_symbol"' /tmp/source-prism-mcp-call.json
+          cargo run -p ri-cli -- mcp call --repo . --tool repo.get_test_context --symbol mcp_tools_command_returns_repo_tool_catalog > /tmp/source-prism-mcp-test-context.json
+          grep '"tool": "repo.get_test_context"' /tmp/source-prism-mcp-test-context.json
+          grep '"code_execution_allowed": false' /tmp/source-prism-mcp-test-context.json
           cat > /tmp/source-prism-mcp-request.json <<'JSON'
           {
             "jsonrpc": "2.0",

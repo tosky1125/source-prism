@@ -3,7 +3,7 @@ use serde_json::{Value, json};
 
 use crate::{
     ImpactToolRequest, McpToolCatalog, ReferenceToolRequest, RepositoryToolHandler,
-    SearchContextToolRequest, SymbolToolRequest,
+    SearchContextToolRequest, SymbolToolRequest, TestContextToolRequest,
 };
 
 const JSONRPC_VERSION: &str = "2.0";
@@ -57,6 +57,15 @@ fn handle_tool_call(handler: &RepositoryToolHandler, id: &Value, params: Value) 
                 .and_then(|request| {
                     handler
                         .get_impact(&request)
+                        .map_err(|error| error.to_string())
+                }),
+        ),
+        "repo.get_test_context" => tool_result(
+            serde_json::from_value::<TestContextToolRequest>(params.arguments)
+                .map_err(|error| error.to_string())
+                .and_then(|request| {
+                    handler
+                        .get_test_context(&request)
                         .map_err(|error| error.to_string())
                 }),
         ),

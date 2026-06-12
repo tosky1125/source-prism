@@ -11,7 +11,7 @@ use std::{
 
 use ri_mcp::{
     ImpactToolRequest, McpToolCatalog, ReferenceToolRequest, RepositoryToolHandler,
-    SearchContextToolRequest, SymbolToolRequest, handle_json_rpc_request,
+    SearchContextToolRequest, SymbolToolRequest, TestContextToolRequest, handle_json_rpc_request,
 };
 use serde_json::json;
 
@@ -54,6 +54,9 @@ fn call_command(args: impl Iterator<Item = String>) -> Result<(), CliError> {
         )?,
         "repo.get_impact" => serde_json::to_value(
             handler.get_impact(&ImpactToolRequest::new(request.required_symbol()?))?,
+        )?,
+        "repo.get_test_context" => serde_json::to_value(
+            handler.get_test_context(&TestContextToolRequest::new(request.required_symbol()?))?,
         )?,
         "repo.search_context" => serde_json::to_value(handler.search_context(
             &SearchContextToolRequest::new(request.required_query()?, request.limit),

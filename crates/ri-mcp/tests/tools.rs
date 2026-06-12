@@ -4,7 +4,7 @@ use ri_context::ResolvedCallReference;
 use ri_core::{CommitSha, FilePath, Language, RepoId, SymbolKind};
 use ri_mcp::{
     ImpactToolRequest, McpToolCatalog, ReferenceToolRequest, RepositoryToolHandler,
-    SearchContextToolRequest, SymbolToolRequest, handle_json_rpc_request,
+    SearchContextToolRequest, SymbolToolRequest, TestContextToolRequest, handle_json_rpc_request,
 };
 use ri_symbols::{SymbolRange, SymbolRecord, SymbolSpec};
 
@@ -23,6 +23,7 @@ fn tool_catalog_exposes_repo_intelligence_tools() {
             "repo.get_symbol",
             "repo.find_references",
             "repo.get_impact",
+            "repo.get_test_context",
             "repo.search_context"
         ]
     );
@@ -66,11 +67,18 @@ fn handler_answers_repo_tools_from_existing_evidence() -> Result<(), Box<dyn std
     let symbol = handler.get_symbol(&SymbolToolRequest::new("apply_tax"))?;
     let references = handler.find_references(&ReferenceToolRequest::new("apply_tax"))?;
     let impact = handler.get_impact(&ImpactToolRequest::new("apply_tax"))?;
+    let test_context = handler.get_test_context(&TestContextToolRequest::new("apply_tax"))?;
     let context = handler.search_context(&SearchContextToolRequest::new("apply_tax", 4))?;
 
     assert_eq!(symbol.fqn, "apply_tax");
     assert_eq!(references.references.len(), 1);
     assert_eq!(impact.direct_callers, ["apply_tax_adds_rate"]);
+    assert!(!test_context.code_execution_allowed);
+    let related_test = test_context
+        .related_tests
+        .first()
+        .ok_or_else(|| std::io::Error::other("missing related test"))?;
+    assert_eq!(related_test.fqn, "apply_tax_adds_rate");
     assert_eq!(context.hit_count, 2);
     assert_eq!(context.impact_count, 2);
     assert!(!context.context_pack.vector_only);

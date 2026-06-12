@@ -38,6 +38,7 @@ fn mcp_tools_command_returns_repo_tool_catalog() -> Result<(), Box<dyn std::erro
             "repo.get_symbol",
             "repo.find_references",
             "repo.get_impact",
+            "repo.get_test_context",
             "repo.search_context"
         ]
     );
@@ -143,6 +144,50 @@ fn mcp_call_search_context_returns_non_vector_context() -> Result<(), Box<dyn st
             .and_then(Value::as_str),
         Some("mcp_tools_command_returns_repo_tool_catalog")
     );
+    Ok(())
+}
+
+#[test]
+fn mcp_call_get_test_context_returns_related_tests() -> Result<(), Box<dyn std::error::Error>> {
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_ri-cli"))
+        .current_dir(repo_root)
+        .args([
+            "mcp",
+            "call",
+            "--repo",
+            ".",
+            "--tool",
+            "repo.get_test_context",
+            "--symbol",
+            "mcp_tools_command_returns_repo_tool_catalog",
+        ])
+        .output()?;
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let body = serde_json::from_slice::<Value>(&output.stdout)?;
+    assert_eq!(
+        body.pointer("/tool").and_then(Value::as_str),
+        Some("repo.get_test_context")
+    );
+    assert_eq!(
+        body.pointer("/result/code_execution_allowed")
+            .and_then(Value::as_bool),
+        Some(false)
+    );
+    let related_tests = body
+        .pointer("/result/related_tests")
+        .and_then(Value::as_array)
+        .ok_or_else(|| std::io::Error::other("missing related_tests"))?;
+    assert!(related_tests.iter().any(|test| {
+        test.get("fqn").and_then(Value::as_str)
+            == Some("mcp_tools_command_returns_repo_tool_catalog")
+    }));
     Ok(())
 }
 

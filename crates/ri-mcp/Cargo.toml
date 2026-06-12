@@ -11,6 +11,7 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
+ri-behavior = { path = "../ri-behavior" }
 ri-context = { path = "../ri-context" }
 ri-core = { path = "../ri-core" }
 ri-impact = { path = "../ri-impact" }

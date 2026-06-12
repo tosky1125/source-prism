@@ -9,6 +9,7 @@
 
 mod runtime;
 
+use ri_behavior::{BehaviorError, TestContext, build_test_context};
 use ri_context::{
     ContextError, ContextPack, ReferenceReport, ResolvedCallReference,
     build_context_pack_with_calls, find_symbol_references, symbol_for_query,
@@ -24,6 +25,7 @@ pub use runtime::handle_json_rpc_request;
 const GET_SYMBOL: &str = "repo.get_symbol";
 const FIND_REFERENCES: &str = "repo.find_references";
 const GET_IMPACT: &str = "repo.get_impact";
+const GET_TEST_CONTEXT: &str = "repo.get_test_context";
 const SEARCH_CONTEXT: &str = "repo.search_context";
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -54,6 +56,10 @@ impl McpToolCatalog {
                 "Return incoming and outgoing symbol references.",
             ),
             tool(GET_IMPACT, "Return impact evidence for one symbol."),
+            tool(
+                GET_TEST_CONTEXT,
+                "Return related tests without executing code.",
+            ),
             search_tool(),
         ]
     }
@@ -113,6 +119,20 @@ impl SearchContextToolRequest {
         Self {
             query: query.into(),
             limit,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct TestContextToolRequest {
+    pub symbol: String,
+}
+
+impl TestContextToolRequest {
+    pub fn new(symbol: impl Into<String>) -> Self {
+        Self {
+            symbol: symbol.into(),
         }
     }
 }
@@ -183,6 +203,13 @@ impl RepositoryToolHandler {
         Ok(SearchContextToolResult::new(context_pack))
     }
 
+    pub fn get_test_context(
+        &self,
+        request: &TestContextToolRequest,
+    ) -> Result<TestContext, McpToolError> {
+        Ok(build_test_context(&self.symbols, request.symbol.as_str())?)
+    }
+
     fn impact_call_edges(&self) -> Vec<ImpactCallEdge> {
         self.calls
             .iter()
@@ -200,6 +227,8 @@ pub enum McpToolError {
     Context(#[from] ContextError),
     #[error(transparent)]
     Impact(#[from] ImpactError),
+    #[error(transparent)]
+    Behavior(#[from] BehaviorError),
 }
 
 fn tool(name: &str, description: &str) -> McpToolSpec {

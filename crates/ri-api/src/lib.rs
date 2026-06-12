@@ -32,6 +32,7 @@ pub(crate) mod repo_tests;
 pub(crate) mod repos;
 pub(crate) mod review;
 pub(crate) mod run_jobs;
+pub(crate) mod run_outbox;
 pub(crate) mod runs;
 pub(crate) mod state;
 pub(crate) mod test_context;

@@ -11,7 +11,7 @@ use std::{
 use serde_json::json;
 use sqlx::{PgPool, Row as _, postgres::PgPoolOptions};
 
-use crate::{CliError, run_jobs::search_sync_jobs};
+use crate::{CliError, run_jobs::search_sync_jobs, run_outbox::search_sync_outbox};
 
 pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
     let Some(flag) = args.next() else {
@@ -108,6 +108,7 @@ async fn repo_runs(pool: &PgPool, repo_id: &str) -> Result<Vec<serde_json::Value
     for row in rows {
         let run_id = row.try_get::<String, _>("generation_id")?;
         let search_sync_job_details = search_sync_jobs(pool, run_id.as_str()).await?;
+        let search_sync_outbox_details = search_sync_outbox(pool, run_id.as_str()).await?;
         runs.push(json!({
             "run_id": run_id,
             "commit_sha": row.try_get::<String, _>("commit_sha")?,
@@ -120,6 +121,7 @@ async fn repo_runs(pool: &PgPool, repo_id: &str) -> Result<Vec<serde_json::Value
                 "symbols": row.try_get::<i64, _>("symbol_count")?,
                 "graph_edges": row.try_get::<i64, _>("graph_edge_count")?,
                 "search_chunks": row.try_get::<i64, _>("search_chunk_count")?,
+                "search_sync_outbox_details": search_sync_outbox_details,
                 "search_sync_jobs": row.try_get::<i64, _>("search_sync_job_count")?,
                 "search_sync_job_details": search_sync_job_details,
                 "test_cases": row.try_get::<i64, _>("test_case_count")?,
@@ -173,6 +175,7 @@ async fn run_by_id(pool: &PgPool, run_id: &str) -> Result<serde_json::Value, Cli
     .fetch_one(pool)
     .await?;
     let search_sync_job_details = search_sync_jobs(pool, run_id).await?;
+    let search_sync_outbox_details = search_sync_outbox(pool, run_id).await?;
     Ok(json!({
         "run_id": row.try_get::<String, _>("generation_id")?,
         "repo_id": row.try_get::<String, _>("repo_id")?,
@@ -186,6 +189,7 @@ async fn run_by_id(pool: &PgPool, run_id: &str) -> Result<serde_json::Value, Cli
             "symbols": row.try_get::<i64, _>("symbol_count")?,
             "graph_edges": row.try_get::<i64, _>("graph_edge_count")?,
             "search_chunks": row.try_get::<i64, _>("search_chunk_count")?,
+            "search_sync_outbox_details": search_sync_outbox_details,
             "search_sync_jobs": row.try_get::<i64, _>("search_sync_job_count")?,
             "search_sync_job_details": search_sync_job_details,
             "test_cases": row.try_get::<i64, _>("test_case_count")?,

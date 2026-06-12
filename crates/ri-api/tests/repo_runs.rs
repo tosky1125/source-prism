@@ -78,6 +78,11 @@ fn repo_runs_fixture_is_indexed() {
             .and_then(Value::as_str),
         Some("queued")
     );
+    assert_eq!(
+        body.pointer("/runs/0/evidence/search_sync_outbox_details/0/state")
+            .and_then(Value::as_str),
+        Some("queued")
+    );
     cleanup(&pool, &repo_id).await?;
     repo.cleanup()?;
     Ok(())

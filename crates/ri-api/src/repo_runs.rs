@@ -8,6 +8,7 @@ use sqlx::{PgPool, Row as _};
 use crate::{
     AppError,
     run_jobs::{RunSearchSyncJob, find_search_sync_jobs},
+    run_outbox::{RunSearchSyncOutboxItem, find_search_sync_outbox},
     state::AppState,
 };
 
@@ -37,6 +38,7 @@ pub(crate) struct RepoRunEvidence {
     symbols: i64,
     graph_edges: i64,
     search_chunks: i64,
+    search_sync_outbox_details: Vec<RunSearchSyncOutboxItem>,
     search_sync_jobs: i64,
     search_sync_job_details: Vec<RunSearchSyncJob>,
     test_cases: i64,
@@ -110,6 +112,7 @@ async fn find_repo_runs(pool: &PgPool, repo_id: &str) -> Result<Vec<RepoRunSumma
     for row in rows {
         let run_id = row.try_get::<String, _>("generation_id")?;
         let search_sync_job_details = find_search_sync_jobs(pool, &run_id).await?;
+        let search_sync_outbox_details = find_search_sync_outbox(pool, &run_id).await?;
         runs.push(RepoRunSummary {
             run_id,
             commit_sha: row.try_get("commit_sha")?,
@@ -122,6 +125,7 @@ async fn find_repo_runs(pool: &PgPool, repo_id: &str) -> Result<Vec<RepoRunSumma
                 symbols: row.try_get("symbol_count")?,
                 graph_edges: row.try_get("graph_edge_count")?,
                 search_chunks: row.try_get("search_chunk_count")?,
+                search_sync_outbox_details,
                 search_sync_jobs: row.try_get("search_sync_job_count")?,
                 search_sync_job_details,
                 test_cases: row.try_get("test_case_count")?,

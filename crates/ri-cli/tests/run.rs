@@ -91,6 +91,11 @@ fn cli_run_fixture_is_indexed() {
             .and_then(Value::as_str),
         Some("started")
     );
+    assert_eq!(
+        body.pointer("/run/evidence/search_sync_outbox_details/0/state")
+            .and_then(Value::as_str),
+        Some("queued")
+    );
     assert_count_at_least(&body, "/run/evidence/symbols", 2)?;
     cleanup(&pool, &repo_id).await?;
     repo.cleanup()?;

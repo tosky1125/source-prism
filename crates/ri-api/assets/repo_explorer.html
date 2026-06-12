@@ -188,7 +188,9 @@
         <a href="#symbols" data-view="symbols">Symbols</a>
         <a href="#references" data-view="references">References</a>
         <a href="#impact" data-view="impact">Impact</a>
+        <a href="#tests" data-view="tests">Tests</a>
         <a href="#coverage" data-view="coverage">Coverage</a>
+        <a href="#docs" data-view="docs">Docs</a>
         <a href="#search" data-view="search">Search</a>
       </nav>
     </aside>
@@ -281,7 +283,9 @@
         const fileRows = files.value?.files ?? [];
         const symbolRows = symbols.value?.symbols ?? [];
         const referenceRows = await referencesFor(symbolRows);
-        const edgeRows = graph.value?.edges ?? [];
+        const graphNodes = graph.value?.graph?.nodes ?? [];
+        const edgeRows = graph.value?.graph?.edges ?? [];
+        const nodeNames = new Map(graphNodes.map((node) => [node.graph_node_id, node.display_name]));
         const testRows = tests.value?.tests ?? [];
         const coverageRows = coverage.value?.segments ?? [];
         const docRows = docs.value?.entities ?? [];
@@ -294,7 +298,7 @@
         renderList(document.querySelector("#files"), fileRows.slice(0, 24).map((file) => row(file.path, `${file.language} ${file.size_bytes ?? 0} bytes`)), "No files indexed");
         renderList(document.querySelector("#symbols"), symbolRows.slice(0, 24).map((symbol) => row(symbol.fqn, `${symbol.kind} ${symbol.file_path}`)), "No symbols indexed");
         renderList(document.querySelector("#references"), referenceRows.slice(0, 24).map((ref) => row(`${ref.source_fqn} -> ${ref.target_fqn}`, `${ref.direction} ${ref.relation}`)), "No references indexed");
-        renderList(document.querySelector("#graph"), edgeRows.slice(0, 24).map((edge) => row(`${edge.source_fqn ?? edge.source_id} -> ${edge.target_fqn ?? edge.target_id}`, edge.edge_type ?? edge.relation)), "No graph edges indexed");
+        renderList(document.querySelector("#graph"), edgeRows.slice(0, 24).map((edge) => row(`${nodeNames.get(edge.source_node_id) ?? edge.source_node_id} -> ${nodeNames.get(edge.target_node_id) ?? edge.target_node_id}`, `${edge.edge_type} ${edge.resolution_method}`)), "No graph edges indexed");
         renderList(document.querySelector("#tests"), testRows.slice(0, 24).map((test) => row(test.fqn, `${test.framework ?? "static"} ${test.file_path ?? ""}`)), "No tests indexed");
         renderList(document.querySelector("#coverage"), coverageRows.slice(0, 24).map((segment) => row(segment.file_path, `${segment.format} lines ${segment.start_line}-${segment.end_line} hits ${segment.hit_count}`)), "No coverage evidence indexed");
         renderList(document.querySelector("#docs"), docRows.slice(0, 24).map((entity) => row(entity.name, `${entity.entity_type} ${entity.file_path}`)), "No docs or contracts indexed");
@@ -307,8 +311,12 @@
     const referencesFor = async (symbols) => {
       const symbol = symbols.find((item) => item.fqn)?.fqn;
       if (!symbol) return [];
-      const report = await json(`${api("references")}?symbol=${encodeURIComponent(symbol)}`);
-      return report.references ?? [];
+      try {
+        const report = await json(`${api("references")}?symbol=${encodeURIComponent(symbol)}`);
+        return report.references ?? [];
+      } catch (error) {
+        return [];
+      }
     };
 
     document.querySelectorAll("nav a").forEach((link) => {

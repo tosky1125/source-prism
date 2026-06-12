@@ -154,6 +154,12 @@ grep -q 'api("coverage")' /tmp/source-prism-api-web.html
 request GET "${api_base_url}/repo/${repo_id}/files" /tmp/source-prism-api-web-files.html
 grep -q "data-repo-id=\"${repo_id}\"" /tmp/source-prism-api-web-files.html
 grep -q 'data-initial-view="files"' /tmp/source-prism-api-web-files.html
+request GET "${api_base_url}/repo/${repo_id}/tests" /tmp/source-prism-api-web-tests.html
+grep -q "data-repo-id=\"${repo_id}\"" /tmp/source-prism-api-web-tests.html
+grep -q 'data-initial-view="tests"' /tmp/source-prism-api-web-tests.html
+request GET "${api_base_url}/repo/${repo_id}/docs" /tmp/source-prism-api-web-docs.html
+grep -q "data-repo-id=\"${repo_id}\"" /tmp/source-prism-api-web-docs.html
+grep -q 'data-initial-view="docs"' /tmp/source-prism-api-web-docs.html
 
 request GET "${api_base_url}/v1/repos/${repo_id}/tests" /tmp/source-prism-api-tests.json
 grep -q '"kind":"tests"' /tmp/source-prism-api-tests.json

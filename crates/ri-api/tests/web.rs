@@ -33,6 +33,7 @@ async fn repo_web_shell_returns_structure_explorer() -> Result<(), Box<dyn std::
     assert!(body.contains("Docs"));
     assert!(body.contains("api(\"references\")"));
     assert!(body.contains("api(\"coverage\")"));
+    assert!(body.contains("graph.value?.graph?.edges"));
     assert!(body.contains("result.context_pack?.hits"));
     Ok(())
 }
@@ -40,16 +41,27 @@ async fn repo_web_shell_returns_structure_explorer() -> Result<(), Box<dyn std::
 #[tokio::test]
 async fn repo_web_shell_accepts_deep_repo_views() -> Result<(), Box<dyn std::error::Error>> {
     let app = app(AppState::for_test_symbols(Vec::new())?);
-    let request = Request::builder()
-        .method(Method::GET)
-        .uri("/repo/local/references")
-        .body(Body::empty())?;
+    for view in [
+        "files",
+        "symbols",
+        "references",
+        "impact",
+        "tests",
+        "coverage",
+        "docs",
+        "search",
+    ] {
+        let request = Request::builder()
+            .method(Method::GET)
+            .uri(format!("/repo/local/{view}"))
+            .body(Body::empty())?;
 
-    let response = app.oneshot(request).await?;
+        let response = app.clone().oneshot(request).await?;
 
-    assert_eq!(response.status(), StatusCode::OK);
-    let body = html_body(response).await?;
-    assert!(body.contains("data-initial-view=\"references\""));
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = html_body(response).await?;
+        assert!(body.contains(format!("data-initial-view=\"{view}\"").as_str()));
+    }
     Ok(())
 }
 

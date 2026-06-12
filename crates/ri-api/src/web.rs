@@ -20,7 +20,9 @@ enum ExplorerView {
     Symbols,
     References,
     Impact,
+    Tests,
     Coverage,
+    Docs,
     Search,
 }
 
@@ -32,7 +34,9 @@ impl ExplorerView {
             Self::Symbols => "symbols",
             Self::References => "references",
             Self::Impact => "impact",
+            Self::Tests => "tests",
             Self::Coverage => "coverage",
+            Self::Docs => "docs",
             Self::Search => "search",
         }
     }
@@ -43,7 +47,9 @@ impl ExplorerView {
             "symbols" => Self::Symbols,
             "references" => Self::References,
             "impact" => Self::Impact,
+            "tests" => Self::Tests,
             "coverage" => Self::Coverage,
+            "docs" => Self::Docs,
             "search" => Self::Search,
             _ => Self::Overview,
         }

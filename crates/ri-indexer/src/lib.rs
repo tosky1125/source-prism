@@ -38,7 +38,7 @@ pub use generation_files::FileManifestRecord;
 pub use generation_manifest::FileManifestInput;
 pub use graph::{GraphIndexOutcome, GraphStoreError, PgGraphStore};
 pub use graph_calls::CallEdgeInput;
-pub use graph_query::{GraphEdgeRecord, GraphNodeRecord, GraphProjection};
+pub use graph_query::{GraphEdgeRecord, GraphEdgeRecordSpec, GraphNodeRecord, GraphProjection};
 pub use overlay::{
     BaseFileRecord, OverlayEntry, OverlayFileStatus, OverlayMergedFile, merge_overlay,
 };

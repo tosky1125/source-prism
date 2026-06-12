@@ -74,6 +74,16 @@ async fn repo_refactor_plan_uses_path_repo_id() -> Result<(), Box<dyn std::error
             .and_then(Value::as_array)
             .is_some_and(|gates| !gates.is_empty())
     );
+    assert_eq!(
+        body.pointer("/plan/required_gates/0/blocks_execution")
+            .and_then(Value::as_bool),
+        Some(true)
+    );
+    assert!(
+        body.pointer("/plan/impact_summary/affected_files")
+            .and_then(Value::as_array)
+            .is_some_and(|files| !files.is_empty())
+    );
     fixture.cleanup(&pool).await?;
     Ok(())
 }

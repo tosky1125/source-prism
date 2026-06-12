@@ -30,13 +30,20 @@ fn refactor_plan_is_planner_only_and_requires_safety_gates()
     assert!(
         plan.required_gates
             .iter()
-            .any(|gate| gate == "cargo test --workspace")
+            .any(|gate| gate.command == "cargo test --workspace")
+    );
+    assert!(
+        plan.required_gates
+            .iter()
+            .all(|gate| gate.required && gate.blocks_execution)
     );
     assert!(
         plan.slices
             .iter()
-            .any(|slice| slice.files == ["src/tax.rs"])
+            .any(|slice| slice.files == ["src/tax.rs"] && !slice.gate_ids.is_empty())
     );
+    assert_eq!(plan.impact_summary.direct_callers, vec!["charge_invoice"]);
+    assert_eq!(plan.impact_summary.direct_callees, Vec::<String>::new());
     Ok(())
 }
 
@@ -67,6 +74,7 @@ fn refactor_plan_marks_broad_impact_as_high_risk() -> Result<(), Box<dyn std::er
 
     assert_eq!(plan.risk, RefactorRisk::High);
     assert!(plan.slices.len() >= 4);
+    assert_eq!(plan.impact_summary.affected_files.len(), plan.slices.len());
     Ok(())
 }
 

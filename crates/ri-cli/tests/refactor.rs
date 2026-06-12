@@ -33,5 +33,15 @@ fn refactor_plan_command_returns_planner_only_json() -> Result<(), Box<dyn std::
             .and_then(Value::as_array)
             .is_some_and(|gates| !gates.is_empty())
     );
+    assert_eq!(
+        body.pointer("/plan/required_gates/0/blocks_execution")
+            .and_then(Value::as_bool),
+        Some(true)
+    );
+    assert!(
+        body.pointer("/plan/impact_summary/impact_score")
+            .and_then(Value::as_u64)
+            .is_some_and(|score| score > 0)
+    );
     Ok(())
 }

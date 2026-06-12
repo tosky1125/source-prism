@@ -7,6 +7,7 @@ use axum::{
 };
 use ri_behavior::BehaviorError;
 use ri_context::ContextError;
+use ri_core::CoreError;
 use ri_impact::ImpactError;
 use ri_indexer::{
     ArchitectureStoreError, CoverageStoreError, GenerationError, GraphStoreError, SearchSyncError,
@@ -52,6 +53,8 @@ pub enum AppError {
     Behavior(#[from] BehaviorError),
     #[error(transparent)]
     Context(#[from] ri_context::ContextError),
+    #[error(transparent)]
+    Core(#[from] CoreError),
     #[error(transparent)]
     Git(#[from] ri_git::GitError),
     #[error(transparent)]
@@ -125,6 +128,7 @@ impl IntoResponse for AppError {
             }
             Self::Behavior(_) => internal("behavior", "behavior context failed"),
             Self::Context(_) => internal("context", "context search failed"),
+            Self::Core(_) => internal("core", "core domain validation failed"),
             Self::Git(_) => internal("manifest", "file manifest failed"),
             Self::Impact(_) => internal("impact", "impact analysis failed"),
             Self::Generation(_) => internal("index_generation", "index generation failed"),

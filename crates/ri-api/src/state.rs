@@ -57,6 +57,20 @@ impl AppState {
         })
     }
 
+    pub fn for_test_repo_path(context_repo_path: PathBuf) -> Result<Self, ApiError> {
+        Ok(Self {
+            database: DatabaseState {
+                configured: false,
+                pool: None,
+            },
+            opensearch_url: None,
+            http_client: http_client()?,
+            context_repo_path,
+            repo_files: None,
+            context_symbols: None,
+        })
+    }
+
     pub fn for_test_database(pool: PgPool) -> Result<Self, ApiError> {
         Ok(Self {
             database: DatabaseState {

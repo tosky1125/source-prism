@@ -10,6 +10,11 @@ use ri_core::{CommitSha, FilePath, RepoId};
 use ri_indexer::{PgArchitectureStore, PgGenerationStore};
 use serde_json::Value;
 use sqlx::PgPool;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 use tower::ServiceExt;
 use uuid::Uuid;
 
@@ -65,10 +70,97 @@ async fn repo_architecture_returns_indexed_entities_for_repo_id()
     Ok(())
 }
 
+#[tokio::test]
+async fn repo_architecture_returns_local_docs_without_database()
+-> Result<(), Box<dyn std::error::Error>> {
+    let repo = TempRepo::create()?;
+    repo.write_file("docs/adr/0001-source-prism.md", "# ADR\n")?;
+    repo.commit()?;
+    let app = app(AppState::for_test_repo_path(repo.path().to_path_buf())?);
+    let request = Request::builder()
+        .method(Method::GET)
+        .uri("/v1/repos/local/architecture")
+        .body(Body::empty())?;
+
+    let response = app.oneshot(request).await?;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = to_bytes(response.into_body(), 1_000_000).await?;
+    let body = serde_json::from_slice::<Value>(&bytes)?;
+    assert_eq!(
+        body.pointer("/kind").and_then(Value::as_str),
+        Some("architecture")
+    );
+    assert_eq!(
+        body.pointer("/entity_count").and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        body.pointer("/entities/0/entity_type")
+            .and_then(Value::as_str),
+        Some("adr")
+    );
+    assert_eq!(
+        body.pointer("/entities/0/file_path")
+            .and_then(Value::as_str),
+        Some("docs/adr/0001-source-prism.md")
+    );
+    repo.cleanup()?;
+    Ok(())
+}
+
 #[derive(Debug)]
 struct Fixture {
     repo_id: String,
     commit_sha: String,
+}
+
+struct TempRepo {
+    path: PathBuf,
+}
+
+impl TempRepo {
+    fn create() -> Result<Self, Box<dyn std::error::Error>> {
+        let path = std::env::temp_dir().join(format!("source-prism-api-arch-{}", Uuid::now_v7()));
+        fs::create_dir_all(&path)?;
+        run_git(&path, ["init"])?;
+        run_git(
+            &path,
+            ["config", "user.email", "source-prism@example.invalid"],
+        )?;
+        run_git(&path, ["config", "user.name", "Source Prism Test"])?;
+        Ok(Self { path })
+    }
+
+    fn path(&self) -> &Path {
+        self.path.as_path()
+    }
+
+    fn write_file(&self, path: &str, body: &str) -> Result<(), std::io::Error> {
+        let path = self.path.join(path);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(path, body)
+    }
+
+    fn commit(&self) -> Result<(), Box<dyn std::error::Error>> {
+        run_git(&self.path, ["add", "."])?;
+        run_git(&self.path, ["commit", "-m", "fixture"])?;
+        Ok(())
+    }
+
+    fn cleanup(&self) -> Result<(), std::io::Error> {
+        fs::remove_dir_all(&self.path)
+    }
+}
+
+fn run_git<const N: usize>(path: &Path, args: [&str; N]) -> Result<(), Box<dyn std::error::Error>> {
+    let output = Command::new("git").current_dir(path).args(args).output()?;
+    if output.status.success() {
+        return Ok(());
+    }
+    Err(std::io::Error::other(String::from_utf8_lossy(&output.stderr).to_string()).into())
 }
 
 impl Fixture {

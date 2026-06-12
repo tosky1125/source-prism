@@ -1,6 +1,7 @@
 use ri_core::GenerationId;
 use ri_symbols::SymbolRecord;
 use serde_json::{Value, json};
+use sqlx::Row as _;
 
 use crate::{PgSearchSyncStore, SearchSyncError, SearchSyncInput};
 
@@ -30,6 +31,34 @@ impl PgSearchSyncStore {
             enqueued = enqueued.saturating_add(1);
         }
         Ok(enqueued)
+    }
+
+    pub async fn active_symbol_chunk_count_for_repo(
+        &self,
+        repo_id: &str,
+    ) -> Result<i64, SearchSyncError> {
+        let row = sqlx::query(
+            r"
+            SELECT count(*)::bigint AS count
+            FROM search_sync_outbox
+            WHERE repo_id = $1
+              AND entity_type = $2
+              AND operation = 'upsert'
+              AND state <> 'cancelled'
+              AND generation_id = (
+                  SELECT generation_id
+                  FROM index_generations
+                  WHERE repo_id = $1 AND status = 'succeeded'
+                  ORDER BY started_at DESC
+                  LIMIT 1
+              )
+            ",
+        )
+        .bind(repo_id)
+        .bind(SYMBOL_CHUNK_ENTITY_TYPE)
+        .fetch_one(&self.pool)
+        .await?;
+        row.try_get("count").map_err(Into::into)
     }
 }
 

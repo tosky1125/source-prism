@@ -178,6 +178,7 @@ with open("/tmp/source-prism-api-context.json", encoding="utf-8") as handle:
 
 assert payload["hit_count"] > 0, payload
 assert payload["impact_count"] > 0, payload
+assert payload["search_chunk_count"] > 0, payload
 assert payload["context_pack"]["hits"], payload
 assert payload["context_pack"]["impacts"], payload
 PY

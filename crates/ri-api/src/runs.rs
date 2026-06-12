@@ -7,6 +7,7 @@ use sqlx::{PgPool, Row as _};
 
 use crate::{
     AppError,
+    local_index::{LocalIndexSummary, local_index_summary},
     run_jobs::{RunSearchSyncJob, find_search_sync_jobs},
     run_outbox::{
         RunSearchSyncOutboxItem, RunSearchSyncOutboxStateCounts, count_search_sync_outbox_states,
@@ -58,17 +59,78 @@ pub(crate) async fn get(
     State(state): State<AppState>,
     Path(run_id): Path<String>,
 ) -> Result<Json<RunResponse>, AppError> {
-    let pool = state
-        .database
-        .pool
-        .as_ref()
-        .ok_or(AppError::DatabaseNotConfigured)?;
+    let Some(pool) = state.database.pool.as_ref() else {
+        let repo_id = local_run_repo_id(&run_id).ok_or_else(|| AppError::RunNotFound {
+            run_id: run_id.clone(),
+        })?;
+        let local = local_index_summary(&state, repo_id)?;
+        if local.run_id != run_id {
+            return Err(AppError::RunNotFound { run_id });
+        }
+        return Ok(Json(RunResponse {
+            status: "ok",
+            kind: "run",
+            run: local_run_summary(repo_id, local),
+        }));
+    };
     let run = find_run(pool, &run_id).await?;
     Ok(Json(RunResponse {
         status: "ok",
         kind: "run",
         run,
     }))
+}
+
+fn local_run_repo_id(run_id: &str) -> Option<&str> {
+    let suffix = run_id.strip_prefix("local:")?;
+    let (repo_id, _commit_sha) = suffix.rsplit_once(':')?;
+    if repo_id.is_empty() {
+        None
+    } else {
+        Some(repo_id)
+    }
+}
+
+fn local_run_summary(repo_id: &str, local: LocalIndexSummary) -> RunSummary {
+    RunSummary {
+        run_id: local.run_id,
+        repo_id: repo_id.to_owned(),
+        commit_sha: local.commit_sha,
+        index_kind: "local_worktree".to_owned(),
+        status: "succeeded".to_owned(),
+        extractor_version: Some("ri-api-local-index-v1".to_owned()),
+        started_at: local.started_at,
+        finished_at: local.finished_at,
+        failed_at: None,
+        error: None,
+        evidence: RunEvidence {
+            file_manifests: local.file_manifests,
+            symbols: local.symbols,
+            graph_nodes: local.graph_nodes,
+            graph_edges: local.graph_edges,
+            search_chunks: local.search_chunks,
+            search_sync_outbox_details: Vec::new(),
+            search_sync_outbox_state_counts: empty_outbox_counts(),
+            search_sync_jobs: 0,
+            search_sync_job_details: Vec::new(),
+            test_cases: local.test_cases,
+            test_runs: 0,
+            coverage_segments: 0,
+            architecture_entities: local.architecture_entities,
+        },
+    }
+}
+
+const fn empty_outbox_counts() -> RunSearchSyncOutboxStateCounts {
+    RunSearchSyncOutboxStateCounts {
+        queued: 0,
+        leased: 0,
+        succeeded: 0,
+        failed: 0,
+        dead_lettered: 0,
+        cancelled: 0,
+        total: 0,
+    }
 }
 
 async fn find_run(pool: &PgPool, run_id: &str) -> Result<RunSummary, AppError> {
@@ -169,87 +231,4 @@ async fn find_run(pool: &PgPool, run_id: &str) -> Result<RunSummary, AppError> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::RunEvidence;
-    use crate::run_jobs::{RunSearchSyncJob, RunSearchSyncJobAttempt};
-    use crate::run_outbox::{RunSearchSyncOutboxItem, RunSearchSyncOutboxStateCounts};
-    use serde_json::Value;
-
-    #[test]
-    fn run_evidence_serializes_search_sync_job_details() -> Result<(), serde_json::Error> {
-        let evidence = RunEvidence {
-            file_manifests: 1,
-            symbols: 2,
-            graph_nodes: 3,
-            graph_edges: 4,
-            search_chunks: 5,
-            search_sync_outbox_details: vec![RunSearchSyncOutboxItem {
-                outbox_id: "outbox-1".to_owned(),
-                entity_type: "symbol_chunk".to_owned(),
-                entity_id: "chunk-1".to_owned(),
-                operation: "upsert".to_owned(),
-                target_index: "source-prism".to_owned(),
-                state: "queued".to_owned(),
-                attempt_count: 0,
-                processed_at: None,
-                last_error: None,
-            }],
-            search_sync_outbox_state_counts: RunSearchSyncOutboxStateCounts {
-                queued: 1,
-                leased: 0,
-                succeeded: 0,
-                failed: 0,
-                dead_lettered: 0,
-                cancelled: 0,
-                total: 1,
-            },
-            search_sync_jobs: 1,
-            search_sync_job_details: vec![RunSearchSyncJob {
-                job_id: "job-1".to_owned(),
-                state: "queued".to_owned(),
-                attempt_count: 0,
-                attempts: vec![RunSearchSyncJobAttempt {
-                    attempt_no: 1,
-                    worker_id: "worker-1".to_owned(),
-                    status: "started".to_owned(),
-                    error: None,
-                    started_at: "2026-06-12 00:00:00+00".to_owned(),
-                    finished_at: None,
-                }],
-            }],
-            test_cases: 6,
-            test_runs: 7,
-            coverage_segments: 8,
-            architecture_entities: 9,
-        };
-
-        let body = serde_json::to_value(evidence)?;
-
-        assert_eq!(
-            body.pointer("/search_sync_job_details/0/job_id")
-                .and_then(Value::as_str),
-            Some("job-1")
-        );
-        assert_eq!(
-            body.pointer("/search_sync_job_details/0/state")
-                .and_then(Value::as_str),
-            Some("queued")
-        );
-        assert_eq!(
-            body.pointer("/search_sync_job_details/0/attempts/0/status")
-                .and_then(Value::as_str),
-            Some("started")
-        );
-        assert_eq!(
-            body.pointer("/search_sync_outbox_details/0/state")
-                .and_then(Value::as_str),
-            Some("queued")
-        );
-        assert_eq!(
-            body.pointer("/search_sync_outbox_state_counts/queued")
-                .and_then(Value::as_i64),
-            Some(1)
-        );
-        Ok(())
-    }
-}
+mod tests;

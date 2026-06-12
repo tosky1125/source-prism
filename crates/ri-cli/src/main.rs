@@ -27,6 +27,7 @@ pub(crate) mod index_output;
 pub(crate) mod mcp;
 pub(crate) mod refactor;
 pub(crate) mod references;
+pub(crate) mod repo_search_drift;
 pub(crate) mod repo_search_sync;
 pub(crate) mod review;
 pub(crate) mod run_jobs;
@@ -90,6 +91,9 @@ async fn run(args: impl IntoIterator<Item = String>) -> Result<ExitCode, CliErro
         "review" => review::command(args).map(|()| ExitCode::SUCCESS),
         "run" => runs::run_command(args).await.map(|()| ExitCode::SUCCESS),
         "runs" => runs::command(args).await.map(|()| ExitCode::SUCCESS),
+        "repo-search-drift" => repo_search_drift::command(args)
+            .await
+            .map(|()| ExitCode::SUCCESS),
         "repo-search-sync" => repo_search_sync::command(args)
             .await
             .map(|()| ExitCode::SUCCESS),

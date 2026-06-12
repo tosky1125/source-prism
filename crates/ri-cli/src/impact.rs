@@ -13,23 +13,11 @@ use serde_json::json;
 use crate::error::CliError;
 
 pub(crate) fn impact_command(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
-    let Some(flag) = args.next() else {
-        return Err(CliError::Usage);
-    };
-    if flag != "--symbol" {
-        return Err(CliError::Usage);
-    }
-    let Some(symbol_query) = args.next() else {
-        return Err(CliError::Usage);
-    };
-    if args.next().is_some() {
-        return Err(CliError::Usage);
-    }
-
-    let evidence = ri_context::extract_repo_index(&PathBuf::from("."))?;
+    let request = ImpactArgs::parse(&mut args)?;
+    let evidence = ri_context::extract_repo_index(&request.repo)?;
     let calls = impact_call_edges(&evidence.calls);
     let report =
-        analyze_symbol_impact_with_calls(evidence.symbols, calls.as_slice(), &symbol_query)?;
+        analyze_symbol_impact_with_calls(evidence.symbols, calls.as_slice(), &request.symbol)?;
     print_json(&json!({
         "status": "ok",
         "kind": "impact",
@@ -40,6 +28,39 @@ pub(crate) fn impact_command(mut args: impl Iterator<Item = String>) -> Result<(
         "impact_score": report.impact_score,
         "related": report.related,
     }))
+}
+
+#[derive(Debug)]
+struct ImpactArgs {
+    repo: PathBuf,
+    symbol: String,
+}
+
+impl ImpactArgs {
+    fn parse(args: &mut impl Iterator<Item = String>) -> Result<Self, CliError> {
+        let mut repo = PathBuf::from(".");
+        let mut symbol = None::<String>;
+
+        while let Some(flag) = args.next() {
+            match flag.as_str() {
+                "--repo" => {
+                    let Some(path) = args.next() else {
+                        return Err(CliError::Usage);
+                    };
+                    repo = PathBuf::from(path);
+                }
+                "--symbol" => {
+                    symbol = args.next();
+                }
+                _ => return Err(CliError::Usage),
+            }
+        }
+
+        Ok(Self {
+            repo,
+            symbol: symbol.ok_or(CliError::Usage)?,
+        })
+    }
 }
 
 fn impact_call_edges(calls: &[ResolvedCallReference]) -> Vec<ImpactCallEdge> {

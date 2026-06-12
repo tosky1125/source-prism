@@ -71,6 +71,41 @@ fn impact_command_accepts_invoice_service_smoke_symbol() -> Result<(), Box<dyn s
 }
 
 #[test]
+fn impact_command_uses_repo_path_argument() -> Result<(), Box<dyn std::error::Error>> {
+    let repo = TempRepo::create()?;
+    repo.write_file(
+        "src/lib.rs",
+        r"
+pub fn apply_tax(value: i32) -> i32 {
+    value + 1
+}
+",
+    )?;
+    repo.commit()?;
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_ri-cli"))
+        .current_dir(repo_root)
+        .args(["impact", "--repo"])
+        .arg(repo.path())
+        .args(["--symbol", "apply_tax"])
+        .output()?;
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let body = serde_json::from_slice::<Value>(&output.stdout)?;
+    assert_eq!(
+        body.pointer("/symbol/fqn").and_then(Value::as_str),
+        Some("apply_tax")
+    );
+    repo.cleanup()?;
+    Ok(())
+}
+
+#[test]
 fn impact_command_rejects_unknown_smoke_symbol() -> Result<(), Box<dyn std::error::Error>> {
     let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
 
@@ -101,6 +136,7 @@ impl TempRepo {
         let path = std::env::temp_dir().join(format!("source-prism-cli-architecture-{suffix}"));
         fs::create_dir_all(path.join(".github"))?;
         fs::create_dir_all(path.join("docs/adr"))?;
+        fs::create_dir_all(path.join("src"))?;
         run_git(&path, ["init"])?;
         run_git(
             &path,

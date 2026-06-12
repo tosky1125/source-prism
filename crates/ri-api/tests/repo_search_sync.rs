@@ -10,6 +10,8 @@ use sqlx::PgPool;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tower::ServiceExt;
 
+include!("support/local_temp_repo.rs");
+
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[tokio::test]
@@ -72,6 +74,51 @@ async fn repo_search_sync_reports_latest_generation_queue_state() -> TestResult 
         Some(1)
     );
     fixture.cleanup(&pool).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn repo_search_sync_reports_local_state_without_database() -> TestResult {
+    let repo = LocalTempRepo::create("source-prism-api-search-sync")?;
+    repo.write_file(
+        "src/lib.rs",
+        r"
+pub fn local_search_sync_fixture() -> i32 {
+    7
+}
+",
+    )?;
+    repo.commit()?;
+    let app = app(AppState::for_test_repo_path(repo.path().to_path_buf())?);
+    let request = Request::builder()
+        .method(Method::GET)
+        .uri("/v1/repos/local/search-sync")
+        .body(Body::empty())?;
+
+    let response = app.oneshot(request).await?;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = to_bytes(response.into_body(), 1_000_000).await?;
+    let body = serde_json::from_slice::<Value>(&bytes)?;
+    assert_eq!(
+        body.pointer("/kind").and_then(Value::as_str),
+        Some("repo_search_sync")
+    );
+    assert_eq!(
+        body.pointer("/latest_run_status").and_then(Value::as_str),
+        Some("succeeded")
+    );
+    assert_eq!(
+        body.pointer("/outbox_state_counts/total")
+            .and_then(Value::as_i64),
+        Some(0)
+    );
+    assert_eq!(
+        body.pointer("/job_state_counts/total")
+            .and_then(Value::as_i64),
+        Some(0)
+    );
+    repo.cleanup()?;
     Ok(())
 }
 

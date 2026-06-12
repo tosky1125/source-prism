@@ -7,6 +7,7 @@ use sqlx::{PgPool, Row as _};
 
 use crate::{
     AppError,
+    local_index::local_index_summary,
     run_outbox::{RunSearchSyncOutboxStateCounts, count_search_sync_outbox_states},
     state::AppState,
 };
@@ -59,11 +60,9 @@ pub(crate) async fn get(
     State(state): State<AppState>,
     Path(repo_id): Path<String>,
 ) -> Result<Json<RepoSearchSyncResponse>, AppError> {
-    let pool = state
-        .database
-        .pool
-        .as_ref()
-        .ok_or(AppError::DatabaseNotConfigured)?;
+    let Some(pool) = state.database.pool.as_ref() else {
+        return Ok(Json(local_search_sync_response(&state, repo_id)?));
+    };
     ensure_repo_exists(pool, &repo_id).await?;
     let generation = latest_generation(pool, &repo_id).await?;
     let (outbox_state_counts, job_state_counts) = match generation.as_ref() {
@@ -86,6 +85,23 @@ pub(crate) async fn get(
         outbox_state_counts,
         job_state_counts,
     }))
+}
+
+fn local_search_sync_response(
+    state: &AppState,
+    repo_id: String,
+) -> Result<RepoSearchSyncResponse, AppError> {
+    let local = local_index_summary(state, &repo_id)?;
+    Ok(RepoSearchSyncResponse {
+        status: "ok",
+        kind: "repo_search_sync",
+        repo_id,
+        latest_generation_id: Some(local.run_id),
+        latest_commit_sha: Some(local.commit_sha),
+        latest_run_status: Some("succeeded".to_owned()),
+        outbox_state_counts: zero_outbox_counts(),
+        job_state_counts: JobStateCounts::zero(),
+    })
 }
 
 async fn ensure_repo_exists(pool: &PgPool, repo_id: &str) -> Result<(), AppError> {

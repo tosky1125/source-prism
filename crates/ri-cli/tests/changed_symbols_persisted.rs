@@ -69,6 +69,20 @@ index 1111111..2222222 100644
             .and_then(Value::as_str),
         Some("apply_tax")
     );
+    assert_eq!(
+        body.pointer("/changed_file_count").and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        body.pointer("/changed_files/0/path")
+            .and_then(Value::as_str),
+        Some("src/lib.rs")
+    );
+    assert_eq!(
+        body.pointer("/changed_files/0/status")
+            .and_then(Value::as_str),
+        Some("modified")
+    );
     cleanup(&pool, repo_id.as_str()).await?;
     diff.cleanup()?;
     repo.cleanup()?;

@@ -10,7 +10,7 @@ use std::{
 };
 
 use ri_indexer::PgSymbolStore;
-use ri_symbols::{SymbolRecord, changed_symbols_for_diff};
+use ri_symbols::{SymbolRecord, changed_symbols_for_diff, parse_changed_files};
 use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
 
@@ -31,6 +31,7 @@ pub(crate) async fn changed_symbols_command(
             (Some(repo_id.as_str()), symbols)
         }
     };
+    let changed_files = parse_changed_files(&diff);
     let (changed_lines, changed_symbols) = changed_symbols_for_diff(&symbols, &diff);
     let changed_symbols = changed_symbols
         .iter()
@@ -47,8 +48,10 @@ pub(crate) async fn changed_symbols_command(
         "status": "ok",
         "kind": "changed_symbols",
         "repo_id": repo_id,
+        "changed_file_count": changed_files.len(),
         "changed_line_count": changed_lines.len(),
         "matched_symbol_count": changed_symbols.len(),
+        "changed_files": changed_files,
         "changed_symbols": changed_symbols,
     }))
 }

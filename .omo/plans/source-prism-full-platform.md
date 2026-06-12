@@ -14,7 +14,7 @@ moved beyond foundation-only scope.
 
 ## Current Status
 
-Overall progress: 98.5%.
+Overall progress: 99%.
 
 Completed and verified slices:
 
@@ -194,13 +194,16 @@ Evidence:
 
 ### R5. Incremental PR Overlay Path
 
-Status: partial.
+Status: partial; changed-file overlay input is now visible on CLI/API.
 
 Tasks:
 
 - Promote overlay model into API/CLI changed-file indexing path.
 - Prove changed files can be indexed without full repo re-index.
 - Keep base commit canonical and head overlay separate.
+- `changed-symbols` API/CLI now report changed-file overlay status for
+  added, modified, deleted, renamed, and mode-only file diffs alongside
+  impacted symbols.
 
 Evidence:
 

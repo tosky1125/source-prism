@@ -3,6 +3,10 @@
     reason = "Symbol contract names are self-describing at this milestone."
 )]
 
+mod diff;
+
+pub use diff::{ChangedFile, ChangedFileStatus, parse_changed_files, parse_changed_lines};
+
 use ri_core::{CommitSha, FilePath, Language, RepoId, SymbolId, SymbolKind};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -188,35 +192,6 @@ pub fn changed_symbols_for_diff(
     (changed_lines, changed_symbols)
 }
 
-pub fn parse_changed_lines(diff: &str) -> Vec<ChangedLine> {
-    let mut file_path = None::<String>;
-    let mut new_line = None::<u32>;
-    let mut changed = Vec::new();
-
-    for line in diff.lines() {
-        if let Some(path) = line.strip_prefix("+++ ") {
-            file_path = parse_diff_path(path);
-            continue;
-        }
-        if let Some(header) = line.strip_prefix("@@") {
-            new_line = parse_hunk_new_start(header);
-            continue;
-        }
-        let Some(current_line) = new_line else {
-            continue;
-        };
-        if line.starts_with('+') {
-            if let Some(path) = &file_path {
-                changed.push(ChangedLine::new(path.clone(), current_line));
-            }
-            new_line = current_line.checked_add(1);
-        } else if !line.starts_with('-') && !line.starts_with('\\') {
-            new_line = current_line.checked_add(1);
-        }
-    }
-    changed
-}
-
 fn symbols_by_file(symbols: &[SymbolRecord]) -> BTreeMap<String, Vec<SymbolRecord>> {
     let mut by_file = BTreeMap::<String, Vec<SymbolRecord>>::new();
     for symbol in symbols {
@@ -226,19 +201,4 @@ fn symbols_by_file(symbols: &[SymbolRecord]) -> BTreeMap<String, Vec<SymbolRecor
             .push(symbol.clone());
     }
     by_file
-}
-
-fn parse_diff_path(path: &str) -> Option<String> {
-    if path == "/dev/null" {
-        return None;
-    }
-    Some(path.strip_prefix("b/").unwrap_or(path).to_owned())
-}
-
-fn parse_hunk_new_start(header: &str) -> Option<u32> {
-    header
-        .split_whitespace()
-        .find_map(|part| part.strip_prefix('+'))
-        .and_then(|part| part.split(',').next())
-        .and_then(|line| line.parse::<u32>().ok())
 }

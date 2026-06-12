@@ -10,7 +10,61 @@ use sqlx::PgPool;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tower::ServiceExt;
 
+include!("support/local_temp_repo.rs");
+
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+#[tokio::test]
+async fn repo_search_drift_reports_local_state_without_database() -> TestResult {
+    let repo = LocalTempRepo::create("source-prism-api-search-drift")?;
+    repo.write_file(
+        "src/lib.rs",
+        r"
+pub fn local_search_drift_fixture() -> i32 {
+    7
+}
+",
+    )?;
+    repo.commit()?;
+    let app = app(AppState::for_test_repo_path(repo.path().to_path_buf())?);
+    let request = Request::builder()
+        .method(Method::GET)
+        .uri("/v1/repos/local/search-drift")
+        .body(Body::empty())?;
+
+    let response = app.oneshot(request).await?;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = to_bytes(response.into_body(), 1_000_000).await?;
+    let body = serde_json::from_slice::<Value>(&bytes)?;
+    assert_eq!(
+        body.pointer("/kind").and_then(Value::as_str),
+        Some("repo_search_drift")
+    );
+    assert_eq!(
+        body.pointer("/repo_id").and_then(Value::as_str),
+        Some("local")
+    );
+    assert!(
+        body.pointer("/latest_generation_id")
+            .and_then(Value::as_str)
+            .is_some_and(|run_id| run_id.starts_with("local:local:"))
+    );
+    assert_eq!(
+        body.pointer("/expected_documents").and_then(Value::as_i64),
+        Some(0)
+    );
+    assert_eq!(
+        body.pointer("/actual_documents").and_then(Value::as_i64),
+        Some(0)
+    );
+    assert_eq!(
+        body.pointer("/has_drift").and_then(Value::as_bool),
+        Some(false)
+    );
+    repo.cleanup()?;
+    Ok(())
+}
 
 #[tokio::test]
 async fn repo_search_drift_requires_configured_opensearch() -> TestResult {

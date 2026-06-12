@@ -6,7 +6,7 @@ use ri_indexer::{DEFAULT_SEARCH_INDEX, OpenSearchClient, PgSearchSyncStore};
 use serde::Serialize;
 use sqlx::{PgPool, Row as _};
 
-use crate::{AppError, state::AppState};
+use crate::{AppError, local_index::local_index_summary, state::AppState};
 
 #[derive(Debug, Serialize)]
 pub(crate) struct RepoSearchDriftResponse {
@@ -23,11 +23,9 @@ pub(crate) async fn get(
     State(state): State<AppState>,
     Path(repo_id): Path<String>,
 ) -> Result<Json<RepoSearchDriftResponse>, AppError> {
-    let pool = state
-        .database
-        .pool
-        .as_ref()
-        .ok_or(AppError::DatabaseNotConfigured)?;
+    let Some(pool) = state.database.pool.as_ref() else {
+        return Ok(Json(local_response(&state, repo_id)?));
+    };
     ensure_repo_exists(pool, &repo_id).await?;
     let opensearch_url = state
         .opensearch_url
@@ -61,6 +59,19 @@ pub(crate) async fn get(
         actual_documents: report.actual_documents,
         has_drift: report.has_drift(),
     }))
+}
+
+fn local_response(state: &AppState, repo_id: String) -> Result<RepoSearchDriftResponse, AppError> {
+    let local = local_index_summary(state, &repo_id)?;
+    Ok(RepoSearchDriftResponse {
+        status: "ok",
+        kind: "repo_search_drift",
+        repo_id,
+        latest_generation_id: Some(local.run_id),
+        expected_documents: 0,
+        actual_documents: 0,
+        has_drift: false,
+    })
 }
 
 async fn ensure_repo_exists(pool: &PgPool, repo_id: &str) -> Result<(), AppError> {

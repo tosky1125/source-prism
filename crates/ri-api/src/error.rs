@@ -10,8 +10,8 @@ use ri_context::ContextError;
 use ri_core::CoreError;
 use ri_impact::ImpactError;
 use ri_indexer::{
-    ArchitectureStoreError, CoverageStoreError, GenerationError, GraphStoreError, SearchSyncError,
-    SymbolStoreError, TestCaseStoreError, TestRunStoreError,
+    ArchitectureStoreError, CoverageStoreError, FileOverlayStoreError, GenerationError,
+    GraphStoreError, SearchSyncError, SymbolStoreError, TestCaseStoreError, TestRunStoreError,
 };
 use ri_review::ReviewError;
 use ri_worker::JobError;
@@ -66,6 +66,8 @@ pub enum AppError {
     Review(#[from] ReviewError),
     #[error(transparent)]
     Generation(#[from] GenerationError),
+    #[error(transparent)]
+    FileOverlayStore(#[from] FileOverlayStoreError),
     #[error(transparent)]
     GraphStore(#[from] GraphStoreError),
     #[error(transparent)]
@@ -136,6 +138,7 @@ impl IntoResponse for AppError {
             Self::Impact(_) => internal("impact", "impact analysis failed"),
             Self::Job(_) => internal("jobs", "job query failed"),
             Self::Generation(_) => internal("index_generation", "index generation failed"),
+            Self::FileOverlayStore(_) => internal("file_overlay", "file overlay failed"),
             Self::GraphStore(_) => internal("graph_store", "graph store failed"),
             Self::SearchSync(_) => internal("search_sync", "search sync failed"),
             Self::SymbolStore(_) => internal("symbol_store", "symbol store failed"),

@@ -14,7 +14,7 @@ moved beyond foundation-only scope.
 
 ## Current Status
 
-Overall progress: 99.6%.
+Overall progress: 99.7%.
 
 Completed and verified slices:
 
@@ -41,6 +41,10 @@ Completed and verified slices:
 - Refactor planner only; execution remains disabled until sandbox,
   branch-safety, and test/typecheck gates are designed.
 - Local no-DB explorer mode for read-only repo structure routes.
+- Incremental changed-file overlays can now be persisted from CLI/API
+  `changed-symbols` without creating a new full-repo index generation; base
+  `file_manifest` generations remain canonical and head overlay evidence is
+  stored separately in `file_overlays`.
 
 Latest pushed checkpoint:
 
@@ -72,6 +76,7 @@ CLI:
 ri-cli index --repo <path> --sha HEAD
 ri-cli symbols --repo <path>
 ri-cli changed-symbols --diff <diff>
+ri-cli changed-symbols --repo-id <repo_id> --head-repo <path> --head-sha <sha> --persist-overlay --diff <diff>
 ri-cli references --symbol <symbol>
 ri-cli architecture --repo <path>
 ri-cli impact --symbol <symbol>
@@ -202,7 +207,7 @@ Evidence:
 
 ### R5. Incremental PR Overlay Path
 
-Status: partial; changed-file overlay input is now visible on CLI/API.
+Status: completed.
 
 Tasks:
 
@@ -212,11 +217,19 @@ Tasks:
 - `changed-symbols` API/CLI now report changed-file overlay status for
   added, modified, deleted, renamed, and mode-only file diffs alongside
   impacted symbols.
+- `changed-symbols` API/CLI can persist head overlay file evidence under
+  `file_overlays` while leaving the base `file_manifest` generation count
+  unchanged.
 
 Evidence:
 
 - Tests for added, modified, deleted, renamed, and mode-only files.
 - CLI/API smoke showing overlay input and impacted symbols.
+- CLI/API integration tests assert persisted overlay row count increases while
+  base generation count stays unchanged.
+- Real CLI smoke with `ri-cli changed-symbols --repo-id ... --persist-overlay`.
+- Real HTTP smoke with `POST /v1/repos/{repo_id}/changed-symbols` and
+  `persist_overlay: true`.
 
 ### R6. Production Hardening
 

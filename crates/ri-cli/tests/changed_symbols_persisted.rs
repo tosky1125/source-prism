@@ -1,7 +1,7 @@
 #![allow(missing_docs, reason = "CLI integration test names document behavior.")]
 
 use serde_json::Value;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row as _};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -83,6 +83,77 @@ index 1111111..2222222 100644
             .and_then(Value::as_str),
         Some("modified")
     );
+    cleanup(&pool, repo_id.as_str()).await?;
+    diff.cleanup()?;
+    repo.cleanup()?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn changed_symbols_command_persists_head_overlay_without_reindexing() -> TestResult {
+    let Some(database_url) = std::env::var("DATABASE_URL").ok() else {
+        return Ok(());
+    };
+    let pool = PgPool::connect(database_url.as_str()).await?;
+    let repo = TempRepo::create()?;
+    repo.write_file(
+        "src/lib.rs",
+        r"
+pub fn apply_tax(value: i32) -> i32 {
+    value + 1
+}
+",
+    )?;
+    repo.commit()?;
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let repo_id = index_repo(&repo_root, &database_url, repo.path())?;
+    let base_generation_count = generation_count(&pool, repo_id.as_str()).await?;
+    repo.write_file(
+        "src/lib.rs",
+        r"
+pub fn apply_tax(value: i32) -> i32 {
+    let fee = 1;
+    value + fee
+}
+",
+    )?;
+    let diff = TempFile::write(run_git_output(repo.path(), ["diff"])?.as_str())?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_ri-cli"))
+        .current_dir(&repo_root)
+        .env("DATABASE_URL", database_url.as_str())
+        .args([
+            "changed-symbols",
+            "--repo-id",
+            repo_id.as_str(),
+            "--head-repo",
+        ])
+        .arg(repo.path())
+        .args(["--head-sha", "worktree", "--persist-overlay", "--diff"])
+        .arg(diff.path())
+        .output()?;
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let body = serde_json::from_slice::<Value>(&output.stdout)?;
+    assert_eq!(
+        body.pointer("/overlay_index/indexed_file_count")
+            .and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        body.pointer("/overlay_index/head_sha")
+            .and_then(Value::as_str),
+        Some("worktree")
+    );
+    assert_eq!(
+        generation_count(&pool, repo_id.as_str()).await?,
+        base_generation_count
+    );
+    assert_eq!(overlay_count(&pool, repo_id.as_str()).await?, 1);
     cleanup(&pool, repo_id.as_str()).await?;
     diff.cleanup()?;
     repo.cleanup()?;
@@ -181,6 +252,34 @@ fn run_git<const N: usize>(path: &Path, args: [&str; N]) -> TestResult {
         return Ok(());
     }
     Err(std::io::Error::other(String::from_utf8_lossy(&output.stderr).to_string()).into())
+}
+
+fn run_git_output<const N: usize>(
+    path: &Path,
+    args: [&str; N],
+) -> Result<String, Box<dyn std::error::Error>> {
+    let output = Command::new("git").current_dir(path).args(args).output()?;
+    if output.status.success() {
+        return Ok(String::from_utf8(output.stdout)?);
+    }
+    Err(std::io::Error::other(String::from_utf8_lossy(&output.stderr).to_string()).into())
+}
+
+async fn generation_count(pool: &PgPool, repo_id: &str) -> Result<i64, sqlx::Error> {
+    let row =
+        sqlx::query("SELECT count(*)::bigint AS count FROM index_generations WHERE repo_id = $1")
+            .bind(repo_id)
+            .fetch_one(pool)
+            .await?;
+    row.try_get("count")
+}
+
+async fn overlay_count(pool: &PgPool, repo_id: &str) -> Result<i64, sqlx::Error> {
+    let row = sqlx::query("SELECT count(*)::bigint AS count FROM file_overlays WHERE repo_id = $1")
+        .bind(repo_id)
+        .fetch_one(pool)
+        .await?;
+    row.try_get("count")
 }
 
 async fn cleanup(pool: &PgPool, repo_id: &str) -> Result<(), sqlx::Error> {

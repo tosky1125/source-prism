@@ -6,6 +6,7 @@
 
 mod architecture;
 mod coverage;
+mod file_overlay;
 mod generation;
 mod generation_files;
 mod generation_manifest;
@@ -33,6 +34,10 @@ pub const DEFAULT_SEARCH_INDEX: &str = "source-prism-dev";
 pub use architecture::{ArchitectureEntityRecord, ArchitectureStoreError, PgArchitectureStore};
 pub use coverage::{
     CoverageIngestOutcome, CoverageSegmentRecord, CoverageStoreError, PgCoverageStore,
+};
+pub use file_overlay::{
+    FileOverlayInput, FileOverlayStatus, FileOverlayStoreError, OverlayBaseGeneration,
+    PgFileOverlayStore,
 };
 pub use generation::{GenerationError, GenerationRecord, GenerationStatus, PgGenerationStore};
 pub use generation_files::FileManifestRecord;

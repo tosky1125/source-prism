@@ -58,7 +58,7 @@ async fn analyze_with_repo(
     }))
 }
 
-async fn impact_inputs(
+pub(crate) async fn impact_inputs(
     state: &AppState,
     repo_id: Option<&str>,
 ) -> Result<(Vec<ri_symbols::SymbolRecord>, Vec<ImpactCallEdge>), AppError> {

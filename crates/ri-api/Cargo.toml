@@ -18,6 +18,7 @@ ri-core = { path = "../ri-core" }
 ri-git = { path = "../ri-git" }
 ri-impact = { path = "../ri-impact" }
 ri-indexer = { path = "../ri-indexer" }
+ri-refactor = { path = "../ri-refactor" }
 ri-symbols = { path = "../ri-symbols" }
 axum = "0.8"
 reqwest = { version = "0.12", default-features = false, features = ["http2", "json", "rustls-tls"] }

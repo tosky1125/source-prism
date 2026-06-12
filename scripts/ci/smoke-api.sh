@@ -219,6 +219,19 @@ request POST "${api_base_url}/v1/repos/${repo_id}/impact" \
 grep -q '"kind":"impact"' /tmp/source-prism-api-repo-impact.json
 grep -q '"impact_score":' /tmp/source-prism-api-repo-impact.json
 
+request POST "${api_base_url}/v1/refactor/plan" /tmp/source-prism-api-refactor.json \
+  -H 'content-type: application/json' \
+  --data "{\"repo_id\":\"${repo_id}\",\"symbol\":\"${api_impact_symbol}\"}"
+grep -q '"kind":"refactor_plan"' /tmp/source-prism-api-refactor.json
+grep -q '"execution_allowed":false' /tmp/source-prism-api-refactor.json
+
+request POST "${api_base_url}/v1/repos/${repo_id}/refactor/plan" \
+  /tmp/source-prism-api-repo-refactor.json \
+  -H 'content-type: application/json' \
+  --data "{\"symbol\":\"${api_impact_symbol}\"}"
+grep -q '"kind":"refactor_plan"' /tmp/source-prism-api-repo-refactor.json
+grep -q '"planner_only_sandbox_required"' /tmp/source-prism-api-repo-refactor.json
+
 request GET "${api_base_url}/repo/${repo_id}" /tmp/source-prism-api-web.html
 grep -q 'Repo Structure Explorer' /tmp/source-prism-api-web.html
 grep -q "data-repo-id=\"${repo_id}\"" /tmp/source-prism-api-web.html

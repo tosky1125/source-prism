@@ -17,6 +17,7 @@ pub(crate) mod graph_call_edges;
 pub(crate) mod graph_test_edges;
 pub(crate) mod health;
 pub(crate) mod impact;
+pub(crate) mod refactor;
 pub(crate) mod repo_architecture;
 pub(crate) mod repo_coverage;
 pub(crate) mod repo_files;
@@ -50,6 +51,7 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/health", get(health::health))
         .route("/v1/context/search", post(context_search::search))
         .route("/v1/impact", post(impact::analyze))
+        .route("/v1/refactor/plan", post(refactor::plan))
         .route("/v1/test-context", post(test_context::get))
         .route("/repo/{repo_id}", get(web::repo))
         .route("/repo/{repo_id}/{view}", get(web::repo_view))
@@ -69,6 +71,10 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/repos/{repo_id}/impact", post(impact::analyze_for_repo))
         .route("/v1/repos/{repo_id}/index", post(repo_index::index))
         .route("/v1/repos/{repo_id}/references", get(repo_references::list))
+        .route(
+            "/v1/repos/{repo_id}/refactor/plan",
+            post(refactor::plan_for_repo),
+        )
         .route("/v1/repos/{repo_id}/symbols", get(repo_symbols::list))
         .route(
             "/v1/repos/{repo_id}/test-context",

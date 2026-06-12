@@ -66,6 +66,7 @@ pub fn app(state: AppState) -> Router {
         )
         .route("/v1/repos/{repo_id}/files", get(repo_files::list))
         .route("/v1/repos/{repo_id}/graph", get(repo_graph::get))
+        .route("/v1/repos/{repo_id}/impact", post(impact::analyze_for_repo))
         .route("/v1/repos/{repo_id}/index", post(repo_index::index))
         .route("/v1/repos/{repo_id}/references", get(repo_references::list))
         .route("/v1/repos/{repo_id}/symbols", get(repo_symbols::list))

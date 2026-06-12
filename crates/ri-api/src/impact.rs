@@ -1,4 +1,7 @@
-use axum::{Json, extract::State};
+use axum::{
+    Json,
+    extract::{Path, State},
+};
 use ri_impact::{ImpactCallEdge, ImpactReport, analyze_symbol_impact_with_calls};
 use ri_indexer::{PgGraphStore, PgSymbolStore};
 use serde::{Deserialize, Serialize};
@@ -26,11 +29,28 @@ pub(crate) async fn analyze(
     State(state): State<AppState>,
     Json(request): Json<ImpactRequest>,
 ) -> Result<Json<ImpactResponse>, AppError> {
+    analyze_with_repo(state, request, None).await
+}
+
+pub(crate) async fn analyze_for_repo(
+    State(state): State<AppState>,
+    Path(repo_id): Path<String>,
+    Json(request): Json<ImpactRequest>,
+) -> Result<Json<ImpactResponse>, AppError> {
+    analyze_with_repo(state, request, Some(repo_id)).await
+}
+
+async fn analyze_with_repo(
+    state: AppState,
+    request: ImpactRequest,
+    repo_id: Option<String>,
+) -> Result<Json<ImpactResponse>, AppError> {
     let symbol = request.symbol.trim();
     if symbol.is_empty() {
         return Err(AppError::Validation("symbol must not be empty".to_owned()));
     }
-    let (symbols, calls) = impact_inputs(&state, request.repo_id.as_deref()).await?;
+    let repo_id = repo_id.as_deref().or(request.repo_id.as_deref());
+    let (symbols, calls) = impact_inputs(&state, repo_id).await?;
     Ok(Json(ImpactResponse {
         status: "ok",
         kind: "impact",

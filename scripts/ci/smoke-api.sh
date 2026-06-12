@@ -212,6 +212,13 @@ request POST "${api_base_url}/v1/impact" /tmp/source-prism-api-impact.json \
 grep -q '"kind":"impact"' /tmp/source-prism-api-impact.json
 grep -q '"impact_score":' /tmp/source-prism-api-impact.json
 
+request POST "${api_base_url}/v1/repos/${repo_id}/impact" \
+  /tmp/source-prism-api-repo-impact.json \
+  -H 'content-type: application/json' \
+  --data "{\"symbol\":\"${api_impact_symbol}\"}"
+grep -q '"kind":"impact"' /tmp/source-prism-api-repo-impact.json
+grep -q '"impact_score":' /tmp/source-prism-api-repo-impact.json
+
 request GET "${api_base_url}/repo/${repo_id}" /tmp/source-prism-api-web.html
 grep -q 'Repo Structure Explorer' /tmp/source-prism-api-web.html
 grep -q "data-repo-id=\"${repo_id}\"" /tmp/source-prism-api-web.html

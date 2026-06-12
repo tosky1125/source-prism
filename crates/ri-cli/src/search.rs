@@ -38,18 +38,22 @@ async fn sync(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
 }
 
 async fn drift_check(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
-    let expect_mismatch = matches!(args.next().as_deref(), Some("--expect-mismatch"))
-        && matches!(args.next().as_deref(), Some("fixture"))
-        && args.next().is_none();
+    let request = DriftCheckArgs::parse(&mut args)?;
     let (store, client) = dependencies().await?;
-    if expect_mismatch {
+    if request.expect_mismatch {
         client.health().await?;
         return Err(CliError::Drift {
             expected: 1,
             actual: 0,
         });
     }
-    let report = store.drift_report(&client, DEFAULT_SEARCH_INDEX).await?;
+    let report = if let Some(generation_id) = request.generation_id.as_deref() {
+        store
+            .drift_report_for_generation(&client, DEFAULT_SEARCH_INDEX, generation_id)
+            .await?
+    } else {
+        store.drift_report(&client, DEFAULT_SEARCH_INDEX).await?
+    };
     if report.has_drift() {
         return Err(CliError::Drift {
             expected: report.expected_documents,
@@ -66,17 +70,83 @@ async fn drift_check(mut args: impl Iterator<Item = String>) -> Result<(), CliEr
 }
 
 async fn rebuild(mut args: impl Iterator<Item = String>) -> Result<(), CliError> {
-    if args.next().as_deref() != Some("--from-postgres") || args.next().is_some() {
-        return Err(CliError::Usage);
-    }
+    let request = RebuildArgs::parse(&mut args)?;
     let (store, client) = dependencies().await?;
-    let outcome = store.rebuild_index(&client, DEFAULT_SEARCH_INDEX).await?;
-    writeln!(
-        io::stdout().lock(),
-        "search rebuild indexed={}",
-        outcome.indexed
-    )?;
+    let outcome = if let Some(generation_id) = request.generation_id.as_deref() {
+        store
+            .rebuild_index_for_generation(&client, DEFAULT_SEARCH_INDEX, generation_id)
+            .await?
+    } else {
+        store.rebuild_index(&client, DEFAULT_SEARCH_INDEX).await?
+    };
+    if let Some(generation_id) = request.generation_id {
+        writeln!(
+            io::stdout().lock(),
+            "search rebuild indexed={} generation={generation_id}",
+            outcome.indexed
+        )?;
+    } else {
+        writeln!(
+            io::stdout().lock(),
+            "search rebuild indexed={}",
+            outcome.indexed
+        )?;
+    }
     Ok(())
+}
+
+#[derive(Debug, Default)]
+struct DriftCheckArgs {
+    expect_mismatch: bool,
+    generation_id: Option<String>,
+}
+
+impl DriftCheckArgs {
+    fn parse(args: &mut impl Iterator<Item = String>) -> Result<Self, CliError> {
+        let mut request = Self::default();
+        while let Some(flag) = args.next() {
+            match flag.as_str() {
+                "--expect-mismatch" => {
+                    if args.next().as_deref() != Some("fixture") || request.generation_id.is_some()
+                    {
+                        return Err(CliError::Usage);
+                    }
+                    request.expect_mismatch = true;
+                }
+                "--generation" => {
+                    if request.expect_mismatch || request.generation_id.is_some() {
+                        return Err(CliError::Usage);
+                    }
+                    request.generation_id = Some(args.next().ok_or(CliError::Usage)?);
+                }
+                _ => return Err(CliError::Usage),
+            }
+        }
+        Ok(request)
+    }
+}
+
+#[derive(Debug, Default)]
+struct RebuildArgs {
+    generation_id: Option<String>,
+}
+
+impl RebuildArgs {
+    fn parse(args: &mut impl Iterator<Item = String>) -> Result<Self, CliError> {
+        if args.next().as_deref() != Some("--from-postgres") {
+            return Err(CliError::Usage);
+        }
+        let mut request = Self::default();
+        while let Some(flag) = args.next() {
+            match flag.as_str() {
+                "--generation" if request.generation_id.is_none() => {
+                    request.generation_id = Some(args.next().ok_or(CliError::Usage)?);
+                }
+                _ => return Err(CliError::Usage),
+            }
+        }
+        Ok(request)
+    }
 }
 
 async fn dependencies() -> Result<(PgSearchSyncStore, OpenSearchClient), CliError> {

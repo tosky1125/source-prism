@@ -110,6 +110,21 @@ grep -q '"symbols":' /tmp/source-prism-api-run.json
 grep -q '"graph_edges":' /tmp/source-prism-api-run.json
 grep -q '"search_chunks":' /tmp/source-prism-api-run.json
 
+cargo run -p ri-cli -- search rebuild --from-postgres --generation "$run_id" \
+  > /tmp/source-prism-api-search-rebuild.txt
+python3 - <<'PY'
+from pathlib import Path
+
+line = Path("/tmp/source-prism-api-search-rebuild.txt").read_text(encoding="utf-8").strip()
+prefix = "search rebuild indexed="
+assert line.startswith(prefix), line
+indexed = int(line.removeprefix(prefix).split()[0])
+assert indexed > 0, line
+PY
+cargo run -p ri-cli -- search drift-check --generation "$run_id" \
+  > /tmp/source-prism-api-search-drift.txt
+grep -q 'search drift ok expected=' /tmp/source-prism-api-search-drift.txt
+
 request POST "${api_base_url}/v1/context/search" /tmp/source-prism-api-context.json \
   -H 'content-type: application/json' \
   --data "{\"repo_id\":\"${repo_id}\",\"query\":\"search_context\"}"

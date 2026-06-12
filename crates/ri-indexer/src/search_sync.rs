@@ -90,6 +90,26 @@ impl PgSearchSyncStore {
         client: &OpenSearchClient,
         index: &str,
     ) -> Result<RebuildOutcome, SearchSyncError> {
+        self.rebuild_index_with_generation(client, index, None)
+            .await
+    }
+
+    pub async fn rebuild_index_for_generation(
+        &self,
+        client: &OpenSearchClient,
+        index: &str,
+        generation_id: &str,
+    ) -> Result<RebuildOutcome, SearchSyncError> {
+        self.rebuild_index_with_generation(client, index, Some(generation_id))
+            .await
+    }
+
+    async fn rebuild_index_with_generation(
+        &self,
+        client: &OpenSearchClient,
+        index: &str,
+        generation_id: Option<&str>,
+    ) -> Result<RebuildOutcome, SearchSyncError> {
         client.health().await?;
         client.delete_index_if_exists(index).await?;
         client.create_index(index).await?;
@@ -97,11 +117,15 @@ impl PgSearchSyncStore {
             r"
             SELECT entity_id, payload
             FROM search_sync_outbox
-            WHERE target_index = $1 AND operation = 'upsert' AND state <> 'cancelled'
+            WHERE target_index = $1
+              AND ($2::text IS NULL OR generation_id = $2)
+              AND operation = 'upsert'
+              AND state <> 'cancelled'
             ORDER BY created_at ASC
             ",
         )
         .bind(index)
+        .bind(generation_id)
         .fetch_all(&self.pool)
         .await?;
         let mut indexed = 0_u64;
@@ -119,15 +143,38 @@ impl PgSearchSyncStore {
         client: &OpenSearchClient,
         index: &str,
     ) -> Result<DriftReport, SearchSyncError> {
+        self.drift_report_with_generation(client, index, None).await
+    }
+
+    pub async fn drift_report_for_generation(
+        &self,
+        client: &OpenSearchClient,
+        index: &str,
+        generation_id: &str,
+    ) -> Result<DriftReport, SearchSyncError> {
+        self.drift_report_with_generation(client, index, Some(generation_id))
+            .await
+    }
+
+    async fn drift_report_with_generation(
+        &self,
+        client: &OpenSearchClient,
+        index: &str,
+        generation_id: Option<&str>,
+    ) -> Result<DriftReport, SearchSyncError> {
         client.health().await?;
         let expected = sqlx::query(
             r"
             SELECT count(*)::bigint AS count
             FROM search_sync_outbox
-            WHERE target_index = $1 AND operation = 'upsert' AND state <> 'cancelled'
+            WHERE target_index = $1
+              AND ($2::text IS NULL OR generation_id = $2)
+              AND operation = 'upsert'
+              AND state <> 'cancelled'
             ",
         )
         .bind(index)
+        .bind(generation_id)
         .fetch_one(&self.pool)
         .await?
         .try_get("count")?;

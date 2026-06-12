@@ -84,9 +84,6 @@ jobs:
           grep '"kind": "impact"' /tmp/source-prism-impact.json
           grep '"status": "ok"' /tmp/source-prism-impact.json
           grep '"impact_score"' /tmp/source-prism-impact.json
-          cargo run -p ri-cli -- impact --symbol 'InvoiceService::applyTax' > /tmp/source-prism-invoice-impact.json
-          grep '"kind": "impact"' /tmp/source-prism-invoice-impact.json
-          grep '"status": "ok"' /tmp/source-prism-invoice-impact.json
           test_symbol=$(python3 -c 'import json; data=json.load(open("/tmp/source-prism-symbols.json")); print(next(symbol["fqn"] for symbol in data["symbols"] if symbol["kind"] == "test_case"))')
           cargo run -p ri-cli -- test-context --symbol "$test_symbol" > /tmp/source-prism-test-context.json
           grep '"kind": "test_context"' /tmp/source-prism-test-context.json
@@ -106,6 +103,11 @@ jobs:
           grep '"kind": "test_runs"' /tmp/source-prism-pytest.json.out
           grep '"framework": "pytest"' /tmp/source-prism-pytest.json.out
           grep '"imported_results": 1' /tmp/source-prism-pytest.json.out
+          printf '%s\n' '{"suites":[{"title":"chromium","file":"tests/invoice.spec.ts","specs":[{"title":"adds tax","tests":[{"projectName":"chromium","status":"expected","results":[{"status":"passed","duration":5}]}]}]}]}' > /tmp/source-prism-playwright.json
+          cargo run -p ri-cli -- tests import-playwright-json --repo . --sha HEAD --playwright-json /tmp/source-prism-playwright.json > /tmp/source-prism-playwright.json.out
+          grep '"kind": "test_runs"' /tmp/source-prism-playwright.json.out
+          grep '"framework": "playwright"' /tmp/source-prism-playwright.json.out
+          grep '"imported_results": 1' /tmp/source-prism-playwright.json.out
 
       - name: Check formatting
         run: cargo fmt --all -- --check

@@ -94,6 +94,48 @@ async fn active_test_runs_preserves_pytest_framework_for_repo()
     Ok(())
 }
 
+#[tokio::test]
+async fn active_test_runs_preserves_playwright_framework_for_repo()
+-> Result<(), Box<dyn std::error::Error>> {
+    let Some(pool) = test_pool().await? else {
+        return Ok(());
+    };
+    let fixture = Fixture::create(&pool).await?;
+    let generation = PgGenerationStore::new(pool.clone())
+        .begin_generation(
+            &fixture.repo_id,
+            &fixture.commit_sha,
+            "test_results",
+            Some("test"),
+        )
+        .await?;
+    let report = parse_junit_xml(
+        r#"<testsuite name="playwright"><testcase classname="invoice.spec" name="adds tax"/></testsuite>"#,
+    )?;
+    PgTestRunStore::new(pool.clone())
+        .replace_playwright_run_for_generation(
+            &generation.generation_id,
+            "playwright.json",
+            &report,
+        )
+        .await?;
+    PgGenerationStore::new(pool.clone())
+        .finish_generation(&generation.generation_id)
+        .await?;
+
+    let runs = PgTestRunStore::new(pool.clone())
+        .active_test_runs_for_repo(&fixture.repo_id)
+        .await?;
+
+    let run = runs
+        .first()
+        .ok_or_else(|| std::io::Error::other("missing test run"))?;
+    assert_eq!(run.framework, "playwright");
+    assert_eq!(run.results.len(), 1);
+    fixture.cleanup(&pool).await?;
+    Ok(())
+}
+
 #[derive(Debug)]
 struct Fixture {
     repo_id: String,

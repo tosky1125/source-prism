@@ -25,6 +25,9 @@ pub(crate) async fn command(mut args: impl Iterator<Item = String>) -> Result<()
     match subcommand.as_str() {
         "import-junit" => crate::test_junit::import(args, database_pool().await?).await,
         "import-pytest-json" => crate::test_pytest::import(args, database_pool().await?).await,
+        "import-playwright-json" => {
+            crate::test_playwright::import(args, database_pool().await?).await
+        }
         "import-lcov" => import_lcov(args).await,
         "import-cobertura" => import_cobertura(args).await,
         "import-jacoco" => import_jacoco(args).await,

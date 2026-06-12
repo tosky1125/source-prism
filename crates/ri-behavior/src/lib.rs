@@ -7,6 +7,7 @@ mod cobertura;
 mod jacoco;
 mod junit;
 mod lcov;
+mod playwright_json;
 mod pytest_json;
 
 use ri_core::{Confidence, Language, SymbolId, SymbolKind};
@@ -19,6 +20,7 @@ pub use cobertura::parse_cobertura_xml;
 pub use jacoco::parse_jacoco_xml;
 pub use junit::{JunitReport, TestCaseResult, TestResultStatus, TestSuiteResult, parse_junit_xml};
 pub use lcov::{CoverageFile, CoverageReport, CoverageSegment, parse_lcov};
+pub use playwright_json::parse_playwright_json;
 pub use pytest_json::parse_pytest_json;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -65,6 +67,8 @@ pub enum BehaviorError {
     JacocoXml { message: String },
     #[error("failed to parse pytest json: {message}")]
     PytestJson { message: String },
+    #[error("failed to parse playwright json: {message}")]
+    PlaywrightJson { message: String },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

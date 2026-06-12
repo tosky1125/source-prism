@@ -41,6 +41,16 @@ impl PgTestRunStore {
             .await
     }
 
+    pub async fn replace_playwright_run_for_generation(
+        &self,
+        generation_id: &GenerationId,
+        source_path: &str,
+        report: &JunitReport,
+    ) -> Result<TestRunIngestOutcome, TestRunStoreError> {
+        self.replace_run_for_generation(generation_id, source_path, "playwright", report)
+            .await
+    }
+
     async fn replace_run_for_generation(
         &self,
         generation_id: &GenerationId,

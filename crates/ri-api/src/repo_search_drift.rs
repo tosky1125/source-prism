@@ -2,7 +2,7 @@ use axum::{
     Json,
     extract::{Path, State},
 };
-use ri_indexer::{DEFAULT_SEARCH_INDEX, OpenSearchClient, PgSearchSyncStore};
+use ri_indexer::{DEFAULT_SEARCH_INDEX, DriftReport, OpenSearchClient, PgSearchSyncStore};
 use serde::Serialize;
 use sqlx::{PgPool, Row as _};
 
@@ -17,6 +17,16 @@ pub(crate) struct RepoSearchDriftResponse {
     expected_documents: i64,
     actual_documents: i64,
     has_drift: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    remediation: Option<SearchDriftRemediation>,
+}
+
+#[derive(Debug, Serialize)]
+struct SearchDriftRemediation {
+    summary: &'static str,
+    rebuild_command: String,
+    verify_command: String,
+    steps: Vec<&'static str>,
 }
 
 pub(crate) async fn get(
@@ -40,6 +50,7 @@ pub(crate) async fn get(
             expected_documents: 0,
             actual_documents: 0,
             has_drift: false,
+            remediation: None,
         }));
     };
     let report = PgSearchSyncStore::new(pool.clone())
@@ -50,15 +61,7 @@ pub(crate) async fn get(
             &generation_id,
         )
         .await?;
-    Ok(Json(RepoSearchDriftResponse {
-        status: "ok",
-        kind: "repo_search_drift",
-        repo_id,
-        latest_generation_id: Some(generation_id),
-        expected_documents: report.expected_documents,
-        actual_documents: report.actual_documents,
-        has_drift: report.has_drift(),
-    }))
+    Ok(Json(response_for_report(repo_id, &generation_id, &report)))
 }
 
 fn local_response(state: &AppState, repo_id: String) -> Result<RepoSearchDriftResponse, AppError> {
@@ -71,7 +74,55 @@ fn local_response(state: &AppState, repo_id: String) -> Result<RepoSearchDriftRe
         expected_documents: 0,
         actual_documents: 0,
         has_drift: false,
+        remediation: None,
     })
+}
+
+fn response_for_report(
+    repo_id: String,
+    generation_id: &str,
+    report: &DriftReport,
+) -> RepoSearchDriftResponse {
+    response_for_counts(
+        repo_id,
+        generation_id,
+        report.expected_documents,
+        report.actual_documents,
+    )
+}
+
+fn response_for_counts(
+    repo_id: String,
+    generation_id: &str,
+    expected_documents: i64,
+    actual_documents: i64,
+) -> RepoSearchDriftResponse {
+    let has_drift = expected_documents != actual_documents;
+    RepoSearchDriftResponse {
+        status: "ok",
+        kind: "repo_search_drift",
+        repo_id,
+        latest_generation_id: Some(generation_id.to_owned()),
+        expected_documents,
+        actual_documents,
+        has_drift,
+        remediation: has_drift.then(|| remediation_for_generation(generation_id)),
+    }
+}
+
+fn remediation_for_generation(generation_id: &str) -> SearchDriftRemediation {
+    SearchDriftRemediation {
+        summary: "OpenSearch index is out of sync with Postgres canonical rows.",
+        rebuild_command: format!(
+            "ri-cli search rebuild --from-postgres --generation {generation_id}"
+        ),
+        verify_command: format!("ri-cli search drift-check --generation {generation_id}"),
+        steps: vec![
+            "Rebuild the OpenSearch index from Postgres.",
+            "Run the search sync worker if queued jobs remain.",
+            "Run drift-check again for the same generation.",
+        ],
+    }
 }
 
 async fn ensure_repo_exists(pool: &PgPool, repo_id: &str) -> Result<(), AppError> {
@@ -109,4 +160,36 @@ async fn latest_generation_id(pool: &PgPool, repo_id: &str) -> Result<Option<Str
     .await?
     .map(|row| row.try_get("generation_id"))
     .transpose()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::response_for_counts;
+
+    #[test]
+    fn drift_response_includes_rebuild_guidance_when_counts_differ() {
+        let response = response_for_counts("repo".to_owned(), "generation-1", 3, 2);
+
+        let remediation = response
+            .remediation
+            .expect("drift response must include remediation");
+        assert!(response.has_drift);
+        assert_eq!(
+            remediation.rebuild_command,
+            "ri-cli search rebuild --from-postgres --generation generation-1"
+        );
+        assert_eq!(
+            remediation.verify_command,
+            "ri-cli search drift-check --generation generation-1"
+        );
+        assert_eq!(remediation.steps.len(), 3);
+    }
+
+    #[test]
+    fn drift_response_omits_rebuild_guidance_when_counts_match() {
+        let response = response_for_counts("repo".to_owned(), "generation-1", 2, 2);
+
+        assert!(!response.has_drift);
+        assert!(response.remediation.is_none());
+    }
 }

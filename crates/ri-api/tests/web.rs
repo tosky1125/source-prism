@@ -54,12 +54,14 @@ async fn repo_web_shell_returns_structure_explorer() -> Result<(), Box<dyn std::
     assert!(body.contains("api(\"coverage\")"));
     assert!(body.contains("api(\"runs\")"));
     assert!(body.contains("api(\"search-sync\")"));
+    assert!(body.contains("api(\"search-drift\")"));
     assert!(body.contains("api(\"changed-symbols\")"));
     assert!(body.contains("api(\"test-context\")"));
     assert!(body.contains("graph.value?.graph?.edges"));
     assert!(body.contains("related_tests"));
     assert!(body.contains("Index Runs"));
     assert!(body.contains("Search Sync"));
+    assert!(body.contains("Rebuild command"));
     assert!(body.contains("scrollIntoView"));
     assert!(body.contains("result.context_pack?.hits"));
     assert!(body.contains("`${repoApi}/context/search`"));

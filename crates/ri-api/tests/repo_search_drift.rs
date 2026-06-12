@@ -62,6 +62,10 @@ pub fn local_search_drift_fixture() -> i32 {
         body.pointer("/has_drift").and_then(Value::as_bool),
         Some(false)
     );
+    assert!(
+        body.pointer("/remediation").is_none(),
+        "local no-drift response must not show repair guidance"
+    );
     repo.cleanup()?;
     Ok(())
 }

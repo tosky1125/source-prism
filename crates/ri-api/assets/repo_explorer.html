@@ -319,7 +319,7 @@
     const load = async () => {
       setView(initialView);
       try {
-        const [overview, files, symbols, graph, tests, coverage, docs, runs, sync] = await Promise.allSettled([
+        const [overview, files, symbols, graph, tests, coverage, docs, runs, sync, drift] = await Promise.allSettled([
           json(repoApi),
           json(api("files")),
           json(api("symbols")),
@@ -328,7 +328,8 @@
           json(api("coverage")),
           json(api("architecture")),
           json(api("runs")),
-          json(api("search-sync"))
+          json(api("search-sync")),
+          json(api("search-drift"))
         ]);
         const fileRows = files.value?.files ?? [];
         const symbolRows = symbols.value?.symbols ?? [];
@@ -336,6 +337,7 @@
         const evidence = latestRun?.evidence ?? {};
         const runRows = runs.value?.runs ?? [];
         const syncStatus = sync.value ?? null;
+        const driftStatus = drift.value ?? null;
         const referenceRows = await referencesFor(symbolRows);
         const testContext = await testContextFor(symbolRows);
         const graphNodes = graph.value?.graph?.nodes ?? [];
@@ -362,7 +364,7 @@
         renderList(document.querySelector("#coverage"), coverageRows.slice(0, 24).map((segment) => row(segment.file_path, `${segment.format} lines ${segment.start_line}-${segment.end_line} hits ${segment.hit_count}`)), "No coverage evidence indexed");
         renderList(document.querySelector("#docs"), docRows.slice(0, 24).map((entity) => row(entity.name, `${entity.entity_type} ${entity.file_path}`)), "No docs or contracts indexed");
         renderRuns(runRows);
-        renderSync(syncStatus);
+        renderSync(syncStatus, driftStatus);
         status.textContent = "Live";
       } catch (error) {
         status.textContent = error.message;
@@ -406,18 +408,24 @@
       renderList(document.querySelector("#runs"), rows, "No index runs recorded");
     };
 
-    const renderSync = (syncStatus) => {
+    const renderSync = (syncStatus, driftStatus) => {
       if (!syncStatus) {
         renderList(document.querySelector("#sync"), [], "No search sync status");
         return;
       }
       const outbox = syncStatus.outbox_state_counts ?? {};
       const jobs = syncStatus.job_state_counts ?? {};
+      const remediation = driftStatus?.remediation ?? null;
       const rows = [
         row("Latest generation", syncStatus.latest_generation_id ?? "none"),
         row("Outbox", `queued ${outbox.queued ?? 0} succeeded ${outbox.succeeded ?? 0} failed ${outbox.failed ?? 0} total ${outbox.total ?? 0}`),
-        row("Jobs", `queued ${jobs.queued ?? 0} succeeded ${jobs.succeeded ?? 0} failed ${jobs.failed ?? 0} total ${jobs.total ?? 0}`)
+        row("Jobs", `queued ${jobs.queued ?? 0} succeeded ${jobs.succeeded ?? 0} failed ${jobs.failed ?? 0} total ${jobs.total ?? 0}`),
+        row("Search drift", driftStatus?.has_drift ? `expected ${driftStatus.expected_documents} actual ${driftStatus.actual_documents}` : "none")
       ];
+      if (remediation) {
+        rows.push(row("Rebuild command", remediation.rebuild_command));
+        rows.push(row("Verify command", remediation.verify_command));
+      }
       renderList(document.querySelector("#sync"), rows, "No search sync status");
     };
 

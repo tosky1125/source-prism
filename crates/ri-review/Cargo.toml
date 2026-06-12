@@ -1,0 +1,22 @@
+[package]
+name = "ri-review"
+version = "0.1.0"
+description = "Evidence-backed review finding verifier for Source Prism."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+ri-core = { path = "../ri-core" }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints]
+workspace = true

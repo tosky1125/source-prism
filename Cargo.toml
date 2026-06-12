@@ -13,6 +13,7 @@ members = [
     "crates/ri-mcp",
     "crates/ri-parser",
     "crates/ri-context",
+    "crates/ri-review",
     "crates/ri-search",
     "crates/ri-symbols",
     "crates/ri-tree-sitter",

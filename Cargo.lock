@@ -2288,6 +2288,7 @@ dependencies = [
  "ri-impact",
  "ri-indexer",
  "ri-parser",
+ "ri-review",
  "ri-symbols",
  "ri-tree-sitter",
  "serde_json",
@@ -2401,6 +2402,16 @@ version = "0.1.0"
 dependencies = [
  "ri-core",
  "ri-symbols",
+ "thiserror",
+]
+
+[[package]]
+name = "ri-review"
+version = "0.1.0"
+dependencies = [
+ "ri-core",
+ "serde",
+ "serde_json",
  "thiserror",
 ]
 

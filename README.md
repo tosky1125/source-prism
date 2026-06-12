@@ -28,9 +28,11 @@ This repository is currently past the bare foundation phase. The runnable base n
 - Tree-sitter symbol extraction for Rust, TypeScript/JavaScript, Python, and Go
 - Postgres-backed file manifest, symbol, graph, test-case, run, and search outbox indexing
 - Static imports, calls, test-context, and `test_covers` graph evidence from extracted symbols
+- MCP tool contracts for symbol/reference/impact/context queries
+- Evidence-backed review finding verification
 - Evidence-based QA conventions
 
-MCP tools, GitHub/GitLab publishing, PR review generation, and refactor execution are still roadmap work. Source execution remains forbidden until sandbox design lands.
+MCP transport/runtime, GitHub/GitLab publishing, PR review generation, and refactor execution are still roadmap work. Source execution remains forbidden until sandbox design lands.
 
 ## Local Smoke Commands
 
@@ -44,6 +46,7 @@ curl -fsS http://127.0.0.1:3000/v1/repos/source-prism-ci/tests
 cargo run -p ri-cli -- impact --symbol search
 cargo run -p ri-cli -- search-context search
 cargo run -p ri-cli -- test-context --symbol extracts_rust_functions_methods_and_tests
+cargo run -p ri-cli -- review verify --input /path/to/findings.json
 cargo run -p ri-api
 curl -fsS -X POST http://127.0.0.1:3000/v1/test-context \
   -H 'content-type: application/json' \

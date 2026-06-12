@@ -10,7 +10,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub(crate) enum CliError {
     #[error(
-        "usage: ri-cli config check --env-file <path> | db migrate | repo manifest --repo <path> | index --repo <path> --sha <sha> | symbols --repo <path> | changed-symbols --diff <diff> | references --symbol <symbol> | architecture --repo <path> | impact --symbol <symbol> | search-context <query> | test-context --symbol <symbol> | tests import-junit --repo <path> --sha <sha> --junit <file> | tests import-pytest-json --repo <path> --sha <sha> --pytest-json <file> | tests import-playwright-json --repo <path> --sha <sha> --playwright-json <file> | tests import-go-test-json --repo <path> --sha <sha> --go-test-json <file> | tests import-lcov --repo <path> --sha <sha> --lcov <file> | tests import-cobertura --repo <path> --sha <sha> --cobertura <file> | tests import-jacoco --repo <path> --sha <sha> --jacoco <file> | search sync --once | search drift-check [--expect-mismatch fixture] | search rebuild --from-postgres"
+        "usage: ri-cli config check --env-file <path> | db migrate | repo manifest --repo <path> | index --repo <path> --sha <sha> | symbols --repo <path> | changed-symbols --diff <diff> | references --symbol <symbol> | architecture --repo <path> | impact --symbol <symbol> | search-context <query> | test-context --symbol <symbol> | review verify --input <file> | tests import-junit --repo <path> --sha <sha> --junit <file> | tests import-pytest-json --repo <path> --sha <sha> --pytest-json <file> | tests import-playwright-json --repo <path> --sha <sha> --playwright-json <file> | tests import-go-test-json --repo <path> --sha <sha> --go-test-json <file> | tests import-lcov --repo <path> --sha <sha> --lcov <file> | tests import-cobertura --repo <path> --sha <sha> --cobertura <file> | tests import-jacoco --repo <path> --sha <sha> --jacoco <file> | search sync --once | search drift-check [--expect-mismatch fixture] | search rebuild --from-postgres"
     )]
     Usage,
     #[error("missing required env: {key}")]
@@ -41,6 +41,8 @@ pub(crate) enum CliError {
     ArchitectureStore(#[from] ri_indexer::ArchitectureStoreError),
     #[error(transparent)]
     Parser(#[from] ri_parser::ParserError),
+    #[error(transparent)]
+    Review(#[from] ri_review::ReviewError),
     #[error(transparent)]
     Json(#[from] serde_json::Error),
     #[error(transparent)]
@@ -81,6 +83,7 @@ impl CliError {
             | Self::Graph(_)
             | Self::ArchitectureStore(_)
             | Self::Parser(_)
+            | Self::Review(_)
             | Self::Json(_)
             | Self::Migrate(_)
             | Self::OpenSearch(_)

@@ -16,6 +16,30 @@ impl PgSearchSyncStore {
                 outbox_id: None,
             });
         };
+        self.sync_record(client, record).await
+    }
+
+    pub async fn sync_generation(
+        &self,
+        client: &OpenSearchClient,
+        generation_id: &str,
+    ) -> Result<u64, SearchSyncError> {
+        client.health().await?;
+        let mut processed = 0_u64;
+        loop {
+            let Some(record) = self.lease_next_for_generation(generation_id).await? else {
+                return Ok(processed);
+            };
+            self.sync_record(client, record).await?;
+            processed = processed.saturating_add(1);
+        }
+    }
+
+    async fn sync_record(
+        &self,
+        client: &OpenSearchClient,
+        record: crate::SearchSyncRecord,
+    ) -> Result<SyncOnceOutcome, SearchSyncError> {
         let result = match record.operation {
             SearchSyncOperation::Upsert => {
                 client
@@ -72,6 +96,43 @@ impl PgSearchSyncStore {
             ",
         )
         .bind(outbox_id)
+        .fetch_optional(&mut *transaction)
+        .await?;
+        transaction.commit().await?;
+        row.as_ref().map(record_from_row).transpose()
+    }
+
+    async fn lease_next_for_generation(
+        &self,
+        generation_id: &str,
+    ) -> Result<Option<crate::SearchSyncRecord>, SearchSyncError> {
+        let mut transaction = self.pool.begin().await?;
+        let row = sqlx::query(
+            r"
+            WITH candidate AS (
+                SELECT outbox_id
+                FROM search_sync_outbox
+                WHERE generation_id = $1
+                  AND (
+                    (state IN ('queued', 'failed') AND run_after <= now())
+                    OR (state = 'leased' AND leased_until <= now())
+                  )
+                ORDER BY created_at ASC
+                FOR UPDATE SKIP LOCKED
+                LIMIT 1
+            )
+            UPDATE search_sync_outbox AS s
+            SET state = 'leased',
+                leased_by = 'ri-worker-search-sync',
+                leased_until = now() + INTERVAL '60 seconds',
+                attempt_count = attempt_count + 1,
+                updated_at = now()
+            FROM candidate
+            WHERE s.outbox_id = candidate.outbox_id
+            RETURNING s.outbox_id, s.entity_id, s.operation, s.target_index, s.payload_hash, s.payload
+            ",
+        )
+        .bind(generation_id)
         .fetch_optional(&mut *transaction)
         .await?;
         transaction.commit().await?;

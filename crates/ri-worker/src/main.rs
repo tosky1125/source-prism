@@ -37,6 +37,8 @@ struct Cli {
     enqueue_search_sync: bool,
     #[arg(long)]
     search_outbox_id: Option<String>,
+    #[arg(long)]
+    search_generation_id: Option<String>,
     #[arg(long, env = "OPENSEARCH_URL")]
     opensearch_url: Option<String>,
 }
@@ -74,7 +76,13 @@ async fn main() -> Result<(), CliError> {
         enqueue_noop(&runtime, &cli.queue).await?;
     }
     if cli.enqueue_search_sync {
-        enqueue_search_sync(&runtime, &cli.queue, cli.search_outbox_id.as_deref()).await?;
+        enqueue_search_sync(
+            &runtime,
+            &cli.queue,
+            cli.search_outbox_id.as_deref(),
+            cli.search_generation_id.as_deref(),
+        )
+        .await?;
     }
     let search_sync = SearchSyncProcessor::new(pool, cli.opensearch_url.as_deref());
 
@@ -106,18 +114,19 @@ async fn enqueue_search_sync(
     runtime: &JobRuntime<PgJobStore>,
     queue: &str,
     outbox_id: Option<&str>,
+    generation_id: Option<&str>,
 ) -> Result<(), CliError> {
     runtime
         .enqueue(EnqueueJob::new(
             JobQueue::parse(queue)?,
             JobKind::parse("search.sync_once")?,
-            search_sync_payload(outbox_id),
+            search_sync_payload(outbox_id, generation_id),
         ))
         .await?;
     Ok(())
 }
 
-fn search_sync_payload(outbox_id: Option<&str>) -> serde_json::Value {
+fn search_sync_payload(outbox_id: Option<&str>, generation_id: Option<&str>) -> serde_json::Value {
     let mut payload = serde_json::Map::new();
     payload.insert(
         "source".to_owned(),
@@ -127,6 +136,12 @@ fn search_sync_payload(outbox_id: Option<&str>) -> serde_json::Value {
         payload.insert(
             "outbox_id".to_owned(),
             serde_json::Value::String(outbox_id.to_owned()),
+        );
+    }
+    if let Some(generation_id) = generation_id {
+        payload.insert(
+            "generation_id".to_owned(),
+            serde_json::Value::String(generation_id.to_owned()),
         );
     }
     serde_json::Value::Object(payload)
@@ -272,6 +287,14 @@ impl SearchSyncProcessor {
                 .sync_one_by_id(&self.client, outbox_id)
                 .await
                 .map(|outcome| outcome.processed)
+        } else if let Some(generation_id) = payload
+            .get("generation_id")
+            .and_then(serde_json::Value::as_str)
+        {
+            self.store
+                .sync_generation(&self.client, generation_id)
+                .await
+                .map(|processed| processed > 0)
         } else {
             self.store
                 .sync_once(&self.client)

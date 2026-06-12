@@ -109,11 +109,20 @@ pub fn api_index_fixture() -> i32 {
         .pointer("/indexed_search_chunks")
         .and_then(Value::as_i64)
         .ok_or_else(|| std::io::Error::other("missing second indexed_search_chunks"))?;
+    let enqueued_jobs = second_body
+        .pointer("/enqueued_search_sync_jobs")
+        .and_then(Value::as_i64)
+        .ok_or_else(|| std::io::Error::other("missing enqueued_search_sync_jobs"))?;
     assert!(second_search_chunks > 0);
+    assert_eq!(enqueued_jobs, 1);
     assert_ne!(second_generation, first_generation);
     assert_eq!(
         search_chunk_count_for_generation(&pool, second_generation).await?,
         second_search_chunks
+    );
+    assert_eq!(
+        search_sync_job_count_for_generation(&pool, second_generation).await?,
+        1
     );
     cleanup(&pool, &repo_id).await?;
     repo.cleanup()?;
@@ -212,7 +221,49 @@ async fn search_chunk_count_for_generation(
     row.try_get("count")
 }
 
+async fn search_sync_job_count_for_generation(
+    pool: &PgPool,
+    generation_id: &str,
+) -> Result<i64, sqlx::Error> {
+    let row = sqlx::query(
+        r"
+        SELECT count(*)::bigint AS count
+        FROM jobs
+        WHERE generation_id = $1
+          AND kind = 'search.sync_once'
+          AND state = 'queued'
+          AND payload->>'generation_id' = $1
+        ",
+    )
+    .bind(generation_id)
+    .fetch_one(pool)
+    .await?;
+    row.try_get("count")
+}
+
 async fn cleanup(pool: &PgPool, repo_id: &str) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r"
+        DELETE FROM job_attempts
+        WHERE job_id IN (SELECT job_id FROM jobs WHERE generation_id IN (
+            SELECT generation_id FROM index_generations WHERE repo_id = $1
+        ))
+        ",
+    )
+    .bind(repo_id)
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        r"
+        DELETE FROM jobs
+        WHERE generation_id IN (
+            SELECT generation_id FROM index_generations WHERE repo_id = $1
+        )
+        ",
+    )
+    .bind(repo_id)
+    .execute(pool)
+    .await?;
     for table in [
         "search_sync_outbox",
         "architecture_entities",

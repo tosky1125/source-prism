@@ -16,6 +16,8 @@ Thumbs.db
 # Logs and runtime artifacts
 *.log
 *.pid
+apps/web/node_modules/
+crates/ri-api/assets/repo-explorer/
 
 # Local evidence output
 .omo/evidence/*

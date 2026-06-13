@@ -150,6 +150,47 @@ fn total_works() { assert_eq!(invoice::apply_tax(1), 2) }
 }
 
 #[test]
+fn extracts_tsx_identifier_calls_inside_jsx_callbacks() -> Result<(), Box<dyn std::error::Error>> {
+    let source = r"
+export function App() {
+  async function runSearch(value: string): Promise<void> {
+    await searchContext(value);
+  }
+  return <SymbolPicker onSearch={(value) => void runSearch(value)} />;
+}
+";
+
+    let calls = extract_calls(Language::TypeScript, "src/App.tsx", source)?;
+
+    assert!(
+        calls.iter().any(|call| call.target_name == "runSearch"),
+        "JSX callback should include runSearch identifier call"
+    );
+    assert!(
+        calls.iter().any(|call| call.target_name == "searchContext"),
+        "nested TypeScript function body should include searchContext identifier call"
+    );
+    Ok(())
+}
+
+#[test]
+fn ignores_unresolved_typescript_member_calls() -> Result<(), Box<dyn std::error::Error>> {
+    let source = r"
+function run(client: Client): void {
+  client.search();
+}
+";
+
+    let calls = extract_calls(Language::TypeScript, "src/search.ts", source)?;
+
+    assert!(
+        calls.iter().all(|call| call.target_name != "search"),
+        "receiver method calls need precise resolution before graph insertion"
+    );
+    Ok(())
+}
+
+#[test]
 fn ignores_unresolved_rust_receiver_method_calls() -> Result<(), Box<dyn std::error::Error>> {
     let source = r"
 fn total(target: String) -> bool { target.is_empty() }

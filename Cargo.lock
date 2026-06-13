@@ -2340,6 +2340,7 @@ dependencies = [
 name = "ri-context"
 version = "0.1.0"
 dependencies = [
+ "gix",
  "ri-core",
  "ri-git",
  "ri-impact",
@@ -2348,6 +2349,7 @@ dependencies = [
  "ri-symbols",
  "ri-tree-sitter",
  "serde",
+ "tempfile",
  "thiserror",
 ]
 

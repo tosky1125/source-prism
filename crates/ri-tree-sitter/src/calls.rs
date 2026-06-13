@@ -13,6 +13,7 @@ use crate::names::node_text;
 
 const RUST_CALL_EXPRESSION: &str = "call_expression";
 const RUST_MACRO_INVOCATION: &str = "macro_invocation";
+const IDENTIFIER: &str = "identifier";
 
 pub(crate) fn extract_tree_calls(file: &SourceFile<'_>, root: Node<'_>) -> Vec<CallReference> {
     let mut calls = Vec::new();
@@ -29,21 +30,38 @@ fn walk(file: &SourceFile<'_>, node: Node<'_>, calls: &mut Vec<CallReference>) {
 }
 
 fn calls_for_node(file: &SourceFile<'_>, node: Node<'_>) -> Vec<CallReference> {
-    if file.language != Language::Rust {
-        return Vec::new();
-    }
     if node.kind() == RUST_CALL_EXPRESSION {
-        return call_expression(file, node).into_iter().collect();
+        return match file.language {
+            Language::Rust => rust_call_expression(file, node).into_iter().collect(),
+            Language::TypeScript | Language::JavaScript => {
+                identifier_call_expression(file, node).into_iter().collect()
+            }
+            _ => Vec::new(),
+        };
     }
-    if node.kind() == RUST_MACRO_INVOCATION {
+    if file.language == Language::Rust && node.kind() == RUST_MACRO_INVOCATION {
         return macro_calls(file, node);
     }
     Vec::new()
 }
 
-fn call_expression(file: &SourceFile<'_>, node: Node<'_>) -> Option<CallReference> {
+fn rust_call_expression(file: &SourceFile<'_>, node: Node<'_>) -> Option<CallReference> {
     let function = node.child_by_field_name("function")?;
     let target_name = rust_target_name(&node_text(file.source, function)?)?;
+    Some(CallReference::new(
+        file.path.clone(),
+        file.language,
+        target_name,
+        range_for(node),
+    ))
+}
+
+fn identifier_call_expression(file: &SourceFile<'_>, node: Node<'_>) -> Option<CallReference> {
+    let function = node.child_by_field_name("function")?;
+    if function.kind() != IDENTIFIER {
+        return None;
+    }
+    let target_name = node_text(file.source, function)?;
     Some(CallReference::new(
         file.path.clone(),
         file.language,

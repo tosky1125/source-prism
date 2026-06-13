@@ -34,10 +34,13 @@ pub(crate) fn is_generated_path(path: &str) -> bool {
 
 pub(crate) fn is_vendor_path(path: &str) -> bool {
     let lowered = path.to_ascii_lowercase();
-    lowered.starts_with("vendor/")
+    lowered == "vendor"
+        || lowered.starts_with("vendor/")
         || lowered.contains("/vendor/")
+        || lowered == "node_modules"
         || lowered.starts_with("node_modules/")
         || lowered.contains("/node_modules/")
+        || lowered == "third_party"
         || lowered.starts_with("third_party/")
         || lowered.contains("/third_party/")
 }

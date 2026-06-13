@@ -244,6 +244,7 @@ fn is_git_internal_path(path: &str) -> bool {
 
 fn is_ignored_local_artifact_path(path: &str) -> bool {
     is_git_internal_path(path)
+        || is_vendor_path(path)
         || path == "target"
         || path.starts_with("target/")
         || path == ".omo/evidence"

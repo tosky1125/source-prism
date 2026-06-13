@@ -61,8 +61,34 @@ fn local_manifest_skips_local_omo_runtime_artifacts() -> Result<(), Box<dyn std:
 }
 
 #[test]
-fn local_manifest_detects_generated_vendor_and_test_files() -> Result<(), Box<dyn std::error::Error>>
-{
+fn local_manifest_skips_vendor_dependency_trees() -> Result<(), Box<dyn std::error::Error>> {
+    let repo = fixture_repo()?;
+    write_file(repo.path(), "src/lib.rs", b"pub fn real() {}\n")?;
+    write_file(
+        repo.path(),
+        "apps/web/node_modules/react/index.js",
+        b"export const react = 1;\n",
+    )?;
+    write_file(
+        repo.path(),
+        "vendor/pkg/index.js",
+        b"export const pkg = 1;\n",
+    )?;
+    write_file(repo.path(), "third_party/lib/file.go", b"package lib\n")?;
+
+    let manifest = LocalManifest::extract(repo.path())?;
+    let files = manifest.files();
+
+    assert_eq!(files.len(), 1);
+    assert!(find_manifest_file(files, "src/lib.rs").is_some());
+    assert!(find_manifest_file(files, "apps/web/node_modules/react/index.js").is_none());
+    assert!(find_manifest_file(files, "vendor/pkg/index.js").is_none());
+    assert!(find_manifest_file(files, "third_party/lib/file.go").is_none());
+    Ok(())
+}
+
+#[test]
+fn local_manifest_detects_generated_and_test_files() -> Result<(), Box<dyn std::error::Error>> {
     let repo = fixture_repo()?;
     write_file(
         repo.path(),
@@ -76,11 +102,6 @@ fn local_manifest_detects_generated_vendor_and_test_files() -> Result<(), Box<dy
     )?;
     write_file(
         repo.path(),
-        "vendor/pkg/index.js",
-        b"export const pkg = 1;\n",
-    )?;
-    write_file(
-        repo.path(),
         "tests/contracts.rs",
         b"#[test]\nfn contract() {}\n",
     )?;
@@ -88,7 +109,7 @@ fn local_manifest_detects_generated_vendor_and_test_files() -> Result<(), Box<dy
     let manifest = LocalManifest::extract(repo.path())?;
     let files = manifest.files();
 
-    assert_eq!(files.len(), 4);
+    assert_eq!(files.len(), 3);
     assert!(
         files
             .iter()
@@ -100,11 +121,6 @@ fn local_manifest_detects_generated_vendor_and_test_files() -> Result<(), Box<dy
         == "crates/ri-api/assets/repo-explorer/assets/repo-explorer.js"
         && file.is_generated()
         && file.language() == Language::JavaScript));
-    assert!(
-        files
-            .iter()
-            .any(|file| file.path() == "vendor/pkg/index.js" && file.is_vendor())
-    );
     assert!(
         files
             .iter()

@@ -81,6 +81,7 @@ pub fn app_with_rate_limit(state: AppState, rate_limit: ApiRateLimit) -> Router 
         .route("/v1/test-context", post(test_context::get))
         .route("/repo/{repo_id}", get(web::repo))
         .route("/repo/{repo_id}/{view}", get(web::repo_view))
+        .nest_service("/assets/repo-explorer", web::assets())
         .route("/v1/repos", post(repos::create))
         .route("/v1/repos/{repo_id}", get(repos::get))
         .route(

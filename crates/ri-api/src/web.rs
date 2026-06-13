@@ -2,8 +2,14 @@ use axum::{
     extract::Path,
     response::{Html, IntoResponse},
 };
+use tower_http::services::ServeDir;
 
 const SHELL: &str = include_str!("../assets/repo_explorer.html");
+const ASSET_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/repo-explorer");
+
+pub(crate) fn assets() -> ServeDir {
+    ServeDir::new(ASSET_DIR)
+}
 
 pub(crate) async fn repo(Path(repo_id): Path<String>) -> impl IntoResponse {
     Html(render_shell(&repo_id, ExplorerView::Overview))

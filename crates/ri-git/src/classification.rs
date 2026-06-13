@@ -24,8 +24,10 @@ pub(crate) fn is_generated_path(path: &str) -> bool {
     let lowered = path.to_ascii_lowercase();
     lowered.contains("/generated/")
         || lowered.contains("/gen/")
+        || lowered.contains("/assets/repo-explorer/")
         || lowered.starts_with("generated/")
         || lowered.starts_with("gen/")
+        || lowered.starts_with("assets/repo-explorer/")
         || lowered.contains(".generated.")
         || lowered.ends_with(".pb.go")
 }

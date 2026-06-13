@@ -42,6 +42,27 @@ function applyTax(): number { return 2 }
 }
 
 #[test]
+fn extracts_tsx_react_component_without_parse_error() -> Result<(), Box<dyn std::error::Error>> {
+    let source = r#"
+import { useMemo } from "react";
+
+type Props = {
+  readonly label: string;
+};
+
+export function Badge({ label }: Props) {
+  const title = useMemo(() => label.toUpperCase(), [label]);
+  return <section aria-label={title}>{label}</section>;
+}
+"#;
+
+    let symbols = extract(Language::TypeScript, "src/Badge.tsx", source)?;
+
+    assert!(has_symbol(&symbols, SymbolKind::Function, "Badge"));
+    Ok(())
+}
+
+#[test]
 fn extracts_python_class_and_function() -> Result<(), Box<dyn std::error::Error>> {
     let source = r"
 class Invoice:

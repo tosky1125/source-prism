@@ -71,6 +71,11 @@ fn local_manifest_detects_generated_vendor_and_test_files() -> Result<(), Box<dy
     )?;
     write_file(
         repo.path(),
+        "crates/ri-api/assets/repo-explorer/assets/repo-explorer.js",
+        b"export const bundle = 1;\n",
+    )?;
+    write_file(
+        repo.path(),
         "vendor/pkg/index.js",
         b"export const pkg = 1;\n",
     )?;
@@ -83,7 +88,7 @@ fn local_manifest_detects_generated_vendor_and_test_files() -> Result<(), Box<dy
     let manifest = LocalManifest::extract(repo.path())?;
     let files = manifest.files();
 
-    assert_eq!(files.len(), 3);
+    assert_eq!(files.len(), 4);
     assert!(
         files
             .iter()
@@ -91,6 +96,10 @@ fn local_manifest_detects_generated_vendor_and_test_files() -> Result<(), Box<dy
                 && file.is_generated()
                 && file.language() == Language::Rust)
     );
+    assert!(files.iter().any(|file| file.path()
+        == "crates/ri-api/assets/repo-explorer/assets/repo-explorer.js"
+        && file.is_generated()
+        && file.language() == Language::JavaScript));
     assert!(
         files
             .iter()

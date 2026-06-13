@@ -14,6 +14,7 @@ mod traversal;
 use ri_core::Language;
 use ri_parser::{CallExtractor, CallReference, ParserError, SourceFile, SymbolExtractor};
 use ri_symbols::SymbolRecord;
+use std::path::Path;
 use tree_sitter::Parser;
 
 #[derive(Debug, Default)]
@@ -42,7 +43,7 @@ impl CallExtractor for TreeSitterExtractor {
 
 fn parse_tree(file: &SourceFile<'_>) -> Result<tree_sitter::Tree, ParserError> {
     let mut parser = Parser::new();
-    set_language(&mut parser, file.language)?;
+    set_language(&mut parser, file)?;
     let tree = parser
         .parse(file.source, None)
         .ok_or_else(|| ParserError::ParseFailed {
@@ -58,9 +59,12 @@ fn parse_tree(file: &SourceFile<'_>) -> Result<tree_sitter::Tree, ParserError> {
     Ok(tree)
 }
 
-fn set_language(parser: &mut Parser, language: Language) -> Result<(), ParserError> {
-    match language {
+fn set_language(parser: &mut Parser, file: &SourceFile<'_>) -> Result<(), ParserError> {
+    match file.language {
         Language::Rust => parser.set_language(&tree_sitter_rust::LANGUAGE.into()),
+        Language::TypeScript | Language::JavaScript if is_jsx_path(file.path.as_str()) => {
+            parser.set_language(&tree_sitter_typescript::LANGUAGE_TSX.into())
+        }
         Language::TypeScript | Language::JavaScript => {
             parser.set_language(&tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into())
         }
@@ -74,4 +78,13 @@ fn set_language(parser: &mut Parser, language: Language) -> Result<(), ParserErr
         path: "<language>".to_owned(),
         message: error.to_string(),
     })
+}
+
+fn is_jsx_path(path: &str) -> bool {
+    Path::new(path)
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| {
+            extension.eq_ignore_ascii_case("tsx") || extension.eq_ignore_ascii_case("jsx")
+        })
 }

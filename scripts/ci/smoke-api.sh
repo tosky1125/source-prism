@@ -333,20 +333,26 @@ if curl -fsS "${api_base_url}/v1/review/verify" \
 fi
 
 request GET "${api_base_url}/repo/${repo_id}" /tmp/source-prism-api-web.html
-grep -q 'Repo Structure Explorer' /tmp/source-prism-api-web.html
+grep -q '<title>Source Prism</title>' /tmp/source-prism-api-web.html
 grep -q "data-repo-id=\"${repo_id}\"" /tmp/source-prism-api-web.html
-grep -q 'Latest Index' /tmp/source-prism-api-web.html
-grep -q 'data-panel="overview"' /tmp/source-prism-api-web.html
-grep -q 'id="latestRun"' /tmp/source-prism-api-web.html
-grep -q 'id="evidence"' /tmp/source-prism-api-web.html
-grep -q 'const repoApi' /tmp/source-prism-api-web.html
-grep -q 'json(repoApi)' /tmp/source-prism-api-web.html
-grep -q 'References' /tmp/source-prism-api-web.html
-grep -q 'api("references")' /tmp/source-prism-api-web.html
-grep -q 'Coverage Evidence' /tmp/source-prism-api-web.html
-grep -q 'api("coverage")' /tmp/source-prism-api-web.html
-grep -q 'Search Results' /tmp/source-prism-api-web.html
-grep -q 'id="searchResults"' /tmp/source-prism-api-web.html
+grep -q 'data-initial-view="overview"' /tmp/source-prism-api-web.html
+grep -q '<div id="root"></div>' /tmp/source-prism-api-web.html
+grep -q '/assets/repo-explorer/assets/repo-explorer.js' /tmp/source-prism-api-web.html
+grep -q '/assets/repo-explorer/assets/repo-explorer.css' /tmp/source-prism-api-web.html
+python3 - <<'PY'
+from pathlib import Path
+
+body = Path("/tmp/source-prism-api-web.html").read_text(encoding="utf-8")
+assert len(body) < 2_000, len(body)
+assert "react-flow" not in body, body
+PY
+request GET "${api_base_url}/assets/repo-explorer/assets/repo-explorer.js" \
+  /tmp/source-prism-api-web.js
+grep -q 'Repo intelligence graph' /tmp/source-prism-api-web.js
+grep -q 'react-flow' /tmp/source-prism-api-web.js
+request GET "${api_base_url}/assets/repo-explorer/assets/repo-explorer.css" \
+  /tmp/source-prism-api-web.css
+grep -q '.react-flow' /tmp/source-prism-api-web.css
 request GET "${api_base_url}/repo/${repo_id}/files" /tmp/source-prism-api-web-files.html
 grep -q "data-repo-id=\"${repo_id}\"" /tmp/source-prism-api-web-files.html
 grep -q 'data-initial-view="files"' /tmp/source-prism-api-web-files.html

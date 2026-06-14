@@ -25,6 +25,12 @@ Source Prism provides repository intelligence. It does not decide final PR revie
 
 External tools can attach Source Prism through MCP, CLI, API, or the Web UI, then use their own agent workflows to review, refactor, test, and publish. Source Prism stays responsible for deterministic evidence, impact paths, context packs, verification gates, and dry-run/export payloads.
 
+## Enterprise
+
+Source Prism is available for noncommercial use under the PolyForm Noncommercial License 1.0.0. Commercial or enterprise use of the OSS version requires a separate commercial license.
+
+Enterprise offerings may include managed or self-hosted deployment, auth and tenancy, support, priority language/framework coverage, and downstream-agent workflow guidance. For commercial licensing or enterprise inquiries, contact the maintainers through this repository.
+
 ## Status
 
 Source Prism is early but usable for local repository exploration.
@@ -358,9 +364,4 @@ Later:
 
 ## License
 
-Licensed under either of:
-
-- Apache License, Version 2.0
-- MIT license
-
-at your option.
+Licensed under the PolyForm Noncommercial License 1.0.0. Noncommercial use is permitted; commercial use requires a separate commercial license.

@@ -28,7 +28,7 @@ resolver = "3"
 [workspace.package]
 edition = "2024"
 rust-version = "1.85"
-license = "Apache-2.0 OR MIT"
+license = "PolyForm-Noncommercial-1.0.0"
 repository = "https://github.com/tosky1125/source-prism"
 readme = "README.md"
 keywords = ["code-intel", "repository", "rust"]

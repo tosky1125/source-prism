@@ -8,6 +8,9 @@ Roadmap only means the crate or feature may have a placeholder command, schema a
 
 ## Post-Foundation Waves
 
+Detailed active priorities and acceptance criteria live in
+`docs/remaining-work.md`.
+
 | Area | Crates | Entry condition | Required evidence | Why not created in foundation |
 | --- | --- | --- | --- | --- |
 | Symbol extraction | `ri-parser`, `ri-tree-sitter`, `ri-symbols` | Stable file manifest and generation lifecycle are available | Tree-sitter fixture suite, changed-line to innermost-symbol mapping, language coverage report | Foundation only proves repo read and manifest paths; parser correctness needs language fixtures |

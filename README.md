@@ -339,6 +339,8 @@ bun run build
 
 ## Roadmap
 
+Detailed remaining work is tracked in `docs/remaining-work.md`.
+
 Near-term:
 
 - precise SCIP/LSP references

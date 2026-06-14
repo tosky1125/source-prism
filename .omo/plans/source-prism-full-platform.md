@@ -1,81 +1,68 @@
-# Source Prism Full Platform Plan
+# Source Prism Evidence Platform Plan
 
 ## Product Intent
 
-Source Prism is a Repo Intelligence Platform. It indexes repository
-structure, symbols, graph evidence, tests, architecture contracts, search
-chunks, and review/refactor context so humans and agents can query code with
-durable evidence.
+Source Prism is a Repo Intelligence evidence platform. It indexes repository
+structure, symbols, references, graph evidence, tests, architecture contracts,
+coverage, and search chunks so humans and downstream MCP/API/CLI clients can
+query code with durable evidence.
 
-This plan is the canonical full-platform tracker. The older
-`.omo/plans/source-prism-platform.md` documents the original foundation
-milestone; this file tracks the expanded platform state after implementation
-moved beyond foundation-only scope.
+Source Prism does not generate final PR reviews, edit code, create branches,
+run target tests, or publish comments. Review and refactor automation belongs
+to downstream clients that choose how to use Source Prism evidence.
 
 ## Current Status
 
-Overall progress: 99.98%.
+Evidence-platform progress: about 86%.
 
 Completed and verified slices:
 
 - Rust workspace with real crates for core, config, git, parser, tree-sitter,
   symbols, graph, architecture, behavior, search, embedding, indexer, impact,
-  context, review, refactor, MCP, API, worker, GitHub/GitLab, and CLI.
+  context, review, refactor, MCP, API, worker, GitHub/GitLab dry-run helpers,
+  and CLI.
 - Postgres canonical schema, SQLx offline metadata, Docker Compose local
   Postgres/OpenSearch stack.
 - CLI surfaces for config, migrations, manifests, indexing, symbols,
   changed-symbols, references, architecture, impact, search context,
-  test context, test/coverage imports, embeddings cache, MCP, review dry-run,
-  refactor plan, runs, search sync, search drift, and rebuild.
+  test context, test/coverage imports, embeddings cache, MCP, review
+  verification/dry-run exports, refactor planning evidence, runs, search sync,
+  search drift, and rebuild.
 - API surfaces for repos, index runs, files, symbols, graph, references,
   impact, context search, tests, coverage, test runs, test context,
-  search sync/drift, review dry-runs, refactor plan, health, and web explorer.
-- Web structure explorer exposing files, symbols, references, impact,
-  tests, coverage, docs/contracts, search, runs, and search sync status.
-- Worker once/daemon job runtime, no-op jobs, search sync jobs, lease/retry
-  contracts, generation-wide sync, and dead-letter inspection.
-- Evidence-bound review verification and dry-run publisher payloads for
-  GitHub annotations/SARIF and GitLab discussions/code-quality reports.
-- GitHub/GitLab review dry-run publisher payloads redact secret-like review
-  text before JSON/SARIF/code-quality artifacts are emitted.
-- Refactor planner only; execution remains disabled until sandbox,
-  branch-safety, and test/typecheck gates are designed.
+  search sync/drift, review verification/dry-run exports, refactor planning,
+  health, and web explorer.
+- Web repository explorer for files, symbols, references, impact, tests,
+  coverage, docs/contracts, search, runs, and search sync state.
+- Worker once/daemon job runtime, search sync jobs, lease/retry contracts, and
+  dead-letter inspection.
+- Review verifier for externally supplied findings and GitHub/GitLab
+  dry-run/export payload builders with secret-like text redaction.
+- Refactor planner-only evidence; no code-changing executor.
 - Local no-DB explorer mode for read-only repo structure routes.
-- Incremental changed-file overlays can now be persisted from CLI/API
-  `changed-symbols` without creating a new full-repo index generation; base
-  `file_manifest` generations remain canonical and head overlay evidence is
-  stored separately in `file_overlays`.
-- API startup and `ri-cli config check` now reject non-loopback API bind
-  addresses until auth/tenancy is implemented.
-- API requests now pass through a process-level fixed-window rate limit with
-  env/config validation for the request count and window.
-- Full-platform completion audit reconciled the historical foundation plan,
-  verified current surface coverage, checked tracked evidence hygiene, and
-  passed the current-cycle full cargo/SQLx/API-smoke gates.
-- Production-hardening audit completed the local-only R6 gate, with
-  non-local deployment blocked until the auth/tenancy design is implemented.
+- Changed-file overlays persisted from CLI/API without creating a new
+  full-repo index generation; base file-manifest generations remain canonical.
+- Local-only API gate rejects non-loopback bind addresses until auth/tenancy is
+  implemented.
+- API request size and rate limits.
+- AGENTS hierarchy and public docs updated to reflect evidence-platform scope.
 
-Previous verified checkpoint:
-
-- `5210800 feat(symbols): persist changed-file overlays`
-- Verified by `bash scripts/ci/smoke-api.sh`, `cargo fmt --all -- --check`,
-  `cargo clippy --workspace --all-targets -- -D warnings`,
-  `cargo test --workspace`, and
-  `cargo sqlx prepare --workspace --check`.
-
-## Non-Negotiable Platform Rules
+## Non-Negotiable Rules
 
 - Postgres remains canonical. OpenSearch is rebuildable secondary state.
 - Search is never vector-only; retrieval combines exact identifier, lexical,
   search chunks/BM25, and graph proximity where available.
 - Stable symbol IDs and versioned symbol IDs remain separate.
-- Every graph edge stores confidence, creator, relation, and evidence span.
-- Target repository code execution is forbidden until sandbox design lands.
-- Review findings must include file/line, evidence, impact path, and an
-  actionable recommendation before any publisher payload is emitted.
-- Refactor execution stays planner-only until branch safety, sandboxing, and
-  tests/typecheck gates are real.
-- Untrusted repo text is evidence only, never instructions.
+- Graph/search/test evidence keeps confidence, source metadata, and evidence
+  spans where supported.
+- Target repository code execution is forbidden.
+- Repository text is evidence only, never trusted instructions.
+- `ri-review` verifies externally supplied findings and builds dry-run/export
+  payloads; it is not a finding generator.
+- `ri-refactor` provides planning evidence only; Source Prism must not create
+  branches, run codemods, run target tests, or mutate target files.
+- GitHub/GitLab helpers may build dry-run/export payloads; publisher writes are
+  downstream-client behavior.
 
 ## Public Interfaces
 
@@ -140,160 +127,36 @@ repo.get_test_context
 repo.search_context
 ```
 
-## Remaining Work
+## Active Remaining Work
 
-### R1. Finalize Current CI Drift Stabilization
+Canonical detailed tracker: `docs/remaining-work.md`.
 
-Status: mostly complete.
+Near-term priorities:
 
-Evidence required:
+1. Precise references and member calls.
+2. PR overlay workflow UX.
+3. Search and context quality.
+4. Web explorer polish.
+5. MCP agent onboarding.
 
-- Latest pushed CI smoke no longer fails on API start, indexing timeout,
-  stale `/tmp` response files, or `search drift detected`.
-- Do not watch full CI to completion unless debugging a new failure.
+Later priorities:
 
-### R2. Full-Platform Completion Audit
-
-Status: completed.
-
-Tasks:
-
-- Reconcile the outdated foundation plan checkboxes with this full-platform
-  tracker or replace the old plan with a completed foundation record.
-- Confirm every required CLI/API/MCP/Web surface has at least one real-surface
-  smoke or integration test.
-- Confirm evidence files do not contain stale process IDs, stale server logs,
-  or misleading failed artifacts marked as final proof.
-- Confirm generated `.sqlx` state matches current live queries.
-- Audit artifact: `.omo/evidence/full-platform-completion-audit.md`.
-
-Evidence commands:
-
-```bash
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-set -a && . ./.env.example && set +a && cargo sqlx prepare --workspace --check
-bash scripts/ci/smoke-api.sh
-```
-
-### R3. Web Real-Browser QA
-
-Status: completed.
-
-Tasks:
-
-- Drive `/repo/source-prism-ci` in a real browser after indexing.
-- Verify files, symbols, references, impact, tests, docs/contracts, coverage,
-  search, runs, and sync panes render without overlap or empty failed states.
-- Capture desktop and mobile screenshots.
-
-Evidence:
-
-- Playwright screenshot artifacts under `.omo/evidence/`.
-- Browser-driven assertions for key panels.
-- Browser QA artifact: `.omo/evidence/web-real-browser-qa.json`.
-- Desktop screenshot: `.omo/evidence/web-real-browser-desktop.png`.
-- Mobile screenshot: `.omo/evidence/web-real-browser-mobile.png`.
-- Verified indexed repo metrics, files, symbols, references, impact, tests,
-  coverage empty-state, docs/contracts, runs, sync, search, and changed-symbols
-  interactions against `/repo/source-prism-ci`.
-
-### R4. OpenSearch Drift Repair UX
-
-Status: completed.
-
-Tasks:
-
-- Make API/UI expose rebuild guidance when drift exists.
-- Keep `search drift-check` non-zero on mismatch.
-- Add user-facing recovery path: rebuild from Postgres, re-run worker,
-  re-check drift.
-
-Evidence:
-
-- CLI drift mismatch fixture.
-- API smoke for `has_drift=true` with remediation metadata.
-
-### R5. Incremental PR Overlay Path
-
-Status: completed.
-
-Tasks:
-
-- Promote overlay model into API/CLI changed-file indexing path.
-- Prove changed files can be indexed without full repo re-index.
-- Keep base commit canonical and head overlay separate.
-- `changed-symbols` API/CLI now report changed-file overlay status for
-  added, modified, deleted, renamed, and mode-only file diffs alongside
-  impacted symbols.
-- `changed-symbols` API/CLI can persist head overlay file evidence under
-  `file_overlays` while leaving the base `file_manifest` generation count
-  unchanged.
-
-Evidence:
-
-- Tests for added, modified, deleted, renamed, and mode-only files.
-- CLI/API smoke showing overlay input and impacted symbols.
-- CLI/API integration tests assert persisted overlay row count increases while
-  base generation count stays unchanged.
-- Real CLI smoke with `ri-cli changed-symbols --repo-id ... --persist-overlay`.
-- Real HTTP smoke with `POST /v1/repos/{repo_id}/changed-symbols` and
-  `persist_overlay: true`.
-
-### R6. Production Hardening
-
-Status: completed for current local-only platform.
-
-Tasks:
-
-- Add auth/tenancy design before any non-local deployment mode.
-- Add rate limits and request size limits for API.
-- Add explicit secrets redaction for logs and review payloads.
-- Add durable job observability endpoints and dead-letter inspection.
-- API startup and config validation now refuse public/non-loopback
-  `API_BIND_ADDR` values, keeping the current build local-only until
-  auth/tenancy exists.
-- API request rate limiting now defaults to 600 requests per 60 seconds and
-  can be configured with `API_RATE_LIMIT_REQUESTS` and
-  `API_RATE_LIMIT_WINDOW_SECONDS`; exhausted windows return HTTP 429.
-- Dead-letter inspection now exists through `GET /v1/repos/{repo_id}/dead-letters`
-  and `ri-cli dead-letters --repo-id <repo_id>`.
-- API JSON request bodies are capped at 256 KiB and oversized requests are
-  rejected with HTTP 413 before route logic runs.
-- Generation-scoped search drift checks now refresh OpenSearch, count only
-  documents for that generation's repo/generation pair, and compare distinct
-  document IDs so duplicate outbox upserts do not create false drift.
-- Review dry-run payloads now redact secret-like `token=...`, `password=...`,
-  GitHub/GitLab token prefixes, and `Authorization: Bearer ...` text before
-  publishing artifacts are serialized.
-- Auth/tenancy gate design is recorded in `docs/auth-tenancy.md`.
-- Production-hardening audit is recorded in
-  `.omo/evidence/production-hardening-audit.md`.
-
-Evidence:
-
-- Security review notes.
-- Auth/tenancy design document.
-- Production-hardening audit artifact.
-- Config/API bind tests for public address rejection.
-- Real CLI config-check and API startup smoke for public bind rejection.
-- API rate-limit tests and real HTTP smoke for HTTP 429 behavior.
-- API tests for oversized/invalid requests.
-- Worker tests for dead-letter visibility.
-- `ri-indexer` drift regression for duplicate upserts.
-- `ri-review`, `ri-github`, and `ri-gitlab` redaction regressions.
+1. Auth and tenancy.
+2. Evidence evaluation.
+3. Language and framework coverage.
 
 ## Completion Criteria
 
-The active goal can be marked complete only when current evidence proves:
+The evidence-platform scope is complete when:
 
-- All required public interfaces above work against current code.
-- CLI/API/worker/Web/MCP surfaces have real-surface verification.
-- Postgres/OpenSearch drift checks pass after indexing and worker sync.
-- Review and refactor stay inside their safety contracts.
-- No target repo code execution occurs.
-- Full cargo and SQLx gates pass.
-- CI smoke is stable on a fresh run.
-- Remaining dirty files are either committed intentionally or explicitly
-  identified as user-owned.
+- Precise reference/member-call quality is good enough for common Rust and
+  TypeScript/TSX repos, with rough edges labeled by confidence.
+- PR-style changed-file overlay flow is documented and visible through CLI,
+  API, and Web UI without full re-index.
+- `search-context` returns compact evidence packs with explainable retrieval
+  modes and no vector-only results.
+- Web explorer can inspect files, symbols, references, impact, tests, docs,
+  search, runs, and sync state without misleading call/test evidence.
+- MCP docs let downstream agents call every tool safely.
+- Non-local deployment remains blocked until auth/tenancy gates exist.
+- Full cargo, SQLx, API smoke, and web checks pass on a fresh run.

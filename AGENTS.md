@@ -36,6 +36,7 @@ examples/smoke/ # sample repo surface
 | CLI surface | `crates/ri-cli` | JSON stdout commands and local smoke paths |
 | Worker | `crates/ri-worker` | Durable jobs and OpenSearch sync |
 | Web UI | `apps/web` | Vite/React explorer, copied into `ri-api` assets |
+| Remaining work | `docs/remaining-work.md` | Active priorities, acceptance, verification |
 
 ## CODE MAP
 

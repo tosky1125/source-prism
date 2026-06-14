@@ -66,8 +66,16 @@ Requirements:
 
 - Rust stable
 - Docker with Compose
-- `cargo sqlx` for SQLx metadata work
+- `cargo sqlx` for SQLx metadata work if you change migrations or SQL queries
 - Bun if you want to build the web UI from `apps/web`
+
+Install the CLI from a checkout:
+
+```bash
+cargo install --path crates/ri-cli --locked
+```
+
+After that, use `ri-cli` directly. If you are hacking on the CLI itself, the equivalent developer form is `cargo run -p ri-cli -- <command>`.
 
 Start dependencies:
 
@@ -86,13 +94,13 @@ export API_BIND_ADDR=127.0.0.1:3000
 Run migrations:
 
 ```bash
-cargo run -p ri-cli -- db migrate
+ri-cli db migrate
 ```
 
 Index this repository:
 
 ```bash
-cargo run -p ri-cli -- index --repo . --sha HEAD
+ri-cli index --repo . --sha HEAD
 ```
 
 Start the API and Web UI:
@@ -118,49 +126,49 @@ cargo run -p ri-worker -- --once
 Inspect a repository manifest:
 
 ```bash
-cargo run -p ri-cli -- repo manifest --repo .
+ri-cli repo manifest --repo .
 ```
 
 List extracted symbols:
 
 ```bash
-cargo run -p ri-cli -- symbols --repo .
+ri-cli symbols --repo .
 ```
 
 Find references for a symbol:
 
 ```bash
-cargo run -p ri-cli -- references --repo . --symbol App::runSearch
+ri-cli references --repo . --symbol App::runSearch
 ```
 
 Analyze impact:
 
 ```bash
-cargo run -p ri-cli -- impact --repo . --symbol search_context_command
+ri-cli impact --repo . --symbol search_context_command
 ```
 
 Build a context pack:
 
 ```bash
-cargo run -p ri-cli -- search-context --repo . search_context
+ri-cli search-context --repo . search_context
 ```
 
 Get related tests:
 
 ```bash
-cargo run -p ri-cli -- test-context --repo . --symbol extracts_rust_functions_methods_and_tests
+ri-cli test-context --repo . --symbol extracts_rust_functions_methods_and_tests
 ```
 
 List MCP tools:
 
 ```bash
-cargo run -p ri-cli -- mcp tools
+ri-cli mcp tools
 ```
 
 Call an MCP tool once:
 
 ```bash
-cargo run -p ri-cli -- mcp call --repo . --tool repo.get_symbol --symbol search_context_command
+ri-cli mcp call --repo . --tool repo.get_symbol --symbol search_context_command
 ```
 
 ## API Examples

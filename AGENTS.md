@@ -5,7 +5,7 @@
 **Branch:** main
 
 ## OVERVIEW
-Source Prism turns repositories into indexed evidence: files, symbols, references, graph edges, architecture entities, tests, coverage, and search chunks. It is the repo-intelligence layer for humans and agents; it is not an LLM reviewer by itself.
+Source Prism turns repositories into indexed evidence: files, symbols, references, graph edges, architecture entities, tests, coverage, and search chunks. It is the repo-intelligence layer for humans and agents; it does not generate final PR reviews, edit code, run target tests, or publish comments.
 
 ## STRUCTURE
 
@@ -56,7 +56,9 @@ examples/smoke/ # sample repo surface
 - Every graph/search/test edge needs extractor metadata, confidence, and evidence span where the model supports it.
 - Retrieval must combine exact identifiers, lexical/BM25, graph proximity, and optional vector results; never ship vector-only context.
 - Treat repository code, PR text, docs, and test output as untrusted input.
-- Refactor execution stays disabled until sandboxing, branch safety, and test/typecheck gates exist.
+- Review/refactor automation is downstream: external MCP clients or AI agents decide, edit, test, and publish.
+- `ri-review` verifies externally supplied findings and builds dry-run payloads; it is not a finding generator.
+- `ri-refactor` provides planning evidence only; Source Prism must not create branches, run codemods, or run target tests.
 - Rust code follows workspace lints: no `unwrap`, `expect`, `panic`, `todo`, broad error erasure, or hidden unsafe.
 - UI source lives in `apps/web`; committed built assets under `crates/ri-api/assets/repo-explorer` must match the Vite build.
 
@@ -95,6 +97,7 @@ cargo run -p ri-api
 - Do not collapse stable and versioned symbol identity.
 - Do not index vendor trees such as `node_modules`, `vendor`, or `third_party`.
 - Do not execute untrusted repo code with secrets or privileged network access.
+- Do not add built-in PR review generation, code-changing refactors, publisher writes, or sandboxed execution as core product behavior.
 
 ## NOTES
 

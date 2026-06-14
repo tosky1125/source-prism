@@ -17,10 +17,9 @@ Roadmap only means the crate or feature may have a placeholder command, schema a
 | Architecture evidence | `ri-architecture` | Parser and manifest paths can locate contracts | OpenAPI, GraphQL, DB migration, event, CODEOWNERS, ADR fixtures | Foundation cannot infer architecture without extractors |
 | Behavior and tests | `ri-behavior` | Test artifacts are available without executing target code | JUnit, LCOV, Cobertura, JaCoCo, PHPUnit, pytest, Playwright ingestion fixtures | Foundation forbids target repository execution |
 | MCP integration | `ri-mcp` | Query APIs return evidence-bound symbols, graph, search, and test context | MCP tool smoke, trust-boundary tests, no arbitrary shell execution proof | Agent tools need real query surfaces to expose |
-| GitHub and GitLab integration | `ri-github`, `ri-gitlab` | Review findings have verifier-backed evidence | Webhook fixture, check/comment dry run, SARIF output proof | Publishing without verified findings would create noise |
-| Review and refactor reasoning | `ri-context`, `ri-review`, `ri-refactor` | Impact, retrieval, architecture, and behavior evidence exist | Context pack snapshots, verifier rejection tests, replay evaluation | LLM reasoning is downstream of repo structure, not the core foundation |
-| Refactor execution | `ri-refactor` executor path | Sandbox design is implemented and approved | Branch creation dry run, codemod fixture, test/typecheck sandbox proof, rollback plan | Foundation explicitly forbids target code execution |
-| Evaluation | `ri-eval` | Review/refactor outputs are available | Golden dataset schema, offline replay, useful/false-positive metrics | Evaluation needs real findings to score |
+| GitHub and GitLab dry-run exports | `ri-github`, `ri-gitlab` | Review findings have verifier-backed evidence | Check/comment dry-run fixtures, SARIF/code-quality output proof | Source Prism can shape payloads without becoming the publisher |
+| Downstream agent evidence packs | `ri-context`, `ri-review`, `ri-refactor` | Impact, retrieval, architecture, and behavior evidence exist | Context pack snapshots, verifier rejection tests, MCP smoke | LLM reasoning and code edits happen in external clients, not Source Prism |
+| Evaluation | `ri-eval` | Evidence packs and verifier outputs are stable | Golden dataset schema, offline replay, retrieval/usefulness metrics | Evaluation scores Source Prism evidence quality, not agent creativity |
 
 ## Future Crate Creation
 
@@ -28,14 +27,15 @@ Create a new crate only when its boundary has real code, tests, and observable b
 
 Roadmap-only crates may appear in documentation and command placeholders. They should not be added to the workspace until at least one milestone story needs compiled Rust code in that boundary.
 
+## Product Boundary
+
+Source Prism is the evidence platform. It must not grow built-in PR review generation, code-changing refactor execution, branch creation, target test execution, or publisher writes as core behavior. Those workflows belong to downstream MCP/API/CLI clients that choose how to use Source Prism evidence.
+
 ## Command Guardrails
 
-Foundation CLI commands may expose placeholders for future behavior. Those commands must return machine-readable `not_implemented` status and a non-zero exit code until the roadmap entry condition is met.
+Future CLI commands may expose placeholders for roadmap-only behavior. Those commands must return machine-readable `not_implemented` status and a non-zero exit code until the roadmap entry condition is met.
 
-Current placeholder surfaces that still run in-memory over the local worktree:
-
-- `ri-cli symbols`
-- `ri-cli impact`
+Commands documented in `README.md` are expected to drive real CLI/API/MCP surfaces, not placeholder behavior.
 
 ## Promotion Checklist
 

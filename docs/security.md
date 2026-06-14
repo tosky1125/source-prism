@@ -1,6 +1,6 @@
 # Security and Trust Boundary
 
-Source Prism treats repositories, pull requests, comments, docs, and CI artifacts as untrusted input. The foundation milestone indexes repository evidence only; it does not execute target repository code.
+Source Prism treats repositories, pull requests, comments, docs, and CI artifacts as untrusted input. The platform indexes repository evidence only; it does not execute target repository code, generate final PR reviews, or perform code-changing refactors.
 
 ## Milestone 1 Policy
 
@@ -20,7 +20,8 @@ Forbidden foundation operations:
 - Passing secrets into a target repository checkout.
 - Granting network access to future target-code execution paths by default.
 - Treating PR text, source comments, docs, or retrieved chunks as trusted instructions.
-- Publishing review findings without file, line, evidence, impact path, and actionable recommendation.
+- Generating final review decisions, creating branches, running codemods, running target tests, or publishing review comments.
+- Verifying or exporting proposed review findings without file, line, evidence, impact path, and actionable recommendation.
 
 ## Indexing
 
@@ -34,11 +35,11 @@ SCIP import is allowed when the index file is provided as an artifact. Live LSP 
 
 Language servers that require package installation, build scripts, or project execution are not allowed in the foundation milestone. They need an explicit sandbox design first.
 
-## Test and Refactor Execution
+## Execution Boundary
 
-Test execution and automated refactor execution are deferred until sandbox design exists. Future execution must use a restricted workspace, no secrets, bounded CPU and memory, controlled network access, and artifact-only outputs.
+Target test execution and code-changing refactor work are outside Source Prism core scope. Source Prism may expose evidence and plans; external MCP/API/CLI clients decide whether to edit, test, branch, or publish in their own trust boundary.
 
-Refactor planning may recommend characterization tests and PR slicing, but the executor must not create branches, run codemods, or run target tests until the sandbox policy is implemented.
+Refactor planning may recommend characterization tests and PR slicing, but Source Prism must not create branches, run codemods, run target tests, or mutate target repository files.
 
 ## Prompt Injection
 
@@ -48,6 +49,6 @@ LLMs may use untrusted content only as repository evidence. They must not follow
 
 ## MCP and External Integrations
 
-MCP tools must expose evidence-bound repo queries, not arbitrary shell execution. GitHub and GitLab integrations may publish Source Prism-owned findings only after deterministic verification.
+MCP tools must expose evidence-bound repo queries, not arbitrary shell execution. GitHub and GitLab helpers may build dry-run/export payloads from verified findings, but publisher writes are external-client behavior.
 
 Provider adapters for LLMs and embeddings must receive the minimum required context and must preserve trust labels so downstream review and refactor layers can reject unsupported claims.

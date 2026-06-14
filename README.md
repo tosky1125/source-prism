@@ -2,7 +2,7 @@
 
 Source Prism turns a repository into queryable structure.
 
-It indexes files, symbols, references, call graphs, architecture entities, test evidence, coverage, and searchable context so humans and AI agents can ask precise questions about code. Source Prism is not an LLM reviewer. It is the evidence layer that review, refactor, MCP, and repository-explorer tools can use without inventing repo knowledge.
+It indexes files, symbols, references, call graphs, architecture entities, test evidence, coverage, and searchable context so humans and AI agents can ask precise questions about code. Source Prism is not an LLM reviewer and it does not edit code. It is the evidence layer that review, refactor, MCP, and repository-explorer tools can use without inventing repo knowledge.
 
 ## Why Source Prism?
 
@@ -19,6 +19,12 @@ Large codebases are hard to reason about because useful facts are scattered acro
 
 The goal is simple: agents and developers should reason from evidence, not guesses.
 
+## Product Boundary
+
+Source Prism provides repository intelligence. It does not decide final PR review comments, edit code, create branches, run target tests, or publish review comments as core product behavior.
+
+External tools can attach Source Prism through MCP, CLI, API, or the Web UI, then use their own agent workflows to review, refactor, test, and publish. Source Prism stays responsible for deterministic evidence, impact paths, context packs, verification gates, and dry-run/export payloads.
+
 ## Status
 
 Source Prism is early but usable for local repository exploration.
@@ -33,18 +39,18 @@ Working today:
 - repository overview, files, symbols, references, impact, tests, runs, and search endpoints
 - React repository explorer served by `ri-api`
 - MCP tools for `repo.get_symbol`, `repo.find_references`, `repo.get_impact`, `repo.search_context`, and test context
-- review finding verification and GitHub/GitLab dry-run payloads
-- refactor planning evidence with execution disabled by design
+- externally supplied review finding verification and GitHub/GitLab dry-run payloads
+- refactor planning evidence with code-changing execution outside Source Prism scope
 
 Still maturing:
 
 - precise cross-file references through SCIP/LSP
 - richer framework and runtime edges
 - authenticated multi-tenant API mode
-- publishing adapters for real GitHub/GitLab review comments
-- sandboxed execution gates for untrusted code
+- PR overlay indexing by base/head commit
+- MCP docs and examples for downstream agent workflows
 
-Source execution is intentionally disabled until sandboxing is designed.
+Source execution, branch creation, codemods, target test runs, and publishing writes belong to external clients or agents, not Source Prism itself.
 
 ## Supported Languages
 
@@ -250,8 +256,8 @@ Source Prism is split into small Rust crates:
 | `ri-search` | hybrid retrieval primitives |
 | `ri-behavior` | test and coverage ingestion |
 | `ri-architecture` | docs and contract entity extraction |
-| `ri-review` | finding verification and publisher payload inputs |
-| `ri-refactor` | planner-only refactor evidence |
+| `ri-review` | externally supplied finding verification and dry-run export payloads |
+| `ri-refactor` | planner-only refactor evidence for downstream agents |
 | `ri-mcp` | MCP tool contracts and handler |
 | `ri-api` | Axum API and web shell |
 | `ri-worker` | durable background job processing |
@@ -294,8 +300,9 @@ Current rules:
 
 - do not execute indexed source code
 - do not let LLM output become final without deterministic verification
-- do not publish findings without file/line, evidence, impact path, and actionable recommendation
-- do not use vector-only retrieval for review or refactor evidence
+- do not generate final PR review decisions or code-changing refactors inside Source Prism
+- do not verify/export proposed findings without file/line, evidence, impact path, and actionable recommendation
+- do not use vector-only retrieval for downstream review or refactor evidence
 - keep stable and versioned symbol identity separate
 - prefer incremental overlays for PR workflows instead of full re-index as the normal path
 
@@ -339,13 +346,12 @@ Near-term:
 - repo explorer graph interactions
 - durable MCP server mode
 - search drift repair UX
+- PR overlay indexing by base/head commit
 
 Later:
 
-- PR overlay indexing by base/head commit
-- GitHub/GitLab publishing adapters
-- sandboxed execution and test gates
-- refactor executor with branch safety
+- richer downstream agent examples over MCP
+- authenticated multi-tenant API mode
 - offline evaluation datasets
 
 ## License

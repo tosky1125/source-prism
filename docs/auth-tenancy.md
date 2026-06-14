@@ -17,18 +17,19 @@ verified:
   scoped to one tenant or organization. Cross-tenant IDs are rejected before
   storage or retrieval.
 - Authorization: every repo operation checks principal, tenant, repo scope,
-  and action. Read, index, review dry-run, publisher dry-run, and admin
+  and action. Read, index, review verification, dry-run export, and admin
   actions are distinct capabilities.
 - Secret handling: provider tokens are never stored in repo evidence rows,
-  never returned through context APIs, and never logged. Publisher adapters
-  receive secrets only through a short-lived execution boundary.
+  never returned through context APIs, and never logged. Source Prism does not
+  need publisher-write secrets for its core evidence platform behavior.
 - Audit trail: non-local writes record principal, tenant, repo, action,
   target ID, request ID, and result without recording request bodies or source
   text.
 - Rate and size controls: request body limits and process rate limits stay on;
   tenant-aware limits replace process-only limits before multi-tenant launch.
-- Source execution: target repository code execution remains forbidden until
-  a separate sandbox design, branch-safety gate, and test/typecheck gate exist.
+- Source execution: target repository code execution, branch creation,
+  codemods, target tests, and publisher writes remain outside Source Prism
+  core scope.
 
 ## Current Local-Only Guarantees
 
@@ -37,9 +38,9 @@ verified:
   `auth/tenancy`.
 - API request bodies are capped at 256 KiB.
 - API request rate limiting defaults to 600 requests per 60 seconds.
-- Review publisher payloads redact secret-like text before serialization.
+- Review dry-run/export payloads redact secret-like text before serialization.
 - No API route requires or accepts provider secrets for indexing/search.
-- Refactor remains planner-only; executor is disabled.
+- Refactor remains planner-only; Source Prism has no code-changing executor.
 
 ## Required Schema Before Activation
 
@@ -78,4 +79,4 @@ fall back to ambient filesystem or environment authority in non-local mode.
 - Real HTTP smoke proves an authenticated tenant can index/search only its own
   repo.
 - Secret scans prove provider tokens do not appear in logs, context packs,
-  review payloads, or OpenSearch documents.
+  dry-run/export payloads, or OpenSearch documents.

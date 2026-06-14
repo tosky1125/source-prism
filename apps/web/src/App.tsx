@@ -146,9 +146,16 @@ async function loadSymbolReferences(
   try {
     const report = await loadReferences(repoId, symbol);
     setReferences(report.references);
-    setStatus(
-      `Calls in ${report.incoming_count} / out ${report.outgoing_count}`,
+    const callReferences = report.references.filter(
+      (reference) => reference.relation === "calls",
     );
+    const incomingCalls = callReferences.filter(
+      (reference) => reference.direction === "incoming",
+    ).length;
+    const outgoingCalls = callReferences.filter(
+      (reference) => reference.direction === "outgoing",
+    ).length;
+    setStatus(`Calls in ${incomingCalls} / out ${outgoingCalls}`);
   } catch (error) {
     setReferences([]);
     setStatus(errorMessage(error));

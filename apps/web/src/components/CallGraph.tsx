@@ -18,6 +18,9 @@ export function CallGraph({ selectedSymbol, references }: CallGraphProps) {
   );
   const nodeCount = graph.nodes.length;
   const edgeCount = graph.edges.length;
+  const hasNonCallReferences = references.some(
+    (reference) => reference.relation !== "calls",
+  );
 
   return (
     <section className="graph-panel" aria-label="Function call graph">
@@ -33,6 +36,11 @@ export function CallGraph({ selectedSymbol, references }: CallGraphProps) {
           </span>
         </div>
       </div>
+      {edgeCount === 0 && hasNonCallReferences ? (
+        <p className="graph-note">
+          No direct call edges. Related tests and other evidence appear below.
+        </p>
+      ) : null}
       <div className="flow-shell">
         <ReactFlow
           nodes={graph.nodes}
